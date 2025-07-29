@@ -1085,6 +1085,14 @@ void ImNodeFlow::update()
     }
 
     m_context.end();
+
+    if (ImGui::BeginDragDropTarget()) {
+        if (m_dragdropTarget) {
+            m_dragdropTarget(screen2grid(ImGui::GetMousePos()));
+        }
+
+        ImGui::EndDragDropTarget();
+    }
 }
 
 } // namespace ImFlow
