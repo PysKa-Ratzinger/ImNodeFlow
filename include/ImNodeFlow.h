@@ -552,6 +552,16 @@ public:
     }
 
     /**
+     * @brief <BR>Pop-up when drag_dropping
+     * @details Sets the node pos when drag dropping a node to the grid
+     * @param content Function or Lambda containing only the pos of the mouse when clicked
+     */
+    void dragDropTarget(std::function<void(const ImVec2&)> content)
+    {
+        m_dragdropTarget = std::move(content);
+    }
+
+    /**
      * @brief Get mouse clicking status
      * @return [TRUE] if mouse is clicked and click hasn't been consumed
      */
@@ -732,6 +742,7 @@ private:
     ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
     Pin* m_droppedLinkLeft = nullptr;
     std::function<void(BaseNode* node)> m_rightClickPopUp;
+    std::function<void(const ImVec2&)> m_dragdropTarget;
     BaseNode* m_hoveredNodeAux = nullptr;
 
     BaseNode* m_hoveredNode = nullptr;
