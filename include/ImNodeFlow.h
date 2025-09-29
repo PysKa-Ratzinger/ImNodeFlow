@@ -35,7 +35,7 @@ namespace detail {
     smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness);
 
     /**
-     * @brief <BR>Draw a sensible bezier whose color blends from one end to the other
+     * @brief Draw a sensible bezier whose color blends from one end to the other
      * @param p1 Starting point
      * @param p2 Ending point
      * @param color1 Color at the starting point
@@ -1003,6 +1003,10 @@ public:
      */
     void destroy()
     {
+        if (m_indestructable) {
+            return;
+        }
+
         if (m_on_cleanup) {
             m_on_cleanup();
         }
@@ -1075,6 +1079,12 @@ public:
     [[nodiscard]] bool isDragged() const { return m_dragged; }
 
     /**
+     * @brief Get Indestructable status
+     * @return [TRUE] if the node is Indestructable
+     */
+    [[nodiscard]] bool isIndestructable() const { return m_indestructable; }
+
+    /**
      * @brief Set node's uid
      * @param uid Node's unique identifier
      */
@@ -1112,6 +1122,16 @@ public:
     BaseNode* setStyle(NodeStyle style)
     {
         m_style = std::move(style);
+        return this;
+    }
+
+    /**
+     * @brief Set node's style
+     * @param style New style
+     */
+    BaseNode* setIndestructable(bool indestruct)
+    {
+        m_indestructable = indestruct;
         return this;
     }
 
@@ -1184,6 +1204,7 @@ private:
     bool m_provisionallySelectedNext = false;
     bool m_dragged = false;
     bool m_destroyed = false;
+    bool m_indestructable = false;
 
     std::function<void()> m_on_draw = []() -> void { };
     std::function<void()> m_on_cleanup = []() -> void { };
