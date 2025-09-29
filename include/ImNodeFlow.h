@@ -1178,6 +1178,12 @@ public:
     [[nodiscard]] bool isDragged() const { return m_dragged; }
 
     /**
+     * @brief Get Indestructable status
+     * @return [TRUE] if the node is Indestructable
+     */
+    [[nodiscard]] bool isIndestructable() const { return m_indestructable; }
+
+    /**
      * @brief Set node's uid
      * @param uid Node's unique identifier
      */
@@ -1215,6 +1221,16 @@ public:
     Node& setStyle(NodeStyle style)
     {
         m_style = std::move(style);
+        return *this;
+    }
+
+    /**
+     * @brief Set node's style
+     * @param style New style
+     */
+    Node& setIndestructable(bool indestruct)
+    {
+        m_indestructable = indestruct;
         return *this;
     }
 
@@ -1279,6 +1295,7 @@ private:
     bool m_provisionallySelectedNext = false;
     bool m_dragged = false;
     bool m_destroyed = false;
+    bool m_indestructable = false;
 
     std::unique_ptr<INodeBehaviour> m_impl;
 
