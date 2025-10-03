@@ -1438,6 +1438,23 @@ public:
     void setPos(ImVec2 pos) { m_pos = pos; }
 
     /**
+     * @brief Get socket hit bounds for interaction
+     * @param expand_radius Optional radius to expand the socket hitbox (default uses socket_hovered_radius)
+     * @return Rectangle bounds for socket interaction
+     */
+    std::pair<ImVec2, ImVec2>
+    getSocketHitBounds(float expand_radius = -1.0f);
+
+    /**
+     * @brief Enable/disable automatic socket hitbox extension
+     * @param enabled If true, socket area will be included in pin hitbox
+     */
+    void setSocketHitboxEnabled(bool enabled)
+    {
+        m_socketHitboxEnabled = enabled;
+    }
+
+    /**
      * @brief Returns whether or not the mouse was hovering in the last
      * update
      */
@@ -1477,6 +1494,7 @@ protected:
     PinStyle m_style;
     PinConnStrat m_strat;
     bool m_allowSelfConnection = false;
+    bool m_socketHitboxEnabled = true;
 
     ImVec2 m_pos = ImVec2(0.F, 0.F);
     ImVec2 m_size = ImVec2(0.F, 0.F);
