@@ -290,7 +290,13 @@ void Link::update(ImNodeFlow& ctx)
             end,
             m_out_pin->getStyle().extra.outline_color,
             thickness + m_out_pin->getStyle().extra.link_selected_outline_thickness);
-    detail::smart_bezier(start, end, m_out_pin->getStyle().color, thickness);
+    detail::smart_bezier_gradient(
+        start,
+        end,
+        m_out_pin->getStyle().color,
+        m_in_pin->getStyle().color,
+        thickness,
+        ctx.getStyle().link_gradient_blend);
 
     if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
         this->destroy();
