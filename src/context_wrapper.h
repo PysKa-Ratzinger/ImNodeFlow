@@ -215,6 +215,8 @@ struct ContainedContextConfig {
 	ImGuiMouseButton selection_box_button        = ImGuiMouseButton_Left;
 	ImGuiMouseButton selection_box_cancel_button = ImGuiMouseButton_Right;
 	ImGuiMouseButton scroll_button               = ImGuiMouseButton_Middle;
+
+	ImGuiWindowFlags extra_viewport_window_flags = 0;
 };
 
 class ContainedContext
@@ -315,7 +317,10 @@ ContainedContext::begin()
 	ImGui::PushID(this);
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, m_config.color);
 	ImGui::BeginChild(
-	        "view_port", m_config.size, 0, ImGuiWindowFlags_NoMove
+	        "view_port",
+	        m_config.size,
+	        0,
+	        ImGuiWindowFlags_NoMove | m_config.extra_viewport_window_flags
 	);
 	// BeginChild() -> SetCurrentWindow() has just reset the density from the
 	// host viewport's FramebufferScale, so this reads the host's true display
@@ -366,9 +371,12 @@ ContainedContext::begin()
 	ImGui::Begin(
 	        "viewport_container",
 	        nullptr,
-	        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground |
-	                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-	                ImGuiWindowFlags_NoScrollWithMouse
+	        ImGuiWindowFlags_NoDecoration                  //
+	                | ImGuiWindowFlags_NoBackground        //
+	                | ImGuiWindowFlags_NoMove              //
+	                | ImGuiWindowFlags_NoScrollbar         //
+	                | ImGuiWindowFlags_NoScrollWithMouse   //
+	                | m_config.extra_viewport_window_flags //
 	);
 	// Set font density again now inside the inner context.
 	setFontDensity();
