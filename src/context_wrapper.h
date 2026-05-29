@@ -232,7 +232,9 @@ public:
 	[[nodiscard]] const ImVec2& origin() const { return m_origin; }
 	[[nodiscard]] bool          hovered() const { return m_hovered; }
 	[[nodiscard]] const ImVec2& scroll() const { return m_scroll; }
-	[[nodiscard]] ImVec2        getScreenDelta()
+	void setScroll(ImVec2 scroll) { m_scroll = scroll; }
+	void setScale(float scale) { m_scale = m_scaleTarget = scale; }
+	[[nodiscard]] ImVec2 getScreenDelta()
 	{
 		return m_original_ctx->IO.MouseDelta / scale();
 	}
