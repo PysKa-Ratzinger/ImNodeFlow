@@ -703,6 +703,9 @@ public:
      */
     const ImVec2& getScroll() { return m_context.scroll(); }
 
+    void setScroll(ImVec2 scroll) { m_context.setScroll(scroll); }
+    void setScale(float scale) { m_context.setScale(scale); }
+
     /**
      * @brief Get the scale adjusted screen space mouse delta, needed for dragging
      *
