@@ -249,6 +249,12 @@ private:
 	bool m_anyWindowHovered = false;
 	bool m_anyItemActive    = false;
 	bool m_hovered          = false;
+	// Font rasterizer density of the *host* context, sampled in begin() right
+	// after BeginChild() (i.e. after ImGui has set it from the host viewport's
+	// FramebufferScale). 1.0 on a standard-DPI display, 2.0 on a typical HiDPI
+	// one. The inner context has no platform window of its own, so ImGui can
+	// only ever derive 1.0 for it -- we have to carry the host's value across.
+	float m_hostFontDensity = 1.f;
 
 	float  m_scale       = m_config.default_zoom,
 	       m_scaleTarget = m_config.default_zoom;
@@ -265,11 +271,20 @@ inline ContainedContext::~ContainedContext()
 // In begin(), this is called twice: once for the outer context's child window
 // (so the outer renderer rasterizes at the correct density), and once inside
 // the inner context's Begin() when extra_window_wrapper is enabled.
+//
+// The density we want is (host display density * canvas zoom): the zoom factor
+// alone is only correct on a 1x display. The inner context is created without a
+// platform backend, so its viewport FramebufferScale is 0 and its
+// DisplayFramebufferScale is 1 -- ImGui's own SetCurrentWindow() therefore
+// derives a density of 1.0 for it no matter what the host runs at. Multiplying
+// in the host's density keeps node text as crisp as the rest of the app on
+// HiDPI displays.
 inline void
 ContainedContext::setFontDensity()
 {
+	float density = m_hostFontDensity * m_scale;
 	// Round density to two digits
-	float density = roundf(m_scale * 100.0F) / 100.0F;
+	density = roundf(density * 100.0F) / 100.0F;
 
 #if IMGUI_VERSION_NUM >= 19'297
 	ImGui::SetPixelDensity(density);
@@ -286,6 +301,14 @@ ContainedContext::begin()
 	ImGui::BeginChild(
 	        "view_port", m_config.size, 0, ImGuiWindowFlags_NoMove
 	);
+	// BeginChild() -> SetCurrentWindow() has just reset the density from the
+	// host viewport's FramebufferScale, so this reads the host's true display
+	// density. Sample it before setFontDensity() overwrites it.
+#if IMGUI_VERSION_NUM >= 19'198
+	m_hostFontDensity = ImGui::GetFontRasterizerDensity();
+	if (m_hostFontDensity <= 0.f)
+		m_hostFontDensity = 1.f;
+#endif
 	// Set font density on the OUTER context's child window so the outer renderer
 	// rasterizes fonts at the correct scale before we switch context below.
 	setFontDensity();
