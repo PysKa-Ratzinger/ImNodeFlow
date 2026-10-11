@@ -3,6 +3,10 @@
 
 Create your custom nodes and their logic... ImNodeFlow will handle connections, editor logic, and rendering.
 
+This repository is a fork of Fattorino's [ImNodeFlow](https://github.com/Fattorino/ImNodeFlow)
+
+It includes some changes which I needed for my own use-cases.
+
 ![image](https://github.com/Fattorino/ImNodeFlow/assets/90210751/605f8cc5-794f-45bd-b4dd-2d6ffdb706e7)
 
 ## Features
