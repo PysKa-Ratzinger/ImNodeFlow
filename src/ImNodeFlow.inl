@@ -399,6 +399,14 @@ InPin<T>::val()
 }
 
 template <class T>
+InPin<T>::~InPin()
+{
+    if (auto l = m_link.lock()) {
+        l->markForDeletion();
+    }
+}
+
+template <class T>
 bool InPin<T>::canCreateLink(Pin& other)
 {
     if (&other == this || other.getType() == PinType_Input) {
@@ -418,13 +426,26 @@ bool InPin<T>::canCreateLink(Pin& other)
 }
 
 template <class T>
-void InPin<T>::setLink(std::shared_ptr<Link>& link)
+void InPin<T>::setLink(std::weak_ptr<Link> link)
 {
-    m_link = link;
+    // Only a single link can be connected at this time
+    this->deleteLink();
+    m_link = std::move(link);
 }
 
 // -----------------------------------------------------------------------------------------------------------------
 // OUT PIN
+
+template <class T>
+OutPin<T>::~OutPin()
+{
+    std::vector<std::weak_ptr<Link>> links = std::move(m_links);
+    for (auto& link : links) {
+        if (auto l = link.lock()) {
+            l->markForDeletion();
+        }
+    }
+}
 
 template <class T>
 void OutPin<T>::calculate()
@@ -456,9 +477,9 @@ bool OutPin<T>::canCreateLink(ImFlow::Pin& other)
 }
 
 template <class T>
-void OutPin<T>::setLink(std::shared_ptr<Link>& link)
+void OutPin<T>::setLink(std::weak_ptr<Link> link)
 {
-    m_links.emplace_back(link);
+    m_links.emplace_back(std::move(link));
 }
 
 template <class T>

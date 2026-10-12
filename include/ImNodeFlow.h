@@ -285,12 +285,6 @@ public:
     }
 
     /**
-     * @brief <BR>Destruction of a link
-     * @details Deletes references of this links form connected pins
-     */
-    ~Link();
-
-    /**
      * @brief Looping function to update the Link
      * @details Draws the Link and updates Hovering and Selected status.
      */
@@ -1175,7 +1169,7 @@ public:
      * @brief <BR>Set the reference to a link
      * @param link Smart pointer to the link
      */
-    virtual void setLink(std::shared_ptr<Link>& link) { }
+    virtual void setLink(std::weak_ptr<Link> link) = 0;
 
     /**
      * @brief <BR>Delete link reference
@@ -1377,6 +1371,11 @@ public:
     }
 
     /**
+     * @brief Marks all edges connected to this InPoint for deletion
+     */
+    ~InPin() override;
+
+    /**
      * @brief <BR>Create link between pins
      * @param other Pointer to the other pin
      */
@@ -1386,7 +1385,7 @@ public:
      * @brief <BR>Add a connected link to the internal list
      * @param link Pointer to the link
      */
-    void setLink(std::shared_ptr<Link>& link) override;
+    void setLink(std::weak_ptr<Link> link) override;
 
     /**
      * @brief <BR>Delete the link connected to the pin
@@ -1406,12 +1405,6 @@ public:
     void allowSameNodeConnections(bool state)
     {
         m_allowSelfConnection = state;
-    }
-
-    void setConnection(std::shared_ptr<Link> link)
-    {
-        this->deleteLink();
-        m_link = std::move(link);
     }
 
     /**
@@ -1500,15 +1493,7 @@ public:
     /**
      * @brief <BR>When parent gets deleted, remove the links
      */
-    ~OutPin() override
-    {
-        std::vector<std::weak_ptr<Link>> links = std::move(m_links);
-        for (auto& link : links) {
-            if (auto l = link.lock()) {
-                l->markForDeletion();
-            }
-        }
-    }
+    ~OutPin() override;
 
     /**
      * @brief <BR>Create link between pins
@@ -1520,7 +1505,7 @@ public:
      * @brief <BR>Add a connected link to the internal list
      * @param link Pointer to the link
      */
-    void setLink(std::shared_ptr<Link>& link) override;
+    void setLink(std::weak_ptr<Link> link) override;
 
     /**
      * @brief <BR>Delete any expired weak pointers to a (now deleted) link

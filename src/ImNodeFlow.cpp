@@ -61,13 +61,6 @@ void Link::update(ImNodeFlow& ctx)
         m_in_pin->deleteLink();
 }
 
-Link::~Link()
-{
-    if (!m_out_pin)
-        return;
-    m_out_pin->deleteLink();
-}
-
 // -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
