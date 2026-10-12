@@ -681,7 +681,7 @@ private:
     InfStyler m_style;
 
     struct SelectionBox {
-        bool active;
+        bool active = false;
         ImVec2 selectionStart;
         ImU32 selectionColor = IM_COL32(100, 150, 255, 50);
         ImU32 borderColor = IM_COL32(100, 150, 255, 200);
