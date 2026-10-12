@@ -880,8 +880,7 @@ void ImNodeFlow::update()
             m_box.active = false;
             shouldMarkSelected = true;
         } else if (
-            ImGui::IsMouseClicked(
-                getGrid().config().selection_box_cancel_button)) {
+            getGrid().config().selection_box_cancel_button != getGrid().config().selection_box_button && ImGui::IsMouseClicked(getGrid().config().selection_box_cancel_button)) {
             // cancel selection
             m_box.active = false;
         }
@@ -917,6 +916,21 @@ void ImNodeFlow::update()
     if (ImGui::BeginPopup("DroppedLinkPopUp")) {
         m_droppedLinkPopUp(m_droppedLinkLeft);
         ImGui::EndPopup();
+    }
+
+    if (m_context.hovered() && this->getSingleUseClick(m_context.config().scroll_button)) {
+        this->consumeSingleUseClick(m_context.config().scroll_button);
+        m_draggingCanvas = true;
+    }
+
+    if (m_draggingCanvas) {
+        if (!ImGui::IsMouseDown(m_context.config().scroll_button)) {
+            m_draggingCanvas = false;
+        }
+    }
+
+    if (m_draggingCanvas && ImGui::IsMouseDragging(m_context.config().scroll_button)) {
+        m_context.updateScroll();
     }
 
     m_context.end();
