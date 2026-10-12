@@ -21,7 +21,7 @@ else()
   FetchContent_Declare(
       imgui
       GIT_REPOSITORY "https://github.com/ocornut/imgui.git"
-      GIT_TAG "v1.91.6"  # Update with future minimum compatibility
+      GIT_TAG "v1.92.9b"  # Update with future minimum compatibility
       SOURCE_DIR ${IMGUI_DIR}
       GIT_SHALLOW TRUE  # Limit history to download
   )
