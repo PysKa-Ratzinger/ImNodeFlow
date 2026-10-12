@@ -1,6 +1,7 @@
 #include "ImNodeFlow.h"
 
 namespace ImFlow {
+
 // -----------------------------------------------------------------------------------------------------------------
 // LINK
 
@@ -14,7 +15,8 @@ void Link::update()
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         m_selected = false;
 
-    if (detail::smart_bezier_collider(ImGui::GetMousePos(), start, end, 2.5)) {
+    if (detail::smart_bezier_collider(
+            ImGui::GetMousePos(), start, end, 2.5)) {
         m_hovered = true;
         thickness = m_left->getStyle()->extra.link_hovered_thickness;
         if (mouseClickState) {
@@ -54,6 +56,38 @@ bool BaseNode::isHovered()
     return ImGui::IsMouseHoveringRect(
         m_inf->grid2screen(m_pos - paddingTL),
         m_inf->grid2screen(m_pos + m_size + paddingBR));
+}
+
+void BaseNode::calculate()
+{
+    for (auto& pin : m_outs) {
+        pin->calculate();
+    }
+    for (auto& pin : m_dynamicOuts) {
+        pin.second->calculate();
+    }
+    for (auto& pin : m_ins) {
+        pin->calculate();
+    }
+    for (auto& pin : m_dynamicIns) {
+        pin.second->calculate();
+    }
+}
+
+void BaseNode::prime()
+{
+    for (auto& pin : m_outs) {
+        pin->prime();
+    }
+    for (auto& pin : m_dynamicOuts) {
+        pin.second->prime();
+    }
+    for (auto& pin : m_ins) {
+        pin->prime();
+    }
+    for (auto& pin : m_dynamicIns) {
+        pin.second->prime();
+    }
 }
 
 void BaseNode::update()
@@ -332,6 +366,14 @@ void ImNodeFlow::update()
                 m_style.colors.subGrid);
     }
 
+    // Propagate pin values
+    for (auto& node : m_nodes) {
+        node.second->calculate();
+    }
+    for (auto& node : m_nodes) {
+        node.second->prime();
+    }
+
     // Update and draw nodes
     // TODO: I don't like this
     draw_list->ChannelsSplit(2);
@@ -416,9 +458,7 @@ void ImNodeFlow::update()
             [](const std::weak_ptr<Link>& l) { return l.expired(); }),
         m_links.end());
 
-    // Clearing recursion blacklist
-    m_pinRecursionBlacklist.clear();
-
     m_context.end();
 }
-}
+
+} // namespace ImFlow
