@@ -41,8 +41,8 @@ void Link::update(ImNodeFlow& ctx)
             ImGui::GetMousePos(), start, end, 2.5)) {
         m_hovered = true;
         thickness = m_out_pin->getStyle()->extra.link_hovered_thickness;
-        if (ctx.getSingleUseClick()) {
-            ctx.consumeSingleUseClick();
+        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
+            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
             m_selected = true;
         }
     } else {
@@ -182,7 +182,6 @@ void BaseNode::update(ImNodeFlow& ctx)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
-    bool mouseClickState = ctx.getSingleUseClick();
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
     ImVec2 paddingTL = { m_style->padding.x, m_style->padding.y };
     ImVec2 paddingBR = { m_style->padding.z, m_style->padding.w };
@@ -320,8 +319,8 @@ void BaseNode::update(ImNodeFlow& ctx)
             offset + m_pos - paddingTL, offset + m_pos + headerSize);
 
         ctx.hoveredNode(this);
-        if (ctx.getSingleUseClick()) {
-            ctx.consumeSingleUseClick();
+        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
+            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
             setSelected(true);
             if (onHeader) {
                 m_dragged = true;
@@ -428,7 +427,10 @@ void ImNodeFlow::update()
     // Updating looping stuff
     m_hoveredNode = nullptr;
     m_draggingNode = m_draggingNodeNext;
-    m_singleUseClick = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+
+    m_singleUseClicks.left = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    m_singleUseClicks.right = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    m_singleUseClicks.middle = ImGui::IsMouseClicked(ImGuiMouseButton_Middle);
 
     // Create child canvas
     m_context.begin();
@@ -545,8 +547,8 @@ void ImNodeFlow::update()
     }
 
     // Links drag-out
-    if (!m_box.active && !m_draggingNode && hovered_pin && !m_dragOut && getSingleUseClick()) {
-        consumeSingleUseClick();
+    if (!m_box.active && !m_draggingNode && hovered_pin && !m_dragOut && getSingleUseClick(ImGuiMouseButton_Left)) {
+        consumeSingleUseClick(ImGuiMouseButton_Left);
         m_dragOut = hovered_pin;
     }
 
@@ -570,8 +572,8 @@ void ImNodeFlow::update()
             m_dragOut = nullptr;
     }
 
-    if (this->mouse_on_free_space() && !m_box.active && !m_draggingNode && !m_dragOut && getSingleUseClick() && ImGui::IsWindowHovered()) {
-        consumeSingleUseClick();
+    if (this->mouse_on_free_space() && !m_box.active && !m_draggingNode && !m_dragOut && getSingleUseClick(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
+        consumeSingleUseClick(ImGuiMouseButton_Left);
         m_box.active = true;
         m_box.selectionStart = ImGui::GetMousePos();
 

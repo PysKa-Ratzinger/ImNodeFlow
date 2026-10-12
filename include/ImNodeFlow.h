@@ -505,15 +505,42 @@ public:
      * @brief <BR>Get mouse clicking status
      * @return [TRUE] if mouse is clicked and click hasn't been consumed
      */
-    [[nodiscard]] bool getSingleUseClick() const
+    [[nodiscard]] bool getSingleUseClick(ImGuiMouseButton button) const
     {
-        return m_singleUseClick;
+        switch (button) {
+        case ImGuiMouseButton_Left:
+            return m_singleUseClicks.left;
+        case ImGuiMouseButton_Right:
+            return m_singleUseClicks.right;
+        case ImGuiMouseButton_Middle:
+            return m_singleUseClicks.middle;
+        default:
+            return false;
+        }
     }
 
     /**
      * @brief <BR>Consume the click for the given frame
      */
-    void consumeSingleUseClick() { m_singleUseClick = false; }
+    void consumeSingleUseClick(ImGuiMouseButton button)
+    {
+        switch (button) {
+        case ImGuiMouseButton_Left:
+            m_singleUseClicks.left = false;
+            return;
+
+        case ImGuiMouseButton_Right:
+            m_singleUseClicks.right = false;
+            return;
+
+        case ImGuiMouseButton_Middle:
+            m_singleUseClicks.middle = false;
+            return;
+
+        default:
+            return;
+        }
+    }
 
     /**
      * @brief <BR>Get editor's name
@@ -630,7 +657,11 @@ private:
     std::string m_name;
     ContainedContext m_context;
 
-    bool m_singleUseClick = false;
+    struct {
+        bool left = false;
+        bool right = false;
+        bool middle = false;
+    } m_singleUseClicks;
 
     std::unordered_map<NodeUID, std::shared_ptr<BaseNode>> m_nodes;
     std::vector<std::shared_ptr<Link>> m_links;
