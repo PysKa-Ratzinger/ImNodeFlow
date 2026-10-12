@@ -187,6 +187,8 @@ struct ContainedContextConfig {
     float zoom_smoothness = 5.f;
     float default_zoom = 1.f;
     ImGuiKey reset_zoom_key = ImGuiKey_R;
+    ImGuiMouseButton selection_box_button = ImGuiMouseButton_Left;
+    ImGuiMouseButton selection_box_cancel_button = ImGuiMouseButton_Right;
     ImGuiMouseButton scroll_button = ImGuiMouseButton_Middle;
 };
 

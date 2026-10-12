@@ -846,8 +846,8 @@ void ImNodeFlow::update()
             m_dragOut = nullptr;
     }
 
-    if (this->mouse_on_free_space() && !m_box.active && !m_draggingNode && !m_dragOut && getSingleUseClick(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
-        consumeSingleUseClick(ImGuiMouseButton_Left);
+    if (this->mouse_on_free_space() && !m_box.active && !m_draggingNode && !m_dragOut && getSingleUseClick(getGrid().config().selection_box_button) && ImGui::IsWindowHovered()) {
+        consumeSingleUseClick(getGrid().config().selection_box_button);
         m_box.active = true;
         m_box.selectionStart = ImGui::GetMousePos();
 
@@ -875,10 +875,13 @@ void ImNodeFlow::update()
 
         bool shouldMarkSelected = false;
 
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        if (ImGui::IsMouseReleased(
+                getGrid().config().selection_box_button)) {
             m_box.active = false;
             shouldMarkSelected = true;
-        } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+        } else if (
+            ImGui::IsMouseClicked(
+                getGrid().config().selection_box_cancel_button)) {
             // cancel selection
             m_box.active = false;
         }
