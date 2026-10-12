@@ -642,7 +642,8 @@ private:
     BaseNode* m_hoveredNodeAux = nullptr;
 
     BaseNode* m_hoveredNode = nullptr;
-    bool m_draggingNode = false, m_draggingNodeNext = false;
+    bool m_draggingNode = false;
+    bool m_draggingNodeNext = false;
     Pin* m_hovering = nullptr;
     Pin* m_dragOut = nullptr;
 
@@ -1071,7 +1072,8 @@ public:
 private:
     NodeUID m_uid = 0;
     std::string m_title;
-    ImVec2 m_pos, m_posTarget;
+    ImVec2 m_pos;
+    ImVec2 m_posTarget;
     ImVec2 m_size;
     ImVec2 m_fullSize;
     std::shared_ptr<NodeStyle> m_style;
