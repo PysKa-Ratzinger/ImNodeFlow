@@ -212,7 +212,9 @@ struct ContainedContextConfig {
 
 	ImGuiKey reset_zoom_key = ImGuiKey_R;
 
-	ImGuiMouseButton scroll_button = ImGuiMouseButton_Middle;
+	ImGuiMouseButton selection_box_button        = ImGuiMouseButton_Left;
+	ImGuiMouseButton selection_box_cancel_button = ImGuiMouseButton_Right;
+	ImGuiMouseButton scroll_button               = ImGuiMouseButton_Middle;
 };
 
 class ContainedContext
