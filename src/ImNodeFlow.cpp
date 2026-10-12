@@ -26,12 +26,12 @@ bool PinUID::operator==(PinUID const& other) const noexcept
 // -----------------------------------------------------------------------------------------------------------------
 // LINK
 
-void Link::update()
+void Link::update(ImNodeFlow& ctx)
 {
     ImVec2 start = m_out_pin->pinPoint();
     ImVec2 end = m_in_pin->pinPoint();
     float thickness = m_out_pin->getStyle()->extra.link_thickness;
-    bool mouseClickState = m_inf->getSingleUseClick();
+    bool mouseClickState = ctx.getSingleUseClick();
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         m_selected = false;
@@ -41,7 +41,7 @@ void Link::update()
         m_hovered = true;
         thickness = m_out_pin->getStyle()->extra.link_hovered_thickness;
         if (mouseClickState) {
-            m_inf->consumeSingleUseClick();
+            ctx.consumeSingleUseClick();
             m_selected = true;
         }
     } else {
@@ -54,7 +54,8 @@ void Link::update()
             end,
             m_out_pin->getStyle()->extra.outline_color,
             thickness + m_out_pin->getStyle()->extra.link_selected_outline_thickness);
-    detail::smart_bezier(start, end, m_out_pin->getStyle()->color, thickness);
+    detail::smart_bezier(
+        start, end, m_out_pin->getStyle()->color, thickness);
 
     if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
         m_in_pin->deleteLink();
@@ -69,15 +70,6 @@ Link::~Link()
 
 // -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
-
-bool BaseNode::isHovered()
-{
-    ImVec2 paddingTL = { m_style->padding.x, m_style->padding.y };
-    ImVec2 paddingBR = { m_style->padding.z, m_style->padding.w };
-    return ImGui::IsMouseHoveringRect(
-        m_inf->grid2screen(m_pos - paddingTL),
-        m_inf->grid2screen(m_pos + m_size + paddingBR));
-}
 
 void BaseNode::dropIN(const PinUID& uid)
 {
@@ -188,12 +180,12 @@ void BaseNode::prime()
     }
 }
 
-void BaseNode::update()
+void BaseNode::update(ImNodeFlow& ctx)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
-    bool mouseClickState = m_inf->getSingleUseClick();
-    ImVec2 offset = m_inf->grid2screen({ 0.f, 0.f });
+    bool mouseClickState = ctx.getSingleUseClick();
+    ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
     ImVec2 paddingTL = { m_style->padding.x, m_style->padding.y };
     ImVec2 paddingBR = { m_style->padding.z, m_style->padding.w };
 
@@ -215,12 +207,12 @@ void BaseNode::update()
         ImGui::BeginGroup();
         for (auto& p : m_ins) {
             p->setPos(ImGui::GetCursorPos());
-            p->update();
+            p->update(ctx);
         }
         for (auto& p : m_dynamicIns) {
             if (p.first == 1) {
                 p.second->setPos(ImGui::GetCursorPos());
-                p.second->update();
+                p.second->update(ctx);
                 p.first = 0;
             }
         }
@@ -250,27 +242,27 @@ void BaseNode::update()
     ImGui::BeginGroup();
     for (auto& p : m_outs) {
         // FIXME: This looks horrible
-        if ((m_pos + ImVec2(titleW, 0) + m_inf->getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
+        if ((m_pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
             p->setPos(
                 ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - p->calcWidth(), 0.f));
         else
             p->setPos(ImVec2(
-                (m_pos + ImVec2(titleW - p->calcWidth(), 0) + m_inf->getGrid().scroll())
+                (m_pos + ImVec2(titleW - p->calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
-        p->update();
+        p->update(ctx);
     }
     for (auto& p : m_dynamicOuts) {
         // FIXME: This looks horrible
-        if ((m_pos + ImVec2(titleW, 0) + m_inf->getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
+        if ((m_pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
             p.second->setPos(
                 ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - p.second->calcWidth(), 0.f));
         else
             p.second->setPos(ImVec2(
-                (m_pos + ImVec2(titleW - p.second->calcWidth(), 0) + m_inf->getGrid().scroll())
+                (m_pos + ImVec2(titleW - p.second->calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
-        p.second->update();
+        p.second->update(ctx);
         p.first -= 1;
     }
 
@@ -317,14 +309,14 @@ void BaseNode::update()
         0,
         thickness);
 
-    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_inf->mouse_on_selected_node())
+    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node())
         selected(false);
 
     if (isHovered()) {
-        m_inf->hoveredNode(this);
+        ctx.hoveredNode(this);
         if (mouseClickState) {
             selected(true);
-            m_inf->consumeSingleUseClick();
+            ctx.consumeSingleUseClick();
         }
     }
 
@@ -334,20 +326,20 @@ void BaseNode::update()
     bool onHeader = ImGui::IsMouseHoveringRect(
         offset + m_pos - paddingTL, offset + m_pos + headerSize);
     if (onHeader && mouseClickState) {
-        m_inf->consumeSingleUseClick();
+        ctx.consumeSingleUseClick();
         m_dragged = true;
-        m_inf->draggingNode(true);
+        ctx.draggingNode(true);
     }
-    if (m_dragged || (m_selected && m_inf->isNodeDragged())) {
-        float step = m_inf->getStyle().grid_size / m_inf->getStyle().grid_subdivisions;
-        m_posTarget += m_inf->getScreenSpaceDelta();
+    if (m_dragged || (m_selected && ctx.isNodeDragged())) {
+        float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
+        m_posTarget += ctx.getScreenSpaceDelta();
         // "Slam" The position
         m_pos.x = round(m_posTarget.x / step) * step;
         m_pos.y = round(m_posTarget.y / step) * step;
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             m_dragged = false;
-            m_inf->draggingNode(false);
+            ctx.draggingNode(false);
             m_posTarget = m_pos;
         }
     }
@@ -370,6 +362,10 @@ void BaseNode::update()
                 return p.first == 0;
             }),
         m_dynamicOuts.end());
+
+    m_is_hovered = ImGui::IsMouseHoveringRect(
+        ctx.grid2screen(m_pos - paddingTL),
+        ctx.grid2screen(m_pos + m_size + paddingBR));
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -391,7 +387,7 @@ bool ImNodeFlow::mouse_on_free_space()
                m_nodes.end(),
                [](const auto& n) { return !n.second->isHovered(); })
         && std::all_of(m_links.begin(), m_links.end(), [](const auto& l) {
-               return !l.lock()->isHovered();
+               return !l->isHovered();
            });
 }
 
@@ -411,15 +407,29 @@ ImNodeFlow::grid2screen(const ImVec2& p)
     return (p + m_context.scroll()) * m_context.scale() + m_context.origin();
 }
 
-void ImNodeFlow::addLink(std::shared_ptr<Link>& link)
+void ImNodeFlow::createLink(Pin* source_pin, Pin* target_pin)
 {
-    m_links.push_back(link);
+    if (source_pin->getType() == PinType_Input) {
+        std::swap(source_pin, target_pin);
+    }
+
+    if (source_pin->getType() != PinType_Output || target_pin->getType() != PinType_Input) {
+        return;
+    }
+
+    if (!source_pin->canCreateLink(target_pin)) {
+        return;
+    }
+
+    auto link = std::make_shared<Link>(source_pin, target_pin);
+    target_pin->setLink(link);
+    source_pin->setLink(link);
+    m_links.emplace_back(std::move(link));
 }
 
 void ImNodeFlow::update()
 {
     // Updating looping stuff
-    m_hovering = nullptr;
     m_hoveredNode = nullptr;
     m_draggingNode = m_draggingNodeNext;
     m_singleUseClick = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
@@ -476,7 +486,7 @@ void ImNodeFlow::update()
     // TODO: I don't like this
     draw_list->ChannelsSplit(2);
     for (auto& node : m_nodes) {
-        node.second->update();
+        node.second->update(*this);
     }
     // Remove "toDelete" nodes
     for (auto iter = m_nodes.begin(); iter != m_nodes.end();) {
@@ -492,26 +502,55 @@ void ImNodeFlow::update()
 
     // Update and draw links
     for (auto& l : m_links) {
-        if (!l.expired())
-            l.lock()->update();
+        if (!l->isMarkedForDeletion()) {
+            l->update(*this);
+        }
+    }
+
+    Pin* hovered_pin = nullptr;
+    for (auto& elem : m_nodes) {
+        BaseNode& node = *elem.second;
+        for (auto& pin : node.getIns()) {
+            if (pin->isHovered()) {
+                hovered_pin = &*pin;
+            }
+        }
+        for (auto& pin : node.getOuts()) {
+            if (pin->isHovered()) {
+                hovered_pin = &*pin;
+            }
+        }
+        for (auto& elem : node.getDynamicIns()) {
+            auto& pin = elem.second;
+            if (pin->isHovered()) {
+                hovered_pin = &*pin;
+            }
+        }
+        for (auto& elem : node.getDynamicOuts()) {
+            auto& pin = elem.second;
+            if (pin->isHovered()) {
+                hovered_pin = &*pin;
+            }
+        }
     }
 
     // Links drop-off
     if (m_dragOut && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-        if (!m_hovering) {
+        if (!hovered_pin) {
             if (mouse_on_free_space() && m_droppedLinkPopUp) {
                 if (m_droppedLinkPupUpComboKey == ImGuiKey_None || ImGui::IsKeyDown(m_droppedLinkPupUpComboKey)) {
                     m_droppedLinkLeft = m_dragOut;
                     ImGui::OpenPopup("DroppedLinkPopUp");
                 }
             }
-        } else
-            m_dragOut->createLink(m_hovering);
+        } else {
+            this->createLink(m_dragOut, hovered_pin);
+        }
     }
 
     // Links drag-out
-    if (!m_draggingNode && m_hovering && !m_dragOut && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-        m_dragOut = m_hovering;
+    if (!m_draggingNode && hovered_pin && !m_dragOut && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        m_dragOut = hovered_pin;
     if (m_dragOut) {
         if (m_dragOut->getType() == PinType_Output)
             detail::smart_bezier(
@@ -553,7 +592,9 @@ void ImNodeFlow::update()
         std::remove_if(
             m_links.begin(),
             m_links.end(),
-            [](const std::weak_ptr<Link>& l) { return l.expired(); }),
+            [](const std::shared_ptr<Link>& l) {
+                return l->isMarkedForDeletion();
+            }),
         m_links.end());
 
     m_context.end();

@@ -79,7 +79,6 @@ ImNodeFlow::addNode(const ImVec2& pos, Params&&... args)
 
     std::shared_ptr<T> n = std::make_shared<T>(std::forward<Params>(args)...);
     n->setPos(pos);
-    n->setHandler(this);
     if (!n->getStyle())
         n->setStyle(NodeStyle::cyan());
 
@@ -133,13 +132,7 @@ BaseNode::addIN_uid(
     std::shared_ptr<PinStyle> style)
 {
     auto p = std::make_shared<InPin<T>>(
-        uid,
-        name,
-        defReturn,
-        std::move(filter),
-        std::move(style),
-        this,
-        &m_inf);
+        uid, name, defReturn, std::move(filter), std::move(style), this);
     m_ins.emplace_back(p);
     return p;
 }
@@ -168,8 +161,7 @@ BaseNode::showIN(
                 defReturn,
                 std::move(filter),
                 std::move(style),
-                this,
-                &m_inf)));
+                this)));
     return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
 }
 
@@ -198,8 +190,7 @@ BaseNode::showIN_uid(
                 defReturn,
                 std::move(filter),
                 std::move(style),
-                this,
-                &m_inf)));
+                this)));
     return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
 }
 
@@ -217,8 +208,7 @@ BaseNode::addOUT_uid(
     const std::string& name,
     std::shared_ptr<PinStyle> style)
 {
-    auto p = std::make_shared<OutPin<T>>(
-        uid, name, std::move(style), this, &m_inf);
+    auto p = std::make_shared<OutPin<T>>(uid, name, std::move(style), this);
     m_outs.emplace_back(p);
     return p;
 }
@@ -253,7 +243,7 @@ void BaseNode::showOUT_uid(
         std::make_pair(
             2,
             std::make_shared<OutPin<T>>(
-                uid, name, std::move(style), this, &m_inf)));
+                uid, name, std::move(style), this)));
     static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
         ->behaviour(std::move(behaviour));
 }
@@ -309,8 +299,9 @@ Pin::drawSocket()
                 m_style->socket_thickness);
     }
 
-    if (ImGui::IsMouseHoveringRect(tl, br))
-        (*m_inf)->hovering(this);
+    if (ImGui::IsMouseHoveringRect(tl, br)) {
+        m_is_hovered = true;
+    }
 }
 
 inline void
@@ -340,16 +331,19 @@ Pin::drawDecoration()
 }
 
 inline void
-Pin::update()
+Pin::update(ImNodeFlow& ctx)
 {
+    m_is_hovered = false;
+
     // Custom rendering
     if (m_renderer) {
         ImGui::BeginGroup();
         m_renderer(this);
         ImGui::EndGroup();
         m_size = ImGui::GetItemRectSize();
-        if (ImGui::IsItemHovered())
-            (*m_inf)->hovering(this);
+        if (ImGui::IsItemHovered()) {
+            m_is_hovered = true;
+        }
         return;
     }
 
@@ -360,8 +354,9 @@ Pin::update()
     drawDecoration();
     drawSocket();
 
-    if (ImGui::IsItemHovered())
-        (*m_inf)->hovering(this);
+    if (ImGui::IsItemHovered()) {
+        m_is_hovered = true;
+    }
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -370,10 +365,11 @@ Pin::update()
 template <class T>
 void InPin<T>::calculate()
 {
-    if (!m_link) {
+    if (m_link.expired()) {
         m_valNext = m_emptyVal;
     } else {
-        m_valNext = reinterpret_cast<OutPin<T>*>(m_link->outPin())->val();
+        m_valNext = reinterpret_cast<OutPin<T>*>(m_link.lock()->outPin())
+                        ->val();
     }
 }
 
@@ -391,25 +387,28 @@ InPin<T>::val()
 }
 
 template <class T>
-void InPin<T>::createLink(Pin* other)
+bool InPin<T>::canCreateLink(Pin* other)
 {
-    if (other == this || other->getType() == PinType_Input)
-        return;
-
-    if (m_parent == other->getParent() && !m_allowSelfConnection)
-        return;
-
-    if (m_link && m_link->outPin() == other) {
-        m_link.reset();
-        return;
+    if (other == this || other->getType() == PinType_Input) {
+        return false;
     }
 
-    if (!m_filter(other, this)) // Check Filter
-        return;
+    if (m_parent == other->getParent() && !m_allowSelfConnection) {
+        return false;
+    }
 
-    m_link = std::make_shared<Link>(other, this, (*m_inf));
-    other->setLink(m_link);
-    (*m_inf)->addLink(m_link);
+    if (!m_link.expired() && m_link.lock()->outPin() == other) {
+        m_link.reset();
+        return false;
+    }
+
+    return m_filter(other, this);
+}
+
+template <class T>
+void InPin<T>::setLink(std::shared_ptr<Link>& link)
+{
+    m_link = link;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -435,12 +434,13 @@ OutPin<T>::val()
 }
 
 template <class T>
-void OutPin<T>::createLink(ImFlow::Pin* other)
+bool OutPin<T>::canCreateLink(ImFlow::Pin* other)
 {
-    if (other == this || other->getType() == PinType_Output)
-        return;
+    if (other == this || other->getType() == PinType_Output) {
+        return false;
+    }
 
-    other->createLink(this);
+    return other->canCreateLink(this);
 }
 
 template <class T>

@@ -277,10 +277,9 @@ public:
      * @param in_pin Pointer to the input Pin of the Link
      * @param inf Pointer to the Handler that contains the Link
      */
-    explicit Link(Pin* out_pin, Pin* in_pin, ImNodeFlow* inf)
+    explicit Link(Pin* out_pin, Pin* in_pin)
         : m_out_pin(out_pin)
         , m_in_pin(in_pin)
-        , m_inf(inf)
     {
     }
 
@@ -291,10 +290,10 @@ public:
     ~Link();
 
     /**
-     * @brief <BR>Looping function to update the Link
+     * @brief Looping function to update the Link
      * @details Draws the Link and updates Hovering and Selected status.
      */
-    void update();
+    void update(ImNodeFlow& ctx);
 
     /**
      * @brief <BR>Get output pin of the link
@@ -320,10 +319,23 @@ public:
      */
     [[nodiscard]] bool isSelected() const { return m_selected; }
 
+    /**
+     * @brief Marks this link for deletion
+     */
+    void markForDeletion() { m_marked_for_deletion = true; }
+
+    /**
+     * @brief Returns whether or not this link was marked for deletion
+     */
+    [[nodiscard]] bool isMarkedForDeletion() const
+    {
+        return m_marked_for_deletion;
+    }
+
 private:
+    bool m_marked_for_deletion = false;
     Pin* m_out_pin;
     Pin* m_in_pin;
-    ImNodeFlow* m_inf;
     bool m_hovered = false;
     bool m_selected = false;
 };
@@ -463,10 +475,11 @@ public:
     std::shared_ptr<T> placeNode(Params&&... args);
 
     /**
-     * @brief <BR>Add link to the handler internal list
-     * @param link Reference to the link
+     * @brief Creates a link between two pins
+     * @param source_pin Pointer to the input pin
+     * @param target_pint Pointer to the output pin
      */
-    void addLink(std::shared_ptr<Link>& link);
+    void createLink(Pin* source_pin, Pin* target_pin);
 
     /**
      * @brief <BR>Pop-up when link is "dropped"
@@ -552,7 +565,7 @@ public:
      * @brief <BR>Get editor's list of links
      * @return Const reference to editor's internal links list
      */
-    const std::vector<std::weak_ptr<Link>>& getLinks() { return m_links; }
+    const std::vector<std::shared_ptr<Link>>& getLinks() { return m_links; }
 
     /**
      * @brief <BR>Get zooming viewport
@@ -585,12 +598,6 @@ public:
      * The new state will only be updated one at the start of each frame.
      */
     void draggingNode(bool state) { m_draggingNodeNext = state; }
-
-    /**
-     * @brief <BR>Set what pin is being hovered
-     * @param hovering Pointer to the hovered pin
-     */
-    void hovering(Pin* hovering) { m_hovering = hovering; }
 
     /**
      * @brief <BR>Set what node is being hovered
@@ -631,7 +638,7 @@ private:
     bool m_singleUseClick = false;
 
     std::unordered_map<NodeUID, std::shared_ptr<BaseNode>> m_nodes;
-    std::vector<std::weak_ptr<Link>> m_links;
+    std::vector<std::shared_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
     ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
@@ -663,7 +670,7 @@ public:
      * @brief <BR>Main loop of the node
      * @details Updates position, hovering and selected status, and renders the node. Must be called each frame.
      */
-    void update();
+    void update(ImNodeFlow& ctx);
 
     /**
      * @brief <BR>Content of the node
@@ -907,6 +914,25 @@ public:
     const std::vector<std::shared_ptr<Pin>>& getOuts() { return m_outs; }
 
     /**
+     * @brief <BR>Get internal dynamic input pins list
+     * @return Const reference to node's internal list
+     */
+    const std::vector<std::pair<int, std::shared_ptr<Pin>>>& getDynamicIns()
+    {
+        return m_dynamicIns;
+    }
+
+    /**
+     * @brief <BR>Get internal dynamic output pins list
+     * @return Const reference to node's internal list
+     */
+    const std::vector<std::pair<int, std::shared_ptr<Pin>>>&
+    getDynamicOuts()
+    {
+        return m_dynamicOuts;
+    }
+
+    /**
      * @brief <BR>Delete itself
      */
     void destroy() { m_destroyed = true; }
@@ -915,12 +941,6 @@ public:
      * @brief <BR>Get if node must be deleted
      */
     [[nodiscard]] bool toDestroy() const { return m_destroyed; }
-
-    /**
-     * @brief <BR>Get hovered status
-     * @return [TRUE] if the mouse is hovering the node
-     */
-    bool isHovered();
 
     /**
      * @brief <BR>Get node's UID
@@ -951,12 +971,6 @@ public:
      * @return Const reference to the node's position
      */
     const ImVec2& getPos() { return m_pos; }
-
-    /**
-     * @brief <BR>Get grid handler bound to node
-     * @return Pointer to the handler
-     */
-    ImNodeFlow* getHandler() { return m_inf; }
 
     /**
      * @brief <BR>Get node's style
@@ -1008,16 +1022,6 @@ public:
     }
 
     /**
-     * @brief <BR>Set ImNodeFlow handler
-     * @param inf Grid handler for the node
-     */
-    BaseNode* setHandler(ImNodeFlow* inf)
-    {
-        m_inf = inf;
-        return this;
-    }
-
-    /**
      * @brief Set node's style
      * @param style New style
      */
@@ -1045,6 +1049,12 @@ public:
     void updatePublicStatus() { m_selected = m_selectedNext; }
 
     /**
+     * @brief Returns whether or not the house was hovering in the last
+     * update
+     */
+    bool isHovered() const { return m_is_hovered; }
+
+    /**
      * @brief Have every pin calculate their next output value
      */
     void calculate();
@@ -1061,9 +1071,10 @@ private:
     ImVec2 m_pos, m_posTarget;
     ImVec2 m_size;
     ImVec2 m_fullSize;
-    ImNodeFlow* m_inf = nullptr;
     std::shared_ptr<NodeStyle> m_style;
-    bool m_selected = false, m_selectedNext = false;
+    bool m_is_hovered = false;
+    bool m_selected = false;
+    bool m_selectedNext = false;
     bool m_dragged = false;
     bool m_destroyed = false;
 
@@ -1101,13 +1112,11 @@ public:
         std::string name,
         std::shared_ptr<PinStyle> style,
         PinType kind,
-        BaseNode* parent,
-        ImNodeFlow** inf)
+        BaseNode* parent)
         : m_uid(uid)
         , m_name(std::move(name))
         , m_type(kind)
         , m_parent(parent)
-        , m_inf(inf)
         , m_style(std::move(style))
     {
         if (!m_style)
@@ -1120,7 +1129,7 @@ public:
      * @brief <BR>Main loop of the pin
      * @details Updates position, hovering and dragging status, and renders the pin. Must be called each frame.
      */
-    void update();
+    void update(ImNodeFlow& ctx);
 
     /**
      * @brief <BR>Draw default pin's socket
@@ -1151,7 +1160,7 @@ public:
      * @brief <BR>Create link between pins
      * @param other Pointer to the other pin
      */
-    virtual void createLink(Pin* other) = 0;
+    virtual bool canCreateLink(Pin* other) = 0;
 
     /**
      * @brief <BR>Set the reference to a link
@@ -1243,6 +1252,12 @@ public:
     void setPos(ImVec2 pos) { m_pos = pos; }
 
     /**
+     * @brief Returns whether or not the house was hovering in the last
+     * update
+     */
+    bool isHovered() const { return m_is_hovered; }
+
+    /**
      * @brief When the context calls this method, the pins should calculate
      * their next value, but not apply it. This allows every pin, during
      * the calculation step, to query what every other pin's output value
@@ -1266,9 +1281,9 @@ protected:
     ImVec2 m_size = ImVec2(0.f, 0.f);
     PinType m_type;
     BaseNode* m_parent = nullptr;
-    ImNodeFlow** m_inf;
     std::shared_ptr<PinStyle> m_style;
     std::function<void(Pin* p)> m_renderer;
+    bool m_is_hovered = false;
 };
 
 /**
@@ -1317,9 +1332,8 @@ public:
         T defReturn,
         std::function<bool(Pin*, Pin*)> filter,
         std::shared_ptr<PinStyle> style,
-        BaseNode* parent,
-        ImNodeFlow** inf)
-        : Pin(uid, name, style, PinType_Input, parent, inf)
+        BaseNode* parent)
+        : Pin(uid, name, style, PinType_Input, parent)
         , m_emptyVal(defReturn)
         , m_val(defReturn)
         , m_filter(std::move(filter))
@@ -1330,12 +1344,24 @@ public:
      * @brief <BR>Create link between pins
      * @param other Pointer to the other pin
      */
-    void createLink(Pin* other) override;
+    bool canCreateLink(Pin* other) override;
+
+    /**
+     * @brief <BR>Add a connected link to the internal list
+     * @param link Pointer to the link
+     */
+    void setLink(std::shared_ptr<Link>& link) override;
 
     /**
      * @brief <BR>Delete the link connected to the pin
      */
-    void deleteLink() override { m_link.reset(); }
+    void deleteLink() override
+    {
+        if (auto l = m_link.lock()) {
+            l->markForDeletion();
+        }
+        m_link.reset();
+    }
 
     /**
      * @brief Specify if connections from an output on the same node are allowed
@@ -1346,11 +1372,20 @@ public:
         m_allowSelfConnection = state;
     }
 
+    void setConnection(std::shared_ptr<Link> link)
+    {
+        this->deleteLink();
+        m_link = std::move(link);
+    }
+
     /**
      * @brief <BR>Get connected status
      * @return [TRUE] is pin is connected to a link
      */
-    bool isConnected() override { return m_link != nullptr; }
+    bool isConnected() override
+    {
+        return !m_link.expired() && !m_link.lock()->isMarkedForDeletion();
+    }
 
     /**
      * @brief <BR>Get pin's link
@@ -1396,7 +1431,7 @@ public:
     const T& val();
 
 private:
-    std::shared_ptr<Link> m_link;
+    std::weak_ptr<Link> m_link;
     T m_emptyVal;
     T m_val;
     T m_valNext;
@@ -1424,9 +1459,8 @@ public:
         PinUID uid,
         const std::string& name,
         std::shared_ptr<PinStyle> style,
-        BaseNode* parent,
-        ImNodeFlow** inf)
-        : Pin(uid, name, style, PinType_Output, parent, inf)
+        BaseNode* parent)
+        : Pin(uid, name, style, PinType_Output, parent)
     {
     }
 
@@ -1436,16 +1470,18 @@ public:
     ~OutPin() override
     {
         std::vector<std::weak_ptr<Link>> links = std::move(m_links);
-        for (auto& l : links)
-            if (!l.expired())
-                l.lock()->inPin()->deleteLink();
+        for (auto& link : links) {
+            if (auto l = link.lock()) {
+                l->markForDeletion();
+            }
+        }
     }
 
     /**
      * @brief <BR>Create link between pins
      * @param other Pointer to the other pin
      */
-    void createLink(Pin* other) override;
+    bool canCreateLink(Pin* other) override;
 
     /**
      * @brief <BR>Add a connected link to the internal list

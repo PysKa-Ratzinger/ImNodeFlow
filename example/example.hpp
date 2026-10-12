@@ -85,8 +85,8 @@ struct NodeEditor : ImFlow::BaseNode {
             auto result = mINF.addNode<ResultNode>({ 250, 80 });
 
             // Add links between nodes
-            n1->outPin("Out")->createLink(result->inPin("A"));
-            n2->outPin("Out")->createLink(result->inPin("B"));
+            mINF.createLink(n1->outPin("Out"), result->inPin("A"));
+            mINF.createLink(n2->outPin("Out"), result->inPin("B"));
 
             // Add a collapsing node
             auto collapsingNode = mINF.addNode<CollapsingNode>({ 300, 300 });
