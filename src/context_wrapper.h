@@ -224,6 +224,7 @@ public:
 	ContainedContextConfig&     config() { return m_config; }
 	void                        begin();
 	void                        end();
+	void                        updateScroll();
 	[[nodiscard]] ImVec2        size() const { return m_size; }
 	[[nodiscard]] float         scale() const { return m_scale; }
 	[[nodiscard]] const ImVec2& origin() const { return m_origin; }
@@ -340,6 +341,12 @@ ContainedContext::begin()
 }
 
 inline void
+ContainedContext::updateScroll()
+{
+	m_scroll += ImGui::GetIO().MouseDelta / m_scale;
+}
+
+inline void
 ContainedContext::end()
 {
 	m_anyWindowHovered =
@@ -421,12 +428,6 @@ ContainedContext::end()
 	// Zoom reset
 	if (ImGui::IsKeyPressed(m_config.reset_zoom_key, false))
 		m_scaleTarget = m_config.default_zoom;
-
-	// Scrolling
-	if (m_hovered && !m_anyItemActive &&
-	    ImGui::IsMouseDragging(m_config.scroll_button, 0.f)) {
-		m_scroll += ImGui::GetIO().MouseDelta / m_scale;
-	}
 
 	// Update inner context MousePos for the NEXT frame's input. ImGui reads
 	// MousePos at NewFrame(), so writing it here (end of this frame) is correct.
