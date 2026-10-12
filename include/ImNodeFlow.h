@@ -67,8 +67,11 @@ template <typename T>
 class InPin;
 template <typename T>
 class OutPin;
+template <typename T>
+class BaseNodeInstance;
 class Pin;
 class BaseNode;
+class IBaseNode;
 class ImNodeFlow;
 class IFilter;
 class ConnectionFilter;
@@ -190,6 +193,24 @@ public:
         return std::make_shared<PinStyle>(PinStyle(
             IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f));
     }
+};
+
+// -----------------------------------------------------------------------------------------------------------------
+// NODE INTERFACE
+
+/**
+ * @brief User-provided Nodes should implement this class
+ */
+class INode {
+public:
+    virtual ~INode() = default;
+
+    /**
+     * @brief <BR>Content of the node
+     * @details Function to be implemented by derived custom nodes.
+     *	    Must contain the body of the node. If left empty the node will only have input and output pins.
+     */
+    virtual void draw(BaseNode& node) { };
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -410,7 +431,8 @@ public:
      * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
      */
     template <typename T, typename... Params>
-    std::shared_ptr<T> addNode(const ImVec2& pos, Params&&... args);
+    std::shared_ptr<BaseNodeInstance<T>>
+    addNode(const ImVec2& pos, Params&&... args);
 
 private:
     /**
@@ -419,15 +441,15 @@ private:
      * @tparam L the type of the lambda
      * @tparam B always BaseNode, tparam because BaseNode is incomplete here
      */
-    template <typename L, typename B = BaseNode>
-    struct NodeWrapper : public B {
-        L mLambda;
-        NodeWrapper(L&& l)
-            : BaseNode()
-            , mLambda(std::forward<L>(l))
+    struct NodeWrapper : public INode {
+        std::function<void(BaseNode&)> m_lambda;
+        explicit NodeWrapper(
+            BaseNode& node,
+            std::function<void(BaseNode&)>&& lambda)
+            : m_lambda(std::move(lambda))
         {
         }
-        void draw() { mLambda(this); }
+        void draw(BaseNode& node) final { m_lambda(node); }
     };
 
 public:
@@ -437,11 +459,10 @@ public:
      * @param lambda the lambda that defines the nodes operation
      * @param pos the position at which to place the node
      */
-    template <typename L>
-    std::shared_ptr<NodeWrapper<L>>
-    addLambdaNode(L&& lambda, const ImVec2& pos)
+    std::shared_ptr<BaseNodeInstance<NodeWrapper>>
+    addLambdaNode(std::function<void(BaseNode&)>&& lambda, const ImVec2& pos)
     {
-        return addNode<NodeWrapper<L>>(pos, std::forward<L>(lambda));
+        return addNode<NodeWrapper>(pos, std::move(lambda));
     }
 
     /**
@@ -455,7 +476,8 @@ public:
      * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
      */
     template <typename T, typename... Params>
-    std::shared_ptr<T> placeNodeAt(const ImVec2& pos, Params&&... args);
+    std::shared_ptr<BaseNodeInstance<T>>
+    placeNodeAt(const ImVec2& pos, Params&&... args);
 
     /**
      * @brief <BR>Add a node to the grid using mouse position
@@ -467,7 +489,7 @@ public:
      * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
      */
     template <typename T, typename... Params>
-    std::shared_ptr<T> placeNode(Params&&... args);
+    std::shared_ptr<BaseNodeInstance<T>> placeNode(Params&&... args);
 
     /**
      * @brief Creates a link between two pins
@@ -702,7 +724,10 @@ private:
 class BaseNode {
 public:
     virtual ~BaseNode() = default;
-    BaseNode() = default;
+    explicit BaseNode(ImNodeFlow& flow)
+        : m_flow(flow)
+    {
+    }
 
     /**
      * @brief <BR>Main loop of the node
@@ -1141,6 +1166,8 @@ public:
     void prime();
 
 private:
+    std::reference_wrapper<ImNodeFlow> m_flow;
+
     NodeUID m_uid = 0;
     std::string m_title;
     ImVec2 m_pos;
@@ -1160,6 +1187,33 @@ private:
     std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicIns;
     std::vector<std::shared_ptr<Pin>> m_outs;
     std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicOuts;
+};
+
+// -----------------------------------------------------------------------------------------------------------------
+// BASE NODE INSTANCE
+
+/**
+ * @brief The actual base node instance, which acts as "middleware" and hides
+ * the BaseNode implementation details from a public interface
+ */
+template <typename T>
+class BaseNodeInstance final : public BaseNode, public T {
+public:
+    static_assert(
+        std::is_base_of_v<INode, T>,
+        "CRTP does not derive from IBaseNode!");
+
+    template <typename... Args>
+    explicit BaseNodeInstance(ImNodeFlow& flow, Args&&... args)
+        : BaseNode(flow)
+        , T(static_cast<BaseNode&>(*this), std::forward<Args>(args)...)
+    {
+    }
+
+    void draw() final
+    {
+        static_cast<T&>(*this).draw(static_cast<BaseNode&>(*this));
+    }
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -1186,12 +1240,14 @@ public:
      * @param style Style of the pin
      */
     explicit Pin(
+        ImNodeFlow& flow,
         PinUID uid,
         std::string name,
         std::shared_ptr<PinStyle> style,
         PinType kind,
         BaseNode* parent)
-        : m_uid(uid)
+        : m_flow(flow)
+        , m_uid(uid)
         , m_name(std::move(name))
         , m_type(kind)
         , m_parent(parent)
@@ -1233,6 +1289,11 @@ public:
         m_renderer = std::move(r);
         return this;
     }
+
+    /**
+     * @brief Creates a new link between this pin and another pin
+     */
+    void linkTo(Pin& other);
 
     /**
      * @brief <BR>Create link between pins
@@ -1353,6 +1414,8 @@ public:
     virtual void prime() = 0;
 
 protected:
+    std::reference_wrapper<ImNodeFlow> m_flow;
+
     PinUID m_uid;
     std::string m_name;
     ImVec2 m_pos = ImVec2(0.f, 0.f);
@@ -1432,13 +1495,14 @@ public:
      * @param style Style of the pin
      */
     explicit InPin(
+        ImNodeFlow& flow,
         PinUID uid,
         const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
         std::shared_ptr<PinStyle> style,
         BaseNode* parent)
-        : Pin(uid, name, style, PinType_Input, parent)
+        : Pin(flow, uid, name, style, PinType_Input, parent)
         , m_emptyVal(defReturn)
         , m_val(defReturn)
         , m_filter(std::move(filter))
@@ -1557,11 +1621,12 @@ public:
      * @param style Style of the pin
      */
     explicit OutPin(
+        ImNodeFlow& flow,
         PinUID uid,
         const std::string& name,
         std::shared_ptr<PinStyle> style,
         BaseNode* parent)
-        : Pin(uid, name, style, PinType_Output, parent)
+        : Pin(flow, uid, name, style, PinType_Output, parent)
     {
     }
 

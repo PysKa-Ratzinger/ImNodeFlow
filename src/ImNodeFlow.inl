@@ -70,18 +70,15 @@ namespace detail {
 // HANDLER
 
 template <typename T, typename... Params>
-std::shared_ptr<T>
+std::shared_ptr<BaseNodeInstance<T>>
 ImNodeFlow::addNode(const ImVec2& pos, Params&&... args)
 {
-    static_assert(
-        std::is_base_of<BaseNode, T>::value,
-        "Pushed type is not a subclass of BaseNode!");
-
-    std::shared_ptr<T> n = std::make_shared<T>(std::forward<Params>(args)...);
+    auto n = std::make_shared<BaseNodeInstance<T>>(
+        *this, std::forward<Params>(args)...);
     n->setPos(pos);
-    if (!n->getStyle())
+    if (!n->getStyle()) {
         n->setStyle(NodeStyle::cyan());
-
+    }
     auto uid = reinterpret_cast<uintptr_t>(n.get());
     n->setUID(uid);
     m_nodes[uid] = n;
@@ -89,14 +86,14 @@ ImNodeFlow::addNode(const ImVec2& pos, Params&&... args)
 }
 
 template <typename T, typename... Params>
-std::shared_ptr<T>
+std::shared_ptr<BaseNodeInstance<T>>
 ImNodeFlow::placeNodeAt(const ImVec2& pos, Params&&... args)
 {
     return addNode<T>(screen2grid(pos), std::forward<Params>(args)...);
 }
 
 template <typename T, typename... Params>
-std::shared_ptr<T>
+std::shared_ptr<BaseNodeInstance<T>>
 ImNodeFlow::placeNode(Params&&... args)
 {
     return placeNodeAt<T>(
@@ -132,7 +129,13 @@ BaseNode::addIN_uid(
     std::shared_ptr<PinStyle> style)
 {
     auto p = std::make_shared<InPin<T>>(
-        uid, name, defReturn, std::move(filter), std::move(style), this);
+        m_flow,
+        uid,
+        name,
+        defReturn,
+        std::move(filter),
+        std::move(style),
+        this);
     m_ins.emplace_back(p);
     return *p;
 }
@@ -156,6 +159,7 @@ BaseNode::showIN(
         std::make_pair(
             1,
             std::make_shared<InPin<T>>(
+                m_flow,
                 PinUID::generate(),
                 name,
                 defReturn,
@@ -185,6 +189,7 @@ BaseNode::showIN_uid(
         std::make_pair(
             1,
             std::make_shared<InPin<T>>(
+                m_flow,
                 uid,
                 name,
                 defReturn,
@@ -208,7 +213,8 @@ BaseNode::addOUT_uid(
     const std::string& name,
     std::shared_ptr<PinStyle> style)
 {
-    auto p = std::make_shared<OutPin<T>>(uid, name, std::move(style), this);
+    auto p = std::make_shared<OutPin<T>>(
+        m_flow, uid, name, std::move(style), this);
     m_outs.emplace_back(p);
     return *p;
 }
@@ -233,7 +239,11 @@ void BaseNode::showOUT(
         std::make_pair(
             2,
             std::make_shared<OutPin<T>>(
-                PinUID::generate(), name, std::move(style), this)));
+                m_flow,
+                PinUID::generate(),
+                name,
+                std::move(style),
+                this)));
     static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
         ->behaviour(std::move(behaviour));
 }
@@ -259,7 +269,7 @@ void BaseNode::showOUT_uid(
         std::make_pair(
             2,
             std::make_shared<OutPin<T>>(
-                uid, name, std::move(style), this)));
+                m_flow, uid, name, std::move(style), this)));
     static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
         ->behaviour(std::move(behaviour));
 }
@@ -276,99 +286,6 @@ const T&
 BaseNode::getInVal(const char* name)
 {
     return static_cast<InPin<T>&>(this->inPin(name)).val();
-}
-
-// -----------------------------------------------------------------------------------------------------------------
-// PIN
-
-inline void
-Pin::drawSocket()
-{
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    ImVec2 tl = pinPoint() - ImVec2(m_style->socket_radius, m_style->socket_radius);
-    ImVec2 br = pinPoint() + ImVec2(m_style->socket_radius, m_style->socket_radius);
-
-    if (isConnected())
-        draw_list->AddCircleFilled(
-            pinPoint(),
-            m_style->socket_connected_radius,
-            m_style->color,
-            m_style->socket_shape);
-    else {
-        if (ImGui::IsItemHovered() || ImGui::IsMouseHoveringRect(tl, br))
-            draw_list->AddCircle(
-                pinPoint(),
-                m_style->socket_hovered_radius,
-                m_style->color,
-                m_style->socket_shape,
-                m_style->socket_thickness);
-        else
-            draw_list->AddCircle(
-                pinPoint(),
-                m_style->socket_radius,
-                m_style->color,
-                m_style->socket_shape,
-                m_style->socket_thickness);
-    }
-
-    if (ImGui::IsMouseHoveringRect(tl, br)) {
-        m_is_hovered = true;
-    }
-}
-
-inline void
-Pin::drawDecoration()
-{
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-    if (ImGui::IsItemHovered())
-        draw_list->AddRectFilled(
-            m_pos - m_style->extra.padding,
-            m_pos + m_size + m_style->extra.padding,
-            m_style->extra.bg_hover_color,
-            m_style->extra.bg_radius);
-    else
-        draw_list->AddRectFilled(
-            m_pos - m_style->extra.padding,
-            m_pos + m_size + m_style->extra.padding,
-            m_style->extra.bg_color,
-            m_style->extra.bg_radius);
-    draw_list->AddRect(
-        m_pos - m_style->extra.padding,
-        m_pos + m_size + m_style->extra.padding,
-        m_style->extra.border_color,
-        m_style->extra.bg_radius,
-        0,
-        m_style->extra.border_thickness);
-}
-
-inline void
-Pin::update(ImNodeFlow& ctx)
-{
-    m_is_hovered = false;
-
-    // Custom rendering
-    if (m_renderer) {
-        ImGui::BeginGroup();
-        m_renderer(this);
-        ImGui::EndGroup();
-        m_size = ImGui::GetItemRectSize();
-        if (ImGui::IsItemHovered()) {
-            m_is_hovered = true;
-        }
-        return;
-    }
-
-    ImGui::SetCursorPos(m_pos);
-    ImGui::Text("%s", m_name.c_str());
-    m_size = ImGui::GetItemRectSize();
-
-    drawDecoration();
-    drawSocket();
-
-    if (ImGui::IsItemHovered()) {
-        m_is_hovered = true;
-    }
 }
 
 // -----------------------------------------------------------------------------------------------------------------

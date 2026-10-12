@@ -26,6 +26,109 @@ bool PinUID::operator==(PinUID const& other) const noexcept
 }
 
 // -----------------------------------------------------------------------------------------------------------------
+// PIN
+
+inline void
+Pin::drawSocket()
+{
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImVec2 tl = pinPoint() - ImVec2(m_style->socket_radius, m_style->socket_radius);
+    ImVec2 br = pinPoint() + ImVec2(m_style->socket_radius, m_style->socket_radius);
+
+    if (isConnected())
+        draw_list->AddCircleFilled(
+            pinPoint(),
+            m_style->socket_connected_radius,
+            m_style->color,
+            m_style->socket_shape);
+    else {
+        if (ImGui::IsItemHovered() || ImGui::IsMouseHoveringRect(tl, br))
+            draw_list->AddCircle(
+                pinPoint(),
+                m_style->socket_hovered_radius,
+                m_style->color,
+                m_style->socket_shape,
+                m_style->socket_thickness);
+        else
+            draw_list->AddCircle(
+                pinPoint(),
+                m_style->socket_radius,
+                m_style->color,
+                m_style->socket_shape,
+                m_style->socket_thickness);
+    }
+
+    if (ImGui::IsMouseHoveringRect(tl, br)) {
+        m_is_hovered = true;
+    }
+}
+
+inline void
+Pin::drawDecoration()
+{
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    if (ImGui::IsItemHovered())
+        draw_list->AddRectFilled(
+            m_pos - m_style->extra.padding,
+            m_pos + m_size + m_style->extra.padding,
+            m_style->extra.bg_hover_color,
+            m_style->extra.bg_radius);
+    else
+        draw_list->AddRectFilled(
+            m_pos - m_style->extra.padding,
+            m_pos + m_size + m_style->extra.padding,
+            m_style->extra.bg_color,
+            m_style->extra.bg_radius);
+    draw_list->AddRect(
+        m_pos - m_style->extra.padding,
+        m_pos + m_size + m_style->extra.padding,
+        m_style->extra.border_color,
+        m_style->extra.bg_radius,
+        0,
+        m_style->extra.border_thickness);
+}
+
+inline void
+Pin::update(ImNodeFlow& ctx)
+{
+    m_is_hovered = false;
+
+    // Custom rendering
+    if (m_renderer) {
+        ImGui::BeginGroup();
+        m_renderer(this);
+        ImGui::EndGroup();
+        m_size = ImGui::GetItemRectSize();
+        if (ImGui::IsItemHovered()) {
+            m_is_hovered = true;
+        }
+        return;
+    }
+
+    ImGui::SetCursorPos(m_pos);
+    ImGui::Text("%s", m_name.c_str());
+    m_size = ImGui::GetItemRectSize();
+
+    drawDecoration();
+    drawSocket();
+
+    if (ImGui::IsItemHovered()) {
+        m_is_hovered = true;
+    }
+}
+
+void Pin::linkTo(Pin& other)
+{
+    if (&m_flow.get() != &other.m_flow.get()) {
+        // Cannot link pins across different contexts
+        return;
+    }
+
+    m_flow.get().createLink(*this, other);
+}
+
+// -----------------------------------------------------------------------------------------------------------------
 // LINK
 
 void Link::update(ImNodeFlow& ctx)
