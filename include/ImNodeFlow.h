@@ -20,36 +20,45 @@
 
 namespace ImFlow {
 
-// -----------------------------------------------------------------------------------------------------------------
-// HELPERS
+namespace detail {
 
-/**
- * @brief <BR>Draw a sensible bezier between two points
- * @param p1 Starting point
- * @param p2 Ending point
- * @param color Color of the curve
- * @param thickness Thickness of the curve
- */
-inline static void
-smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness);
+    /**
+     * @brief <BR>Draw a sensible bezier between two points
+     * @param p1 Starting point
+     * @param p2 Ending point
+     * @param color Color of the curve
+     * @param thickness Thickness of the curve
+     */
+    inline static void
+    smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness);
 
-/**
- * @brief <BR>Collider checker for smart_bezier
- * @details Projects the point "p" orthogonally onto the bezier curve and
- *	    checks if the distance is less than the given radius.
- * @param p Point to be tested
- * @param p1 Starting point of smart_bezier
- * @param p2 Ending point of smart_bezier
- * @param radius Lateral width of the hit box
- * @return [TRUE] if "p" is inside the collider
- *
- * Intended to be used in union with smart_bezier();
- */
-inline static bool smart_bezier_collider(
-    const ImVec2& p,
-    const ImVec2& p1,
-    const ImVec2& p2,
-    float radius);
+    /**
+     * @brief <BR>Collider checker for smart_bezier
+     * @details Projects the point "p" orthogonally onto the bezier curve and
+     *	    checks if the distance is less than the given radius.
+     * @param p Point to be tested
+     * @param p1 Starting point of smart_bezier
+     * @param p2 Ending point of smart_bezier
+     * @param radius Lateral width of the hit box
+     * @return [TRUE] if "p" is inside the collider
+     *
+     * Intended to be used in union with smart_bezier();
+     */
+    inline static bool smart_bezier_collider(
+        const ImVec2& p,
+        const ImVec2& p1,
+        const ImVec2& p2,
+        float radius);
+
+    /**
+     * @brief Returns a locally unique identifier for a specified type
+     *
+     * This allows connection filters to work without RTTI
+     */
+    template <typename T>
+    inline static uint64_t get_type_id();
+
+} // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
 // CLASSES PRE-DEFINITIONS
@@ -1212,7 +1221,7 @@ public:
      * @brief <BR>Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
-    [[nodiscard]] virtual const std::type_info& getDataType() const = 0;
+    [[nodiscard]] virtual const uint64_t getTypeID() const = 0;
 
     /**
      * @brief <BR>Get pin's style
@@ -1262,13 +1271,13 @@ public:
     static std::function<bool(Pin*, Pin*)> SameType()
     {
         return [](Pin* out, Pin* in) {
-            return out->getDataType() == in->getDataType();
+            return out->getTypeID() == in->getTypeID();
         };
     }
     static std::function<bool(Pin*, Pin*)> Numbers()
     {
         return [](Pin* out, Pin* in) {
-            return out->getDataType() == typeid(double) || out->getDataType() == typeid(float) || out->getDataType() == typeid(int);
+            return out->getTypeID() == detail::get_type_id<double>() || out->getTypeID() == detail::get_type_id<float>() || out->getTypeID() == detail::get_type_id<int>();
         };
     }
 };
@@ -1349,9 +1358,9 @@ public:
      * @brief <BR>Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
-    [[nodiscard]] const std::type_info& getDataType() const override
+    [[nodiscard]] const uint64_t getTypeID() const override
     {
-        return typeid(T);
+        return detail::get_type_id<T>();
     };
 
     /**
@@ -1466,9 +1475,9 @@ public:
      * @brief <BR>Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
-    [[nodiscard]] const std::type_info& getDataType() const override
+    [[nodiscard]] const uint64_t getTypeID() const override
     {
-        return typeid(T);
+        return detail::get_type_id<T>();
     };
 
 private:
@@ -1476,7 +1485,8 @@ private:
     std::function<T()> m_behaviour;
     T m_val;
 };
-}
+
+} // namespace ImFlow
 
 #include "../src/ImNodeFlow.inl"
 
