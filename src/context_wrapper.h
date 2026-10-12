@@ -200,17 +200,19 @@ AppendDrawData(ImDrawList* src, ImVec2 origin, float scale)
 }
 
 struct ContainedContextConfig {
-	bool             extra_window_wrapper = false;
-	ImVec2           size                 = {0.f, 0.f};
-	ImU32            color                = IM_COL32_WHITE;
-	bool             zoom_enabled         = true;
-	float            zoom_min             = 0.3f;
-	float            zoom_max             = 2.f;
-	float            zoom_divisions       = 10.f;
-	float            zoom_smoothness      = 5.f;
-	float            default_zoom         = 1.f;
-	ImGuiKey         reset_zoom_key       = ImGuiKey_R;
-	ImGuiMouseButton scroll_button        = ImGuiMouseButton_Middle;
+	bool   extra_window_wrapper = false;
+	ImVec2 size                 = {0.f, 0.f};
+	ImU32  color                = IM_COL32_WHITE;
+	bool   zoom_enabled         = true;
+	float  zoom_min             = 0.3f;
+	float  zoom_max             = 2.f;
+	float  zoom_divisions       = 10.f;
+	float  zoom_smoothness      = 5.f;
+	float  default_zoom         = 1.f;
+
+	ImGuiKey reset_zoom_key = ImGuiKey_R;
+
+	ImGuiMouseButton scroll_button = ImGuiMouseButton_Middle;
 };
 
 class ContainedContext
