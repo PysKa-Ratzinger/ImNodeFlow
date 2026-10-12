@@ -50,6 +50,14 @@ namespace detail {
         const ImVec2& p2,
         float radius);
 
+    /**
+     * @brief Returns a locally unique identifier for a specified type
+     *
+     * This allows pins to connect only to pins of the same type
+     */
+    template <typename T>
+    inline static uint64_t get_type_id();
+
 } // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -1223,7 +1231,7 @@ public:
      * @brief Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
-    [[nodiscard]] virtual const std::type_info& getDataType() const = 0;
+    [[nodiscard]] virtual const uint64_t getTypeID() const = 0;
 
     /**
      * @brief Get pin's style
@@ -1273,13 +1281,13 @@ public:
     static std::function<bool(Pin*, Pin*)> SameType()
     {
         return [](Pin* out, Pin* in) {
-            return out->getDataType() == in->getDataType();
+            return out->getTypeID() == in->getTypeID();
         };
     }
     static std::function<bool(Pin*, Pin*)> Numbers()
     {
         return [](Pin* out, Pin* in) {
-            return out->getDataType() == typeid(double) || out->getDataType() == typeid(float) || out->getDataType() == typeid(int);
+            return out->getTypeID() == detail::get_type_id<double>() || out->getTypeID() == detail::get_type_id<float>() || out->getTypeID() == detail::get_type_id<int>();
         };
     }
 };
@@ -1360,9 +1368,9 @@ public:
      * @brief Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
-    [[nodiscard]] const std::type_info& getDataType() const override
+    [[nodiscard]] const uint64_t getTypeID() const override
     {
-        return typeid(T);
+        return detail::get_type_id<T>();
     };
 
     /**
@@ -1477,9 +1485,9 @@ public:
      * @brief Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
-    [[nodiscard]] const std::type_info& getDataType() const override
+    [[nodiscard]] const uint64_t getTypeID() const override
     {
-        return typeid(T);
+        return detail::get_type_id<T>();
     };
 
 private:

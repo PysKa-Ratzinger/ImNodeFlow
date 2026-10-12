@@ -43,6 +43,22 @@ namespace detail {
         return ImProjectOnCubicBezier(p, p1, p11, p22, p2).Distance < radius;
     }
 
+    inline uint64_t
+    next_type_id()
+    {
+        static uint64_t id = 0;
+        return ++id;
+    }
+
+    template <typename T>
+    inline uint64_t type_id = next_type_id();
+
+    template <typename T>
+    inline static uint64_t get_type_id()
+    {
+        return type_id<T>;
+    }
+
 } // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
