@@ -278,9 +278,9 @@ public:
      * @param in_pin Pointer to the input Pin of the Link
      * @param inf Pointer to the Handler that contains the Link
      */
-    explicit Link(Pin* out_pin, Pin* in_pin)
-        : m_out_pin(out_pin)
-        , m_in_pin(in_pin)
+    explicit Link(Pin& out_pin, Pin& in_pin)
+        : m_out_pin(&out_pin)
+        , m_in_pin(&in_pin)
     {
     }
 
@@ -477,10 +477,10 @@ public:
 
     /**
      * @brief Creates a link between two pins
-     * @param source_pin Pointer to the input pin
-     * @param target_pint Pointer to the output pin
+     * @param source_pin Reference to the input pin
+     * @param target_pint Reference to the output pin
      */
-    void createLink(Pin* source_pin, Pin* target_pin);
+    void createLink(Pin& source_pin, Pin& target_pin);
 
     /**
      * @brief <BR>Pop-up when link is "dropped"
@@ -879,28 +879,28 @@ public:
      * @param uid Unique identifier of the pin
      * @return Reference to the pin
      */
-    Pin* inPin(const PinUID& uid);
+    Pin& inPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to input pin with the specified name
      * @param uid Unique identifier of the pin
      * @return Reference to the pin
      */
-    Pin* inPin(const char* name);
+    Pin& inPin(const char* name);
 
     /**
      * @brief <BR>Get generic reference to output pin
      * @param uid Unique identifier of the pin
      * @return Reference to the pin
      */
-    Pin* outPin(const PinUID& uid);
+    Pin& outPin(const PinUID& uid);
 
     /**
-     * @brief <BR>Get generic reference to output pin of the same name
-     * @param name Unique identifier of the pin
+     * @brief <BR>Get generic reference to output pin
+     * @param uid Unique identifier of the pin
      * @return Reference to the pin
      */
-    Pin* outPin(const char* name);
+    Pin& outPin(const char* uid);
 
     /**
      * @brief <BR>Get internal input pins list
@@ -1161,7 +1161,7 @@ public:
      * @brief <BR>Create link between pins
      * @param other Pointer to the other pin
      */
-    virtual bool canCreateLink(Pin* other) = 0;
+    virtual bool canCreateLink(Pin& other) = 0;
 
     /**
      * @brief <BR>Set the reference to a link
@@ -1372,7 +1372,7 @@ public:
      * @brief <BR>Create link between pins
      * @param other Pointer to the other pin
      */
-    bool canCreateLink(Pin* other) override;
+    bool canCreateLink(Pin& other) override;
 
     /**
      * @brief <BR>Add a connected link to the internal list
@@ -1506,7 +1506,7 @@ public:
      * @brief <BR>Create link between pins
      * @param other Pointer to the other pin
      */
-    bool canCreateLink(Pin* other) override;
+    bool canCreateLink(Pin& other) override;
 
     /**
      * @brief <BR>Add a connected link to the internal list

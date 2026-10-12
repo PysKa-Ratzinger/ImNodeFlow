@@ -219,7 +219,23 @@ void BaseNode::showOUT(
     std::function<T()> behaviour,
     std::shared_ptr<PinStyle> style)
 {
-    showOUT_uid<T>(name, name, std::move(behaviour), std::move(style));
+    for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicOuts) {
+        if (p.second->getName() == name) {
+            p.first = 2;
+            static_cast<OutPin<T>*>(
+                m_dynamicOuts.back().second.get())
+                ->behaviour(std::move(behaviour));
+            return;
+        }
+    }
+
+    m_dynamicOuts.emplace_back(
+        std::make_pair(
+            2,
+            std::make_shared<OutPin<T>>(
+                PinUID::generate(), name, std::move(style), this)));
+    static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
+        ->behaviour(std::move(behaviour));
 }
 
 template <typename T>
@@ -252,18 +268,14 @@ template <typename T>
 const T&
 BaseNode::getInVal(const PinUID& uid)
 {
-    auto* pin = inPin(uid);
-    assert(pin != nullptr && "Pin UID not found!");
-    return static_cast<InPin<T>*>(pin)->val();
+    return static_cast<InPin<T>&>(this->inPin(uid)).val();
 }
 
 template <typename T>
 const T&
 BaseNode::getInVal(const char* name)
 {
-    auto* pin = inPin(name);
-    assert(pin != nullptr && "Pin UID not found!");
-    return static_cast<InPin<T>*>(pin)->val();
+    return static_cast<InPin<T>&>(this->inPin(name)).val();
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -387,22 +399,22 @@ InPin<T>::val()
 }
 
 template <class T>
-bool InPin<T>::canCreateLink(Pin* other)
+bool InPin<T>::canCreateLink(Pin& other)
 {
-    if (other == this || other->getType() == PinType_Input) {
+    if (&other == this || other.getType() == PinType_Input) {
         return false;
     }
 
-    if (m_parent == other->getParent() && !m_allowSelfConnection) {
+    if (m_parent == other.getParent() && !m_allowSelfConnection) {
         return false;
     }
 
-    if (!m_link.expired() && m_link.lock()->outPin() == other) {
+    if (!m_link.expired() && m_link.lock()->outPin() == &other) {
         m_link.reset();
         return false;
     }
 
-    return (*m_filter)(*other, *this);
+    return (*m_filter)(other, *this);
 }
 
 template <class T>
@@ -434,13 +446,13 @@ OutPin<T>::val()
 }
 
 template <class T>
-bool OutPin<T>::canCreateLink(ImFlow::Pin* other)
+bool OutPin<T>::canCreateLink(ImFlow::Pin& other)
 {
-    if (other == this || other->getType() == PinType_Output) {
+    if (&other == this || other.getType() == PinType_Output) {
         return false;
     }
 
-    return other->canCreateLink(this);
+    return other.canCreateLink(*this);
 }
 
 template <class T>

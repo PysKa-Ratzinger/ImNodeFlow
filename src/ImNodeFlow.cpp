@@ -113,39 +113,43 @@ BaseNode::dropOUT(const char* name)
         m_outs.end());
 }
 
-Pin* BaseNode::inPin(const PinUID& uid)
+Pin& BaseNode::inPin(const PinUID& uid)
 {
     auto it = std::find_if(m_ins.begin(), m_ins.end(), [&uid](const auto& p) {
         return p->getUid() == uid;
     });
-    return it == m_ins.end() ? nullptr : &**it;
+    assert(it != m_ins.end() && "Pin UID not found!");
+    return **it;
 }
 
-Pin* BaseNode::inPin(const char* name)
+Pin& BaseNode::inPin(const char* name)
 {
     auto it = std::find_if(
         m_ins.begin(), m_ins.end(), [&name](const auto& p) {
             return p->getName() == name;
         });
-    return it == m_ins.end() ? nullptr : &**it;
+    assert(it != m_ins.end() && "Pin with specified name not found!");
+    return **it;
 }
 
-Pin* BaseNode::outPin(const PinUID& uid)
+Pin& BaseNode::outPin(const PinUID& uid)
 {
     auto it = std::find_if(
         m_outs.begin(), m_outs.end(), [&uid](const auto& p) {
             return p->getUid() == uid;
         });
-    return it == m_outs.end() ? nullptr : &**it;
+    assert(it != m_outs.end() && "Pin UID not found!");
+    return **it;
 }
 
-Pin* BaseNode::outPin(const char* name)
+Pin& BaseNode::outPin(const char* name)
 {
     auto it = std::find_if(
         m_outs.begin(), m_outs.end(), [&name](const auto& p) {
             return p->getName() == name;
         });
-    return it == m_outs.end() ? nullptr : &**it;
+    assert(it != m_outs.end() && "Pin with specified name not found!");
+    return **it;
 }
 
 void BaseNode::calculate()
@@ -407,24 +411,20 @@ ImNodeFlow::grid2screen(const ImVec2& p)
     return (p + m_context.scroll()) * m_context.scale() + m_context.origin();
 }
 
-void ImNodeFlow::createLink(Pin* source_pin, Pin* target_pin)
+void ImNodeFlow::createLink(Pin& source_pin, Pin& target_pin)
 {
-    if (source_pin->getType() == PinType_Input) {
-        std::swap(source_pin, target_pin);
+    if (source_pin.getType() == PinType_Input && target_pin.getType() == PinType_Output) {
+        return this->createLink(target_pin, source_pin);
     }
 
-    if (source_pin->getType() != PinType_Output || target_pin->getType() != PinType_Input) {
-        return;
+    if (source_pin.getType() == PinType_Output && target_pin.getType() == PinType_Input) {
+        if (source_pin.canCreateLink(target_pin)) {
+            auto link = std::make_shared<Link>(source_pin, target_pin);
+            source_pin.setLink(link);
+            target_pin.setLink(link);
+            m_links.emplace_back(std::move(link));
+        }
     }
-
-    if (!source_pin->canCreateLink(target_pin)) {
-        return;
-    }
-
-    auto link = std::make_shared<Link>(source_pin, target_pin);
-    target_pin->setLink(link);
-    source_pin->setLink(link);
-    m_links.emplace_back(std::move(link));
 }
 
 void ImNodeFlow::update()
@@ -544,7 +544,7 @@ void ImNodeFlow::update()
                 }
             }
         } else {
-            this->createLink(m_dragOut, hovered_pin);
+            this->createLink(*m_dragOut, *hovered_pin);
         }
     }
 
