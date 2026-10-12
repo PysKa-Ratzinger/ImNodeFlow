@@ -343,7 +343,7 @@ ContainedContext::begin()
 inline void
 ContainedContext::updateScroll()
 {
-	m_scroll += ImGui::GetIO().MouseDelta / m_scale;
+	m_scroll += ImGui::GetIO().MouseDelta;
 }
 
 inline void
