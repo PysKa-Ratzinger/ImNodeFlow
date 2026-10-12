@@ -617,15 +617,6 @@ public:
      */
     bool on_free_space();
 
-    /**
-     * @brief Get recursion blacklist for nodes
-     * @return Reference to blacklist
-     */
-    std::vector<std::string>& get_recursion_blacklist()
-    {
-        return m_pinRecursionBlacklist;
-    }
-
 private:
     std::string m_name;
     ContainedContext m_context;
@@ -633,7 +624,6 @@ private:
     bool m_singleUseClick = false;
 
     std::unordered_map<NodeUID, std::shared_ptr<BaseNode>> m_nodes;
-    std::vector<std::string> m_pinRecursionBlacklist;
     std::vector<std::weak_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
@@ -1068,6 +1058,17 @@ public:
      */
     void updatePublicStatus() { m_selected = m_selectedNext; }
 
+    /**
+     * @brief Have every pin calculate their next output value
+     */
+    void calculate();
+
+    /**
+     * @brief Have every pin commit their calculated values as their new
+     * output value
+     */
+    void prime();
+
 private:
     NodeUID m_uid = 0;
     std::string m_title;
@@ -1257,6 +1258,23 @@ public:
      */
     void setPos(ImVec2 pos) { m_pos = pos; }
 
+    /**
+     * @brief When the context calls this method, the pins should calculate
+     * their next value, but not apply it. This allows every pin, during
+     * the calculation step, to query what every other pin's output value
+     * was in the closing iteration step.
+     */
+    virtual void calculate() = 0;
+
+    /**
+     * @brief When the context calls this method, the pins should update
+     * their outputs to the computed value in calculate().
+     *
+     * During this step, pin's are no longer allowed to query any other
+     * part of the flow graph, since their state is undefined.
+     */
+    virtual void prime() = 0;
+
 protected:
     PinUID m_uid;
     std::string m_name;
@@ -1319,6 +1337,7 @@ public:
         ImNodeFlow** inf)
         : Pin(uid, name, style, PinType_Input, parent, inf)
         , m_emptyVal(defReturn)
+        , m_val(defReturn)
         , m_filter(std::move(filter))
     {
     }
@@ -1382,6 +1401,10 @@ public:
         return m_pos + ImVec2(-m_style->extra.socket_padding, m_size.y / 2);
     }
 
+    void calculate() override;
+
+    void prime() override;
+
     /**
      * @brief Get value carried by the connected link
      * @return Reference to the value of the connected OutPin. Or the default value if not connected
@@ -1391,6 +1414,8 @@ public:
 private:
     std::shared_ptr<Link> m_link;
     T m_emptyVal;
+    T m_val;
+    T m_valNext;
     std::function<bool(Pin*, Pin*)> m_filter;
     bool m_allowSelfConnection = false;
 };
@@ -1464,6 +1489,10 @@ public:
         return m_pos + ImVec2(m_size.x + m_style->extra.socket_padding, m_size.y / 2);
     }
 
+    void calculate() override;
+
+    void prime() override;
+
     /**
      * @brief Get output value
      * @return Const reference to the internal value of the pin
@@ -1494,6 +1523,7 @@ private:
     std::vector<std::weak_ptr<Link>> m_links;
     std::function<T()> m_behaviour;
     T m_val;
+    T m_valNext;
 };
 
 } // namespace ImFlow

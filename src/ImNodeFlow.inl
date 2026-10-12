@@ -2,6 +2,8 @@
 
 #include "ImNodeFlow.h"
 
+#include <cstdint>
+
 namespace ImFlow {
 
 namespace detail {
@@ -54,7 +56,8 @@ namespace detail {
     inline uint64_t type_id = next_type_id();
 
     template <typename T>
-    inline static uint64_t get_type_id()
+    inline static uint64_t
+    get_type_id()
     {
         return type_id<T>;
     }
@@ -420,13 +423,26 @@ Pin::update()
 // IN PIN
 
 template <class T>
+void InPin<T>::calculate()
+{
+    if (!m_link) {
+        m_valNext = m_emptyVal;
+    } else {
+        m_valNext = reinterpret_cast<OutPin<T>*>(m_link->left())->val();
+    }
+}
+
+template <class T>
+void InPin<T>::prime()
+{
+    m_val = m_valNext;
+}
+
+template <class T>
 const T&
 InPin<T>::val()
 {
-    if (!m_link)
-        return m_emptyVal;
-
-    return reinterpret_cast<OutPin<T>*>(m_link->left())->val();
+    return m_val;
 }
 
 template <class T>
@@ -455,19 +471,21 @@ void InPin<T>::createLink(Pin* other)
 // OUT PIN
 
 template <class T>
+void OutPin<T>::calculate()
+{
+    m_valNext = m_behaviour();
+}
+
+template <class T>
+void OutPin<T>::prime()
+{
+    m_val = m_valNext;
+}
+
+template <class T>
 const T&
 OutPin<T>::val()
 {
-    std::string s = std::to_string(m_uid) + std::to_string(m_parent->getUID());
-    if (std::find(
-            (*m_inf)->get_recursion_blacklist().begin(),
-            (*m_inf)->get_recursion_blacklist().end(),
-            s)
-        == (*m_inf)->get_recursion_blacklist().end()) {
-        (*m_inf)->get_recursion_blacklist().emplace_back(s);
-        m_val = m_behaviour();
-    }
-
     return m_val;
 }
 
