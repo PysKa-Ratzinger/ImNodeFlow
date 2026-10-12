@@ -107,7 +107,7 @@ ImNodeFlow::placeNode(Params&&... args)
 // BASE NODE
 
 template <typename T>
-std::shared_ptr<InPin<T>>
+InPin<T>&
 BaseNode::addIN(
     const std::string& name,
     T defReturn,
@@ -123,7 +123,7 @@ BaseNode::addIN(
 }
 
 template <typename T>
-std::shared_ptr<InPin<T>>
+InPin<T>&
 BaseNode::addIN_uid(
     const PinUID& uid,
     const std::string& name,
@@ -134,7 +134,7 @@ BaseNode::addIN_uid(
     auto p = std::make_shared<InPin<T>>(
         uid, name, defReturn, std::move(filter), std::move(style), this);
     m_ins.emplace_back(p);
-    return p;
+    return *p;
 }
 
 template <typename T>
@@ -195,14 +195,14 @@ BaseNode::showIN_uid(
 }
 
 template <typename T>
-std::shared_ptr<OutPin<T>>
+OutPin<T>&
 BaseNode::addOUT(const std::string& name, std::shared_ptr<PinStyle> style)
 {
     return addOUT_uid<T>(PinUID::generate(), name, std::move(style));
 }
 
 template <typename T>
-std::shared_ptr<OutPin<T>>
+OutPin<T>&
 BaseNode::addOUT_uid(
     const PinUID& uid,
     const std::string& name,
@@ -210,7 +210,7 @@ BaseNode::addOUT_uid(
 {
     auto p = std::make_shared<OutPin<T>>(uid, name, std::move(style), this);
     m_outs.emplace_back(p);
-    return p;
+    return *p;
 }
 
 template <typename T>

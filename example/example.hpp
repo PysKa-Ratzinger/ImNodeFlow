@@ -11,7 +11,7 @@ public:
         ImFlow::BaseNode::addIN<int>(
             "In", 0, ImFlow::ConnectionFilter::SameType());
         ImFlow::BaseNode::addOUT<int>("Out", nullptr)
-            ->behaviour([this]() {
+            .behaviour([this]() {
                 return getInVal<int>("In") + m_valB;
             });
     }
@@ -37,7 +37,7 @@ public:
         ImFlow::BaseNode::addIN<int>(
             "B", 0, ImFlow::ConnectionFilter::SameType());
         ImFlow::BaseNode::addOUT<int>("Out", nullptr)
-            ->behaviour([this]() {
+            .behaviour([this]() {
                 return getInVal<int>("A") + getInVal<int>("B");
             });
     }

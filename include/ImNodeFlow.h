@@ -690,10 +690,12 @@ public:
      * @param defReturn Default return value when the pin is not connected
      * @param filter Connection filter
      * @param style Style of the pin
-     * @return Shared pointer to the newly added pin
+     * @return Reference to the newly added pin. Do not save this
+     * reference. If you need to consult this specific pin, save it's
+     * PinUID by calling getUid() and use that
      */
     template <typename T>
-    std::shared_ptr<InPin<T>>
+    InPin<T>&
     addIN(const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
@@ -709,10 +711,12 @@ public:
      * @param defReturn Default return value when the pin is not connected
      * @param filter Connection filter
      * @param style Style of the pin
-     * @return Shared pointer to the newly added pin
+     * @return Reference to the newly added pin. Do not save this
+     * reference. If you need to consult this specific pin, save it's
+     * PinUID by calling getUid() and use that
      */
     template <typename T>
-    std::shared_ptr<InPin<T>> addIN_uid(
+    InPin<T>& addIN_uid(
         const PinUID& uid,
         const std::string& name,
         T defReturn,
@@ -781,10 +785,12 @@ public:
      * @param name Name of the pin
      * @param filter Connection filter
      * @param style Style of the pin
-     * @return Shared pointer to the newly added pin. Must be used to set the behaviour
+     * @return Reference to the newly added pin. Do not save this
+     * reference. If you need to consult this specific pin, save it's
+     * PinUID by calling getUid() and use that
      */
     template <typename T>
-    [[nodiscard]] std::shared_ptr<OutPin<T>>
+    [[nodiscard]] OutPin<T>&
     addOUT(const std::string& name,
         std::shared_ptr<PinStyle> style = nullptr);
 
@@ -797,10 +803,12 @@ public:
      * @param name Name of the pin
      * @param filter Connection filter
      * @param style Style of the pin
-     * @return Shared pointer to the newly added pin. Must be used to set the behaviour
+     * @return Reference to the newly added pin. Do not save this
+     * reference. If you need to consult this specific pin, save it's
+     * PinUID by calling getUid() and use that
      */
     template <typename T>
-    [[nodiscard]] std::shared_ptr<OutPin<T>> addOUT_uid(
+    [[nodiscard]] OutPin<T>& addOUT_uid(
         const PinUID& uid,
         const std::string& name,
         std::shared_ptr<PinStyle> style = nullptr);
