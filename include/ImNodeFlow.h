@@ -1438,11 +1438,19 @@ template <class T>
 class OutPin : public Pin {
 public:
     /**
-     * @brief <BR>Output pin constructor
+     * @brief Output pin constructor
+     * @param flow Reference to the ImNodeFlow context
+     * @param uid UID for the current pin
      * @param name Name of the pin
+     * @param behaviour When the output pin value is updated, this is the
+     * function which is consulted for which value to cache next.
      * @param parent Pointer to the Node containing the pin
      * @param inf Pointer to the Grid Handler the pin is in (same as parent)
      * @param style Style of the pin
+     *
+     * Note: Please make sure to not depend on the value of other output
+     * pins in your behaviour lambda, as that will very likely result in
+     * a non-deterministic update step.
      */
     explicit OutPin(
         ImNodeFlow& flow,
