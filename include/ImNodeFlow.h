@@ -1168,6 +1168,46 @@ public:
     }
 
     /**
+     * @brief Safely casts a base Pin into the underlying InPin, if
+     * possible. Crashes the program otherwise.
+     *
+     * @return Reference to the underlying InPin<T> if possible. Crash
+     * otherwise.
+     */
+    template <typename T>
+    InPin<T>& toIn();
+
+    /**
+     * @brief Safely casts a base Pin into the underlying InPin, if
+     * possible. Crashes the program otherwise.
+     *
+     * @return Reference to the underlying InPin<T> if possible. Crash
+     * otherwise.
+     */
+    template <typename T>
+    InPin<T> const& toIn() const;
+
+    /**
+     * @brief Safely casts a base Pin into the underlying OutPin, if
+     * possible. Crashes the program otherwise.
+     *
+     * @return Reference to the underlying OutPin<T> if possible. Crash
+     * otherwise.
+     */
+    template <typename T>
+    OutPin<T>& toOut();
+
+    /**
+     * @brief Safely casts a base Pin into the underlying OutPin, if
+     * possible. Crashes the program otherwise.
+     *
+     * @return Reference to the underlying OutPin<T> if possible. Crash
+     * otherwise.
+     */
+    template <typename T>
+    OutPin<T> const& toOut() const;
+
+    /**
      * @brief <BR>Main loop of the pin
      * @details Updates position, hovering and dragging status, and renders the pin. Must be called each frame.
      */
@@ -1339,7 +1379,7 @@ protected:
     std::string m_name;
     ImVec2 m_pos = ImVec2(0.f, 0.f);
     ImVec2 m_size = ImVec2(0.f, 0.f);
-    PinType m_type;
+    const PinType m_type;
     BaseNode* m_parent = nullptr;
     PinStyle m_style;
     std::function<void(Pin* p)> m_renderer;
