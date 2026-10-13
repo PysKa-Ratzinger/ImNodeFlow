@@ -2,6 +2,8 @@
 
 #include <imgui_internal.h>
 
+#include <cassert>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -26,6 +28,31 @@ PinUID::generate() noexcept
 bool PinUID::operator==(PinUID const& other) const noexcept
 {
     return this->id == other.id;
+}
+
+// -----------------------------------------------------------------------------------------------------------------
+// NodeUID
+
+NodeUID::NodeUID(uint64_t value) noexcept
+    : id(value)
+{
+}
+
+NodeUID
+NodeUID::generate() noexcept
+{
+    static uint64_t id = 0;
+    return NodeUID { id++ };
+}
+
+bool NodeUID::operator==(NodeUID const& other) const noexcept
+{
+    return this->id == other.id;
+}
+
+auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
+{
+    return std::hash<uint64_t> { }(uid.id);
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -516,13 +543,14 @@ int ImNodeFlow::m_instances = 0;
 BaseNode&
 ImNodeFlow::addNode(const ImVec2& pos)
 {
-    auto new_node = std::make_unique<BaseNode>(*this);
-    new_node->setPos(pos);
-    auto* raw_ptr = new_node.get();
-    auto uid = reinterpret_cast<uintptr_t>(raw_ptr);
-    new_node->setUID(uid);
-    m_nodes[uid] = std::move(new_node);
-    return *raw_ptr;
+    auto uid = NodeUID::generate();
+
+    auto res = m_nodes.emplace(uid, std::make_unique<BaseNode>(*this, uid));
+    assert(res.second);
+
+    auto& new_node = *res.first->second;
+    new_node.setPos(pos);
+    return new_node;
 }
 
 BaseNode&

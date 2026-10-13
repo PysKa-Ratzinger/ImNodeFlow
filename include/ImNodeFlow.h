@@ -1,5 +1,6 @@
 #ifndef IM_NODE_FLOW
 #define IM_NODE_FLOW
+#include <cstddef>
 #pragma once
 
 #include "../src/context_wrapper.h"
@@ -169,7 +170,18 @@ namespace PinStyles {
 // -----------------------------------------------------------------------------------------------------------------
 // NODE'S PROPERTIES
 
-typedef uintptr_t NodeUID;
+struct NodeUID {
+    NodeUID(uint64_t value) noexcept;
+
+    static NodeUID generate() noexcept;
+    bool operator==(NodeUID const& other) const noexcept;
+
+    uint64_t id;
+
+    struct Hash {
+        auto operator()(const NodeUID& uid) const -> std::size_t;
+    };
+};
 
 /**
  * @brief Defines the visual appearance of a node
@@ -476,7 +488,8 @@ public:
      * @brief <BR>Get editor's list of nodes
      * @return Const reference to editor's internal nodes list
      */
-    std::unordered_map<NodeUID, std::unique_ptr<BaseNode>>& getNodes()
+    std::unordered_map<NodeUID, std::unique_ptr<BaseNode>, NodeUID::Hash>&
+    getNodes()
     {
         return m_nodes;
     }
@@ -567,7 +580,8 @@ private:
         bool middle = false;
     } m_singleUseClicks;
 
-    std::unordered_map<NodeUID, std::unique_ptr<BaseNode>> m_nodes;
+    std::unordered_map<NodeUID, std::unique_ptr<BaseNode>, NodeUID::Hash>
+        m_nodes;
     std::vector<std::shared_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
@@ -605,8 +619,9 @@ private:
  */
 class BaseNode {
 public:
-    explicit BaseNode(ImNodeFlow& flow)
+    explicit BaseNode(ImNodeFlow& flow, NodeUID uid)
         : m_flow(flow)
+        , m_uid(uid)
     {
     }
 
@@ -1058,7 +1073,7 @@ public:
 private:
     std::reference_wrapper<ImNodeFlow> m_flow;
 
-    NodeUID m_uid = 0;
+    NodeUID m_uid;
     std::string m_title;
     ImVec2 m_pos;
     ImVec2 m_posTarget;
