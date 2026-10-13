@@ -1,6 +1,5 @@
 #ifndef IM_NODE_FLOW
 #define IM_NODE_FLOW
-#include <cstddef>
 #pragma once
 
 #include "../src/context_wrapper.h"
@@ -10,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -247,6 +247,11 @@ public:
     explicit Link(Pin& out_pin, Pin& in_pin) noexcept;
 
     /**
+     * @brief Link destructor
+     */
+    ~Link() noexcept;
+
+    /**
      * @brief Looping function to update the Link
      * @details Draws the Link and updates Hovering and Selected status.
      */
@@ -277,9 +282,16 @@ public:
     [[nodiscard]] bool isSelected() const { return m_selected; }
 
     /**
-     * @brief Marks this link for deletion
+     * @brief Disconnects this edge from a pin, if connected to it
+     * If the link is connected to this pin, the link will be marked for
+     * deletion after disconnection
      */
-    void markForDeletion() { m_marked_for_deletion = true; }
+    void disconnect(Pin* pin);
+
+    /**
+     * @brief Destroys this link
+     */
+    void destroy();
 
     /**
      * @brief Returns whether or not this link was marked for deletion
@@ -500,7 +512,7 @@ public:
      * @brief <BR>Get editor's list of links
      * @return Const reference to editor's internal links list
      */
-    const std::vector<std::shared_ptr<Link>>& getLinks() { return m_links; }
+    const std::vector<std::unique_ptr<Link>>& getLinks() { return m_links; }
 
     /**
      * @brief <BR>Get zooming viewport
@@ -578,7 +590,7 @@ private:
 
     std::unordered_map<NodeUID, std::unique_ptr<BaseNode>, NodeUID::Hash>
         m_nodes;
-    std::vector<std::shared_ptr<Link>> m_links;
+    std::vector<std::unique_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
     ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
@@ -1135,7 +1147,11 @@ public:
     {
     }
 
-    virtual ~Pin() = default;
+    virtual ~Pin()
+    {
+        // Make sure we mark the link (if any) for deletion
+        this->deleteAllLinks();
+    }
 
     /**
      * @brief <BR>Main loop of the pin
@@ -1180,27 +1196,32 @@ public:
     virtual bool canCreateLink(Pin& other) = 0;
 
     /**
-     * @brief <BR>Set the reference to a link
-     * @param link Smart pointer to the link
+     * @brief Handles the request for when a link is trying to connect
+     * @param link Pointer to the link making the request
      */
-    virtual void setLink(std::weak_ptr<Link> link) = 0;
+    virtual void addLink(Link* link) = 0;
 
     /**
-     * @brief <BR>Delete link reference
+     * @brief Delete all link reference
      */
-    virtual void deleteLink() = 0;
+    virtual void deleteAllLinks() { };
+
+    /**
+     * @brief Delete a single link reference
+     */
+    virtual void removeLink(Link* link) { };
 
     /**
      * @brief <BR>Get connected status
      * @return [TRUE] if the pin is connected
      */
-    virtual bool isConnected() = 0;
+    virtual bool isConnected() const = 0;
 
     /**
-     * @brief <BR>Get pin's link
-     * @return Weak_ptr reference to pin's link
+     * @brief Get all the links connected to this pin
+     * @return A vector to an array of pointers to the connected links
      */
-    virtual std::weak_ptr<Link> getLink() { return std::weak_ptr<Link> { }; }
+    virtual std::vector<const Link*> getLinks() const = 0;
 
     /**
      * @brief <BR>Get pin's UID
@@ -1353,20 +1374,30 @@ public:
     bool canCreateLink(Pin& other) override;
 
     /**
-     * @brief <BR>Add a connected link to the internal list
+     * @brief Replaces the current link, if any, with the specified link
      * @param link Pointer to the link
      */
-    void setLink(std::weak_ptr<Link> link) override;
+    void addLink(Link* link) override;
 
     /**
-     * @brief <BR>Delete the link connected to the pin
+     * @brief Delete the link connected to the pin
      */
-    void deleteLink() override
+    void deleteAllLinks() override
     {
-        if (auto l = m_link.lock()) {
-            l->markForDeletion();
+        if (m_link != nullptr) {
+            m_link->disconnect(this);
         }
-        m_link.reset();
+        m_link = nullptr;
+    }
+
+    /**
+     * @brief Removes any reference to this link, if it's held
+     */
+    void removeLink(Link* link) override
+    {
+        if (m_link == link) {
+            m_link = nullptr;
+        }
     }
 
     /**
@@ -1382,16 +1413,13 @@ public:
      * @brief <BR>Get connected status
      * @return [TRUE] is pin is connected to a link
      */
-    bool isConnected() override
-    {
-        return !m_link.expired() && !m_link.lock()->isMarkedForDeletion();
-    }
+    bool isConnected() const override { return m_link != nullptr; }
 
     /**
-     * @brief <BR>Get pin's link
-     * @return Weak_ptr reference to the link connected to the pin
+     * @brief Get all connected links
+     * @return A vector with pointers to all of this pin's connected links
      */
-    std::weak_ptr<Link> getLink() override { return m_link; }
+    std::vector<const Link*> getLinks() const override { return { m_link }; }
 
     /**
      * @brief <BR>Get pin's data type (aka: \<T>)
@@ -1422,7 +1450,7 @@ public:
     const T& val();
 
 private:
-    std::weak_ptr<Link> m_link;
+    Link* m_link;
     T m_emptyVal;
     T m_val;
     T m_valNext;
@@ -1476,21 +1504,35 @@ public:
     bool canCreateLink(Pin& other) override;
 
     /**
-     * @brief <BR>Add a connected link to the internal list
+     * @brief Add a connected link to the internal list
      * @param link Pointer to the link
      */
-    void setLink(std::weak_ptr<Link> link) override;
+    void addLink(Link* link) override;
 
     /**
-     * @brief <BR>Delete any expired weak pointers to a (now deleted) link
+     * @brief Delete all links associated with this pin
      */
-    void deleteLink() override;
+    void deleteAllLinks() override;
+
+    /**
+     * @brief Removes any reference to this link, if it's held
+     */
+    void removeLink(Link* link) override;
 
     /**
      * @brief <BR>Get connected status
      * @return [TRUE] is pin is connected to one or more links
      */
-    bool isConnected() override { return !m_links.empty(); }
+    bool isConnected() const override { return !m_links.empty(); }
+
+    /**
+     * @brief Get all connected links
+     * @return A vector with pointers to all of this pin's connected links
+     */
+    std::vector<const Link*> getLinks() const override
+    {
+        return std::vector<const Link*> { m_links.begin(), m_links.end() };
+    }
 
     /**
      * @brief <BR>Get pin's link attachment point (socket)
@@ -1521,7 +1563,7 @@ public:
     };
 
 private:
-    std::vector<std::weak_ptr<Link>> m_links;
+    std::vector<Link*> m_links;
     std::function<T()> m_behaviour;
     T m_val;
     T m_valNext;

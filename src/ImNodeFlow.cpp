@@ -183,6 +183,27 @@ Link::Link(Pin& out_pin, Pin& in_pin) noexcept
     , m_in_pin(&in_pin)
 {
     assert(m_out_pin != m_in_pin && "Links cannot be created starting and ending in the same node");
+
+    m_out_pin->addLink(this);
+    m_in_pin->addLink(this);
+}
+
+Link::~Link() noexcept
+{
+    this->destroy();
+}
+
+void Link::destroy()
+{
+    if (m_out_pin != nullptr) {
+        m_out_pin->removeLink(this);
+        m_out_pin = nullptr;
+    }
+    if (m_in_pin != nullptr) {
+        m_in_pin->removeLink(this);
+        m_in_pin = nullptr;
+    }
+    m_marked_for_deletion = true;
 }
 
 void Link::update(ImNodeFlow& ctx)
@@ -214,8 +235,20 @@ void Link::update(ImNodeFlow& ctx)
             thickness + m_out_pin->getStyle().extra.link_selected_outline_thickness);
     detail::smart_bezier(start, end, m_out_pin->getStyle().color, thickness);
 
-    if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
-        m_in_pin->deleteLink();
+    if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+        this->destroy();
+    }
+}
+
+void Link::disconnect(Pin* pin)
+{
+    if (m_out_pin == pin) {
+        m_out_pin = nullptr;
+        this->destroy();
+    } else if (m_in_pin == pin) {
+        m_in_pin = nullptr;
+        this->destroy();
+    }
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -615,10 +648,8 @@ void ImNodeFlow::createLink(Pin& source_pin, Pin& target_pin)
 
     if (source_pin.getType() == PinType_Output && target_pin.getType() == PinType_Input) {
         if (source_pin.canCreateLink(target_pin)) {
-            auto link = std::make_shared<Link>(source_pin, target_pin);
-            source_pin.setLink(link);
-            target_pin.setLink(link);
-            m_links.emplace_back(std::move(link));
+            m_links.emplace_back(
+                std::make_unique<Link>(source_pin, target_pin));
         }
     }
 }
@@ -861,8 +892,8 @@ void ImNodeFlow::update()
         std::remove_if(
             m_links.begin(),
             m_links.end(),
-            [](const std::shared_ptr<Link>& l) {
-                return l->isMarkedForDeletion();
+            [](const auto& link) {
+                return link->isMarkedForDeletion();
             }),
         m_links.end());
 

@@ -2,6 +2,7 @@
 
 #include "ImNodeFlow.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -230,13 +231,26 @@ BaseNode::getInVal(const char* name)
 // IN PIN
 
 template <class T>
+InPin<T>::~InPin()
+{
+    // Although I would love to place this in the Pin's dtor, by the time
+    // the Pin's dtor is called, the subclass's dtor() has already
+    // executed and as such the superclass cannot depend on the overriden
+    // virtual methods to still be reachable, which means deleteAllLinks()
+    // would be a noop in the best case, and undefined behaviour in the
+    // worst cast, that being if deleteAllLinks were pure virtual in Pin.
+    //
+    // C++ is fun. :')
+    this->deleteAllLinks();
+}
+
+template <class T>
 void InPin<T>::calculate()
 {
-    if (m_link.expired()) {
+    if (m_link == nullptr) {
         m_valNext = m_emptyVal;
     } else {
-        m_valNext = reinterpret_cast<OutPin<T>*>(m_link.lock()->outPin())
-                        ->val();
+        m_valNext = reinterpret_cast<OutPin<T>*>(m_link->outPin())->val();
     }
 }
 
@@ -254,14 +268,6 @@ InPin<T>::val()
 }
 
 template <class T>
-InPin<T>::~InPin()
-{
-    if (auto l = m_link.lock()) {
-        l->markForDeletion();
-    }
-}
-
-template <class T>
 bool InPin<T>::canCreateLink(Pin& other)
 {
     if (&other == this || other.getType() == PinType_Input) {
@@ -272,8 +278,7 @@ bool InPin<T>::canCreateLink(Pin& other)
         return false;
     }
 
-    if (!m_link.expired() && m_link.lock()->outPin() == &other) {
-        m_link.reset();
+    if (m_link != nullptr && m_link->outPin() == &other) {
         return false;
     }
 
@@ -298,11 +303,13 @@ bool InPin<T>::canCreateLink(Pin& other)
 }
 
 template <class T>
-void InPin<T>::setLink(std::weak_ptr<Link> link)
+void InPin<T>::addLink(Link* link)
 {
     // Only a single link can be connected at this time
-    this->deleteLink();
-    m_link = std::move(link);
+    if (link != m_link) {
+        this->deleteAllLinks();
+    }
+    m_link = link;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -311,12 +318,7 @@ void InPin<T>::setLink(std::weak_ptr<Link> link)
 template <class T>
 OutPin<T>::~OutPin()
 {
-    std::vector<std::weak_ptr<Link>> links = std::move(m_links);
-    for (auto& link : links) {
-        if (auto l = link.lock()) {
-            l->markForDeletion();
-        }
-    }
+    this->deleteAllLinks();
 }
 
 template <class T>
@@ -349,20 +351,33 @@ bool OutPin<T>::canCreateLink(ImFlow::Pin& other)
 }
 
 template <class T>
-void OutPin<T>::setLink(std::weak_ptr<Link> link)
+void OutPin<T>::addLink(Link* link)
 {
-    m_links.emplace_back(std::move(link));
+    auto iter = std::find(m_links.begin(), m_links.end(), link);
+    if (iter == m_links.end()) {
+        m_links.emplace_back(link);
+    }
 }
 
 template <class T>
-void OutPin<T>::deleteLink()
+void OutPin<T>::deleteAllLinks()
+{
+    for (auto* link : m_links) {
+        link->disconnect(this);
+    }
+    m_links.clear();
+}
+
+template <class T>
+void OutPin<T>::removeLink(Link* link)
 {
     m_links.erase(
-        std::remove_if(
+        std::find_if(
             m_links.begin(),
             m_links.end(),
-            [](const std::weak_ptr<Link>& l) { return l.expired(); }),
-        m_links.end());
+            [link](const auto* internal_link) -> bool {
+                return internal_link == link;
+            }));
 }
 
 } // namespace ImFlow
