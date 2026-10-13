@@ -731,10 +731,15 @@ void ImNodeFlow::update()
     }
 
     // Update and draw links
-    for (auto& l : m_links) {
-        if (!l->isMarkedForDeletion()) {
-            l->update(*this);
+    for (auto iter = m_links.begin(); iter != m_links.end();) {
+        // Clean up deleted links along the way
+        if ((*iter)->isMarkedForDeletion()) {
+            iter = m_links.erase(iter);
+            continue;
         }
+
+        (*iter)->update(*this);
+        ++iter;
     }
 
     Pin* hovered_pin = nullptr;
@@ -886,16 +891,6 @@ void ImNodeFlow::update()
         m_droppedLinkPopUp(m_droppedLinkLeft);
         ImGui::EndPopup();
     }
-
-    // Removing dead Links
-    m_links.erase(
-        std::remove_if(
-            m_links.begin(),
-            m_links.end(),
-            [](const auto& link) {
-                return link->isMarkedForDeletion();
-            }),
-        m_links.end());
 
     if (m_context.hovered() && this->getSingleUseClick(m_context.config().scroll_button)) {
         this->consumeSingleUseClick(m_context.config().scroll_button);
