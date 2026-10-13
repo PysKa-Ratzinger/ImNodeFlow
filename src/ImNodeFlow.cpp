@@ -178,6 +178,13 @@ void Pin::linkTo(Pin& other)
 // -----------------------------------------------------------------------------------------------------------------
 // LINK
 
+Link::Link(Pin& out_pin, Pin& in_pin) noexcept
+    : m_out_pin(&out_pin)
+    , m_in_pin(&in_pin)
+{
+    assert(m_out_pin != m_in_pin && "Links cannot be created starting and ending in the same node");
+}
+
 void Link::update(ImNodeFlow& ctx)
 {
     ImVec2 start = m_out_pin->pinPoint();

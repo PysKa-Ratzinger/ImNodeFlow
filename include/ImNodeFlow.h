@@ -244,11 +244,7 @@ public:
      * @param in_pin Pointer to the input Pin of the Link
      * @param inf Pointer to the Handler that contains the Link
      */
-    explicit Link(Pin& out_pin, Pin& in_pin)
-        : m_out_pin(&out_pin)
-        , m_in_pin(&in_pin)
-    {
-    }
+    explicit Link(Pin& out_pin, Pin& in_pin) noexcept;
 
     /**
      * @brief Looping function to update the Link
