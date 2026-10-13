@@ -663,7 +663,7 @@ public:
      * PinUID by calling getUid() and use that
      */
     template <typename T>
-    InPin<T>&
+    Pin&
     addIN(const std::string& name,
         T defReturn,
         PinStyle style = PinStyles::default_style);
@@ -682,7 +682,7 @@ public:
      * PinUID by calling getUid() and use that
      */
     template <typename T>
-    InPin<T>& addIN_uid(
+    Pin& addIN_uid(
         const PinUID& uid,
         const std::string& name,
         T defReturn,
@@ -743,6 +743,7 @@ public:
      *	    <BR> <BR> In this case the name of the pin will also be its UID.
      *	    <BR> <BR> The UID must be unique only in the context of the current node's outputs.
      * @tparam T Type of the data the pin will handle
+     * @param behaviour This is how this pin fetch's it's value
      * @param name Name of the pin
      * @param style Style of the pin
      * @return Reference to the newly added pin. Do not save this
@@ -750,8 +751,9 @@ public:
      * PinUID by calling getUid() and use that
      */
     template <typename T>
-    [[nodiscard]] OutPin<T>&
+    Pin&
     addOUT(const std::string& name,
+        std::function<T()> behaviour,
         PinStyle style = PinStyles::default_style);
 
     /**
@@ -767,9 +769,10 @@ public:
      * PinUID by calling getUid() and use that
      */
     template <typename T>
-    [[nodiscard]] OutPin<T>& addOUT_uid(
+    Pin& addOUT_uid(
         const PinUID& uid,
         const std::string& name,
+        std::function<T()> behaviour,
         PinStyle style = PinStyles::default_style);
 
     /**
@@ -871,19 +874,19 @@ public:
      * @brief <BR>Get internal input pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::shared_ptr<Pin>>& getIns() { return m_ins; }
+    const std::vector<std::unique_ptr<Pin>>& getIns() { return m_ins; }
 
     /**
      * @brief <BR>Get internal output pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::shared_ptr<Pin>>& getOuts() { return m_outs; }
+    const std::vector<std::unique_ptr<Pin>>& getOuts() { return m_outs; }
 
     /**
      * @brief <BR>Get internal dynamic input pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::pair<int, std::shared_ptr<Pin>>>& getDynamicIns()
+    const std::vector<std::pair<int, std::unique_ptr<Pin>>>& getDynamicIns()
     {
         return m_dynamicIns;
     }
@@ -892,7 +895,7 @@ public:
      * @brief <BR>Get internal dynamic output pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::pair<int, std::shared_ptr<Pin>>>&
+    const std::vector<std::pair<int, std::unique_ptr<Pin>>>&
     getDynamicOuts()
     {
         return m_dynamicOuts;
@@ -924,7 +927,7 @@ public:
      * @brief <BR>Get node name
      * @return Const reference to the node's name
      */
-    const std::string& getName() { return m_title; }
+    [[nodiscard]] const std::string& getName() const { return m_title; }
 
     /**
      * @brief <BR>Get node size
@@ -1088,10 +1091,10 @@ private:
     std::function<void()> m_on_draw = []() -> void { };
     std::function<void()> m_on_cleanup = []() -> void { };
 
-    std::vector<std::shared_ptr<Pin>> m_ins;
-    std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicIns;
-    std::vector<std::shared_ptr<Pin>> m_outs;
-    std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicOuts;
+    std::vector<std::unique_ptr<Pin>> m_ins;
+    std::vector<std::pair<int, std::unique_ptr<Pin>>> m_dynamicIns;
+    std::vector<std::unique_ptr<Pin>> m_outs;
+    std::vector<std::pair<int, std::unique_ptr<Pin>>> m_dynamicOuts;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -1445,9 +1448,11 @@ public:
         ImNodeFlow& flow,
         PinUID uid,
         const std::string& name,
+        std::function<T()> behaviour,
         PinStyle style,
         BaseNode* parent)
         : Pin(flow, uid, name, style, PinType_Output, parent)
+        , m_behaviour(std::move(behaviour))
     {
     }
 
@@ -1497,17 +1502,6 @@ public:
      * @return Const reference to the internal value of the pin
      */
     const T& val();
-
-    /**
-     * @brief <BR>Set logic to calculate output value
-     * @details Used to define the pin behaviour. This is what gets the data from the parent's inputs, and applies the needed logic.
-     * @param func Function or lambda expression used to calculate output value
-     */
-    OutPin<T>* behaviour(std::function<T()> func)
-    {
-        m_behaviour = std::move(func);
-        return this;
-    }
 
     /**
      * @brief <BR>Get pin's data type (aka: \<T>)

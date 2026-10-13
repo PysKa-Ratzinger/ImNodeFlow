@@ -226,9 +226,12 @@ BaseNode::~BaseNode() = default;
 void BaseNode::dropIN(const PinUID& uid)
 {
     m_ins.erase(
-        std::find_if(m_ins.begin(), m_ins.end(), [&](auto pin) -> bool {
-            return pin->getUid() == uid;
-        }));
+        std::find_if(
+            m_ins.begin(),
+            m_ins.end(),
+            [&](auto const& pin) -> bool {
+                return pin->getUid() == uid;
+            }));
 }
 
 void BaseNode::dropIN(const char* name)
@@ -237,7 +240,9 @@ void BaseNode::dropIN(const char* name)
         std::remove_if(
             m_ins.begin(),
             m_ins.end(),
-            [&](auto pin) -> bool { return pin->getName() == name; }),
+            [&](auto const& pin) -> bool {
+                return pin->getName() == name;
+            }),
         m_ins.end());
 }
 
@@ -507,17 +512,13 @@ void BaseNode::update(ImNodeFlow& ctx)
         std::remove_if(
             m_dynamicIns.begin(),
             m_dynamicIns.end(),
-            [](const std::pair<int, std::shared_ptr<Pin>>& p) {
-                return p.first == 0;
-            }),
+            [](const auto& elem) -> bool { return elem.first == 0; }),
         m_dynamicIns.end());
     m_dynamicOuts.erase(
         std::remove_if(
             m_dynamicOuts.begin(),
             m_dynamicOuts.end(),
-            [](const std::pair<int, std::shared_ptr<Pin>>& p) {
-                return p.first == 0;
-            }),
+            [](const auto& elem) -> bool { return elem.first == 0; }),
         m_dynamicOuts.end());
 
     m_is_hovered = ImGui::IsMouseHoveringRect(

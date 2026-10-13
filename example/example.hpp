@@ -66,7 +66,7 @@ public:
         node().setTitle("Simple sum");
         node().setStyle(ImFlow::NodeStyles::green);
         node().addIN<int>("In", 0);
-        node().addOUT<int>("Out").behaviour([this]() -> int {
+        node().addOUT<int>("Out", [this]() -> int {
             return node().getInVal<int>("In") + _valB;
         });
     }
@@ -90,7 +90,7 @@ public:
         node().setStyle(ImFlow::NodeStyles::red);
         node().addIN<int>("A", 0);
         node().addIN<int>("B", 0);
-        node().addOUT<int>("Out").behaviour([this]() -> int {
+        node().addOUT<int>("Out", [this]() -> int {
             return node().getInVal<int>("A") + node().getInVal<int>("B");
         });
     }
