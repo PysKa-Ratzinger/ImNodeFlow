@@ -64,7 +64,7 @@ public:
         : SimpleNodeWrapper(flow, pos)
     {
         node().setTitle("Simple sum");
-        node().setStyle(ImFlow::NodeStyle::green());
+        node().setStyle(ImFlow::NodeStyles::green);
         node().addIN<int>("In", 0, ImFlow::ConnectionFilter::SameType());
         node().addOUT<int>("Out").behaviour([this]() -> int {
             return node().getInVal<int>("In") + _valB;
@@ -87,7 +87,7 @@ public:
         : SimpleNodeWrapper(flow, pos)
     {
         node().setTitle("Collapsing node");
-        node().setStyle(ImFlow::NodeStyle::red());
+        node().setStyle(ImFlow::NodeStyles::red);
         node().addIN<int>("A", 0, ImFlow::ConnectionFilter::SameType());
         node().addIN<int>("B", 0, ImFlow::ConnectionFilter::SameType());
         node().addOUT<int>("Out").behaviour([this]() -> int {
@@ -111,7 +111,7 @@ public:
         : SimpleNodeWrapper(flow, pos)
     {
         node().setTitle("Result node");
-        node().setStyle(ImFlow::NodeStyle::brown());
+        node().setStyle(ImFlow::NodeStyles::brown);
         node().addIN<int>("A", 0, ImFlow::ConnectionFilter::SameType());
         node().addIN<int>("B", 0, ImFlow::ConnectionFilter::SameType());
     }

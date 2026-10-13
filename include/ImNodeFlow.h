@@ -155,7 +155,7 @@ public:
     PinStyleExtras extra;
 };
 
-namespace Styles {
+namespace PinStyles {
 
     static constexpr PinStyle cyan = { IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
     static constexpr PinStyle green = { IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f };
@@ -178,7 +178,10 @@ typedef uintptr_t NodeUID;
  */
 class NodeStyle {
 public:
-    NodeStyle(ImU32 header_bg, ImColor header_title_color, float radius)
+    constexpr NodeStyle(
+        ImU32 header_bg,
+        ImColor header_title_color,
+        float radius)
         : header_bg(header_bg)
         , header_title_color(header_title_color)
         , radius(radius)
@@ -204,41 +207,18 @@ public:
     float border_thickness = -1.35f;
     /// @brief Border thickness when selected
     float border_selected_thickness = 2.f;
-
-public:
-    /// @brief <BR>Default cyan style
-    static std::shared_ptr<NodeStyle> cyan()
-    {
-        return std::make_shared<NodeStyle>(
-            IM_COL32(71, 142, 173, 255),
-            ImColor(233, 241, 244, 255),
-            6.5f);
-    }
-    /// @brief <BR>Default green style
-    static std::shared_ptr<NodeStyle> green()
-    {
-        return std::make_shared<NodeStyle>(
-            IM_COL32(90, 191, 93, 255),
-            ImColor(233, 241, 244, 255),
-            3.5f);
-    }
-    /// @brief <BR>Default red style
-    static std::shared_ptr<NodeStyle> red()
-    {
-        return std::make_shared<NodeStyle>(
-            IM_COL32(191, 90, 90, 255),
-            ImColor(233, 241, 244, 255),
-            11.f);
-    }
-    /// @brief <BR>Default brown style
-    static std::shared_ptr<NodeStyle> brown()
-    {
-        return std::make_shared<NodeStyle>(
-            IM_COL32(191, 134, 90, 255),
-            ImColor(233, 241, 244, 255),
-            6.5f);
-    }
 };
+
+namespace NodeStyles {
+
+    static constexpr NodeStyle cyan = { IM_COL32(71, 142, 173, 255), ImColor(233, 241, 244, 255), 6.5f };
+    static constexpr NodeStyle green = { IM_COL32(90, 191, 93, 255), ImColor(233, 241, 244, 255), 3.5f };
+    static constexpr NodeStyle red = { IM_COL32(191, 90, 90, 255), ImColor(233, 241, 244, 255), 11.f };
+    static constexpr NodeStyle brown = { IM_COL32(191, 134, 90, 255), ImColor(233, 241, 244, 255), 6.5f };
+
+    static inline constexpr NodeStyle default_style = cyan;
+
+}
 
 // -----------------------------------------------------------------------------------------------------------------
 // LINK
@@ -679,7 +659,7 @@ public:
     addIN(const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        PinStyle style = Styles::default_style);
+        PinStyle style = PinStyles::default_style);
 
     /**
      * @brief <BR>Add an Input to the node
@@ -701,7 +681,7 @@ public:
         const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        PinStyle style = Styles::default_style);
+        PinStyle style = PinStyles::default_style);
 
     /**
      * @brief <BR>Remove input pin
@@ -733,7 +713,7 @@ public:
     showIN(const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        PinStyle style = Styles::default_style);
+        PinStyle style = PinStyles::default_style);
 
     /**
      * @brief <BR>Show a temporary input pin
@@ -754,7 +734,7 @@ public:
         const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        PinStyle style = Styles::default_style);
+        PinStyle style = PinStyles::default_style);
 
     /**
      * @brief <BR>Add an Output to the node
@@ -771,7 +751,8 @@ public:
      */
     template <typename T>
     [[nodiscard]] OutPin<T>&
-    addOUT(const std::string& name, PinStyle style = Styles::default_style);
+    addOUT(const std::string& name,
+        PinStyle style = PinStyles::default_style);
 
     /**
      * @brief <BR>Add an Output to the node
@@ -790,7 +771,7 @@ public:
     [[nodiscard]] OutPin<T>& addOUT_uid(
         const PinUID& uid,
         const std::string& name,
-        PinStyle style = Styles::default_style);
+        PinStyle style = PinStyles::default_style);
 
     /**
      * @brief <BR>Remove output pin
@@ -820,7 +801,7 @@ public:
     void
     showOUT(const std::string& name,
         std::function<T()> behaviour,
-        PinStyle style = Styles::default_style);
+        PinStyle style = PinStyles::default_style);
 
     /**
      * @brief <BR>Show a temporary output pin
@@ -839,7 +820,7 @@ public:
         const PinUID& uid,
         const std::string& name,
         std::function<T()> behaviour,
-        PinStyle style = Styles::default_style);
+        PinStyle style = PinStyles::default_style);
 
     /**
      * @brief <BR>Get Input value from an InPin
@@ -972,14 +953,14 @@ public:
      */
     ImVec2 getTLPos()
     {
-        return m_pos - ImVec2 { m_style->padding.x, m_style->padding.y };
+        return m_pos - ImVec2 { m_style.padding.x, m_style.padding.y };
     }
 
     /**
      * @brief Get node's style
      * @return Shared pointer to the node's style
      */
-    const std::shared_ptr<NodeStyle>& getStyle() { return m_style; }
+    const NodeStyle& getStyle() { return m_style; }
 
     /**
      * @brief <BR>Get selected status
@@ -1031,7 +1012,7 @@ public:
      * @brief Set node's style
      * @param style New style
      */
-    BaseNode* setStyle(std::shared_ptr<NodeStyle> style)
+    BaseNode* setStyle(NodeStyle style)
     {
         m_style = std::move(style);
         return this;
@@ -1097,7 +1078,8 @@ private:
     ImVec2 m_posTarget;
     ImVec2 m_size;
     ImVec2 m_fullSize;
-    std::shared_ptr<NodeStyle> m_style;
+    NodeStyle m_style = NodeStyles::default_style;
+
     bool m_is_hovered = false;
     bool m_selected = false;
     bool m_selectedNext = false;

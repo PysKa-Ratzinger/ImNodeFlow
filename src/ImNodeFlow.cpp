@@ -308,8 +308,8 @@ void BaseNode::update(ImNodeFlow& ctx)
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
-    ImVec2 paddingTL = { m_style->padding.x, m_style->padding.y };
-    ImVec2 paddingBR = { m_style->padding.z, m_style->padding.w };
+    ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
+    ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
 
     draw_list->ChannelsSetCurrent(1); // Foreground
     ImGui::SetCursorScreenPos(offset + m_pos);
@@ -318,7 +318,7 @@ void BaseNode::update(ImNodeFlow& ctx)
 
     // Header
     ImGui::BeginGroup();
-    ImGui::TextColored(m_style->header_title_color, "%s", m_title.c_str());
+    ImGui::TextColored(m_style.header_title_color, "%s", m_title.c_str());
     ImGui::Spacing();
     ImGui::EndGroup();
     float headerH = ImGui::GetItemRectSize().y;
@@ -399,22 +399,22 @@ void BaseNode::update(ImNodeFlow& ctx)
     draw_list->AddRectFilled(
         offset + m_pos - paddingTL,
         offset + m_pos + m_size + paddingBR,
-        m_style->bg,
-        m_style->radius);
+        m_style.bg,
+        m_style.radius);
     draw_list->AddRectFilled(
         offset + m_pos - paddingTL,
         offset + m_pos + headerSize,
-        m_style->header_bg,
-        m_style->radius,
+        m_style.header_bg,
+        m_style.radius,
         ImDrawFlags_RoundCornersTop);
     m_fullSize = m_size + paddingTL + paddingBR;
-    ImU32 col = m_style->border_color;
-    float thickness = m_style->border_thickness;
+    ImU32 col = m_style.border_color;
+    float thickness = m_style.border_thickness;
     ImVec2 ptl = paddingTL;
     ImVec2 pbr = paddingBR;
     if (this->isSelected()) {
-        col = m_style->border_selected_color;
-        thickness = m_style->border_selected_thickness;
+        col = m_style.border_selected_color;
+        thickness = m_style.border_selected_thickness;
     }
     if (thickness < 0.f) {
         ptl.x -= thickness / 2;
@@ -427,7 +427,7 @@ void BaseNode::update(ImNodeFlow& ctx)
         offset + m_pos - ptl,
         offset + m_pos + m_size + pbr,
         col,
-        m_style->radius,
+        m_style.radius,
         0,
         thickness);
 
@@ -519,9 +519,6 @@ ImNodeFlow::addNode(const ImVec2& pos)
 {
     auto new_node = std::make_unique<BaseNode>(*this);
     new_node->setPos(pos);
-    if (!new_node->getStyle()) {
-        new_node->setStyle(NodeStyle::cyan());
-    }
     auto* raw_ptr = new_node.get();
     auto uid = reinterpret_cast<uintptr_t>(raw_ptr);
     new_node->setUID(uid);
