@@ -1391,10 +1391,16 @@ public:
     void setPos(ImVec2 pos) { m_pos = pos; }
 
     /**
-     * @brief Returns whether or not the house was hovering in the last
+     * @brief Returns whether or not the mouse was hovering in the last
      * update
      */
     bool isHovered() const { return m_is_hovered; }
+
+    /**
+     * @brief Returns whether or not the mouse was clicked while hovering
+     * in the last update
+     */
+    bool wasClicked() const { return m_was_clicked; }
 
     /**
      * @brief When the context calls this method, the pins should calculate
@@ -1425,6 +1431,7 @@ protected:
     std::shared_ptr<PinStyle> m_style;
     std::function<void(Pin* p)> m_renderer;
     bool m_is_hovered = false;
+    bool m_was_clicked = false;
 };
 
 /**

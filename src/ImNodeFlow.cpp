@@ -60,6 +60,11 @@ Pin::drawSocket()
 
     if (ImGui::IsMouseHoveringRect(tl, br)) {
         m_is_hovered = true;
+        if (m_flow.get().getSingleUseClick(ImGuiMouseButton_Left)) {
+            m_flow.get().consumeSingleUseClick(
+                ImGuiMouseButton_Left);
+            m_was_clicked = true;
+        }
     }
 }
 
@@ -93,6 +98,7 @@ inline void
 Pin::update(ImNodeFlow& ctx)
 {
     m_is_hovered = false;
+    m_was_clicked = false;
 
     // Custom rendering
     if (m_renderer) {
@@ -102,6 +108,12 @@ Pin::update(ImNodeFlow& ctx)
         m_size = ImGui::GetItemRectSize();
         if (ImGui::IsItemHovered()) {
             m_is_hovered = true;
+            if (m_flow.get().getSingleUseClick(
+                    ImGuiMouseButton_Left)) {
+                m_flow.get().consumeSingleUseClick(
+                    ImGuiMouseButton_Left);
+                m_was_clicked = true;
+            }
         }
         return;
     }
@@ -115,6 +127,11 @@ Pin::update(ImNodeFlow& ctx)
 
     if (ImGui::IsItemHovered()) {
         m_is_hovered = true;
+        if (m_flow.get().getSingleUseClick(ImGuiMouseButton_Left)) {
+            m_flow.get().consumeSingleUseClick(
+                ImGuiMouseButton_Left);
+            m_was_clicked = true;
+        }
     }
 }
 
@@ -609,16 +626,23 @@ void ImNodeFlow::update()
     }
 
     Pin* hovered_pin = nullptr;
+    Pin* clicked_pin = nullptr;
     for (auto& elem : m_nodes) {
         BaseNode& node = *elem.second;
         for (auto& pin : node.getIns()) {
             if (pin->isHovered()) {
                 hovered_pin = &*pin;
             }
+            if (pin->wasClicked()) {
+                clicked_pin = &*pin;
+            }
         }
         for (auto& pin : node.getOuts()) {
             if (pin->isHovered()) {
                 hovered_pin = &*pin;
+            }
+            if (pin->wasClicked()) {
+                clicked_pin = &*pin;
             }
         }
         for (auto& elem : node.getDynamicIns()) {
@@ -626,11 +650,17 @@ void ImNodeFlow::update()
             if (pin->isHovered()) {
                 hovered_pin = &*pin;
             }
+            if (pin->wasClicked()) {
+                clicked_pin = &*pin;
+            }
         }
         for (auto& elem : node.getDynamicOuts()) {
             auto& pin = elem.second;
             if (pin->isHovered()) {
                 hovered_pin = &*pin;
+            }
+            if (pin->wasClicked()) {
+                clicked_pin = &*pin;
             }
         }
     }
@@ -650,7 +680,7 @@ void ImNodeFlow::update()
     }
 
     // Links drag-out
-    if (!m_box.active && !m_draggingNode && hovered_pin && !m_dragOut && getSingleUseClick(ImGuiMouseButton_Left)) {
+    if (!m_box.active && !m_draggingNode && clicked_pin && !m_dragOut) {
         consumeSingleUseClick(ImGuiMouseButton_Left);
         m_dragOut = hovered_pin;
     }
