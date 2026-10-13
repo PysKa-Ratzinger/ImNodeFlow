@@ -20,8 +20,7 @@ PinUID
 PinUID::generate() noexcept
 {
     static uint64_t id = 0;
-
-    return PinUID { id };
+    return PinUID { id++ };
 }
 
 bool PinUID::operator==(PinUID const& other) const noexcept
