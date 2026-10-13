@@ -1133,6 +1133,23 @@ enum PinType { PinType_Input,
     PinType_Output };
 
 /**
+ * @brief Strategy to use for input pins regarding multiple connections
+ */
+enum PinConnStrat {
+    /// When a new link is created, all other links connecting to this pin
+    /// are deleted.
+    PinConnStrat_AllowOnlySingleConnection,
+
+    /// Multiple links are allowed. An InPin with this strategy will fetch
+    /// it's value from the oldest link that's still connected.
+    PinConnStrat_AllowMultiplePreferOldest,
+
+    /// Multiple links are allowed. An InPin with this strategy will fetch
+    /// it's value from the newest link that's still connected.
+    PinConnStrat_AllowMultiplePreferNewest,
+};
+
+/**
  * @brief Generic base class for pins
  */
 class Pin {
@@ -1409,10 +1426,12 @@ public:
         const std::string& name,
         T defaultValue,
         PinStyle style,
-        BaseNode* parent)
+        BaseNode* parent,
+        PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest)
         : Pin(flow, uid, name, style, PinType_Input, parent)
         , m_emptyVal(defaultValue)
         , m_val(defaultValue)
+        , m_strat(strat)
     {
     }
 
@@ -1436,23 +1455,12 @@ public:
     /**
      * @brief Delete the link connected to the pin
      */
-    void deleteAllLinks() override
-    {
-        if (m_link != nullptr) {
-            m_link->disconnect(this);
-        }
-        m_link = nullptr;
-    }
+    void deleteAllLinks() override;
 
     /**
      * @brief Removes any reference to this link, if it's held
      */
-    void removeLink(Link* link) override
-    {
-        if (m_link == link) {
-            m_link = nullptr;
-        }
-    }
+    void removeLink(Link* link) override;
 
     /**
      * @brief Specify if connections from an output on the same node are allowed
@@ -1467,13 +1475,17 @@ public:
      * @brief <BR>Get connected status
      * @return [TRUE] is pin is connected to a link
      */
-    bool isConnected() const override { return m_link != nullptr; }
+    bool isConnected() const override { return !m_links.empty(); }
 
     /**
      * @brief Get all connected links
      * @return A vector with pointers to all of this pin's connected links
      */
-    std::vector<const Link*> getLinks() const override { return { m_link }; }
+    std::vector<const Link*> getLinks() const override
+    {
+        // Return by copy
+        return std::vector<const Link*> { m_links.begin(), m_links.end() };
+    }
 
     /**
      * @brief <BR>Get pin's data type (aka: \<T>)
@@ -1504,11 +1516,12 @@ public:
     const T& val();
 
 private:
-    Link* m_link;
+    std::vector<Link*> m_links { };
     T m_emptyVal;
     T m_val;
     T m_valNext;
     bool m_allowSelfConnection = false;
+    PinConnStrat m_strat = PinConnStrat_AllowMultiplePreferOldest;
 };
 
 /**
@@ -1585,6 +1598,7 @@ public:
      */
     std::vector<const Link*> getLinks() const override
     {
+        // Return by copy
         return std::vector<const Link*> { m_links.begin(), m_links.end() };
     }
 

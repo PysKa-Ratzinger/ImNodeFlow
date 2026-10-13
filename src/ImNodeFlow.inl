@@ -275,10 +275,23 @@ InPin<T>::~InPin()
 template <class T>
 void InPin<T>::calculate()
 {
-    if (m_link == nullptr) {
-        m_valNext = m_emptyVal;
-    } else {
-        m_valNext = m_link->outPin()->toOut<T>().val();
+    if (m_links.empty()) {
+        m_val = m_emptyVal;
+        return;
+    }
+
+    switch (m_strat) {
+    case PinConnStrat_AllowOnlySingleConnection:
+    case PinConnStrat_AllowMultiplePreferOldest:
+        m_val = m_links.front()->outPin()->toOut<T>().val();
+        return;
+
+    case PinConnStrat_AllowMultiplePreferNewest:
+        m_val = m_links.back()->outPin()->toOut<T>().val();
+        return;
+
+    default:
+        return;
     }
 }
 
@@ -306,8 +319,10 @@ bool InPin<T>::canCreateLink(Pin& other)
         return false;
     }
 
-    if (m_link != nullptr && m_link->outPin() == &other) {
-        return false;
+    for (const auto* link : m_links) {
+        if (link->outPin() == &other) {
+            return false;
+        }
     }
 
     // Only pins with the same type can be linked. Casts between
@@ -333,11 +348,50 @@ bool InPin<T>::canCreateLink(Pin& other)
 template <class T>
 void InPin<T>::addLink(Link* link)
 {
-    // Only a single link can be connected at this time
-    if (link != m_link) {
-        this->deleteAllLinks();
+    for (const auto* l : m_links) {
+        if (l == link) {
+            // nothing to do
+            return;
+        }
     }
-    m_link = link;
+
+    // link does not exist
+
+    switch (m_strat) {
+    case PinConnStrat_AllowOnlySingleConnection:
+        this->deleteAllLinks();
+        m_links.emplace_back(link);
+        break;
+
+    case PinConnStrat_AllowMultiplePreferOldest:
+    case PinConnStrat_AllowMultiplePreferNewest:
+        m_links.emplace_back(link);
+        break;
+
+    default:
+        break;
+    }
+}
+
+template <class T>
+void InPin<T>::deleteAllLinks()
+{
+    for (auto* link : m_links) {
+        link->disconnect(this);
+    }
+    m_links.clear();
+}
+
+template <class T>
+void InPin<T>::removeLink(Link* link)
+{
+    m_links.erase(
+        std::find_if(
+            m_links.begin(),
+            m_links.end(),
+            [link](const auto* internal_link) -> bool {
+                return internal_link == link;
+            }));
 }
 
 // -----------------------------------------------------------------------------------------------------------------
