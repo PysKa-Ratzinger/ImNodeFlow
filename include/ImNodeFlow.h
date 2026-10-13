@@ -13,6 +13,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -67,11 +68,8 @@ template <typename T>
 class InPin;
 template <typename T>
 class OutPin;
-template <typename T>
-class BaseNodeInstance;
 class Pin;
 class BaseNode;
-class IBaseNode;
 class ImNodeFlow;
 class IFilter;
 class ConnectionFilter;
@@ -125,7 +123,7 @@ struct PinStyleExtras {
  */
 class PinStyle {
 public:
-    PinStyle(
+    constexpr PinStyle(
         ImU32 color,
         int socket_shape,
         float socket_radius,
@@ -155,62 +153,19 @@ public:
     float socket_thickness;
     /// @brief List of less common properties
     PinStyleExtras extra;
-
-public:
-    /// @brief <BR>Default cyan style
-    static std::shared_ptr<PinStyle> cyan()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
-    }
-    /// @brief <BR>Default green style
-    static std::shared_ptr<PinStyle> green()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f));
-    }
-    /// @brief <BR>Default blue style
-    static std::shared_ptr<PinStyle> blue()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
-    }
-    /// @brief <BR>Default brown style
-    static std::shared_ptr<PinStyle> brown()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
-    }
-    /// @brief <BR>Default red style
-    static std::shared_ptr<PinStyle> red()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
-    }
-    /// @brief <BR>Default white style
-    static std::shared_ptr<PinStyle> white()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f));
-    }
 };
 
-// -----------------------------------------------------------------------------------------------------------------
-// NODE INTERFACE
+namespace Styles {
 
-/**
- * @brief User-provided Nodes should implement this class
- */
-class INode {
-public:
-    virtual ~INode() = default;
+    static constexpr PinStyle cyan = { IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle green = { IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f };
+    static constexpr PinStyle blue = { IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle brown = { IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle red = { IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle white = { IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f };
 
-    /**
-     * @brief <BR>Content of the node
-     * @details Function to be implemented by derived custom nodes.
-     *	    Must contain the body of the node. If left empty the node will only have input and output pins.
-     */
-    virtual void draw(BaseNode& node) { };
+    static inline constexpr PinStyle default_style = cyan;
+
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -421,75 +376,24 @@ public:
     void update();
 
     /**
-     * @brief <BR>Add a node to the grid
-     * @tparam T Derived class of <BaseNode> to be added
-     * @tparam Params types of optional args to forward to derived class ctor
+     * @brief Add a node to the grid
      * @param pos Position of the Node in grid coordinates
-     * @param args Optional arguments to be forwarded to derived class ctor
-     * @return Shared pointer of the pushed type to the newly added node
-     *
-     * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
+     * @return Shared pointer of the newly added node
      */
-    template <typename T, typename... Params>
-    std::shared_ptr<BaseNodeInstance<T>>
-    addNode(const ImVec2& pos, Params&&... args);
-
-private:
-    /**
-     * @brief <BR>Helper struct for creating a node struct from a lambda
-     * @sa addLambdaNode which wraps creating one of these
-     * @tparam L the type of the lambda
-     * @tparam B always BaseNode, tparam because BaseNode is incomplete here
-     */
-    struct NodeWrapper : public INode {
-        std::function<void(BaseNode&)> m_lambda;
-        explicit NodeWrapper(
-            BaseNode& node,
-            std::function<void(BaseNode&)>&& lambda)
-            : m_lambda(std::move(lambda))
-        {
-        }
-        void draw(BaseNode& node) final { m_lambda(node); }
-    };
-
-public:
-    /**
-     * @brief <BR>Add a node whos operation can be defined within a lambda.
-     * @tparam L the type of the lambda
-     * @param lambda the lambda that defines the nodes operation
-     * @param pos the position at which to place the node
-     */
-    std::shared_ptr<BaseNodeInstance<NodeWrapper>>
-    addLambdaNode(std::function<void(BaseNode&)>&& lambda, const ImVec2& pos)
-    {
-        return addNode<NodeWrapper>(pos, std::move(lambda));
-    }
+    BaseNode& addNode(const ImVec2& pos);
 
     /**
-     * @brief <BR>Add a node to the grid
-     * @tparam T Derived class of <BaseNode> to be added
-     * @tparam Params types of optional args to forward to derived class ctor
+     * @brief Add a node to the grid
      * @param pos Position of the Node in screen coordinates
-     * @param args Optional arguments to be forwarded to derived class ctor
-     * @return Shared pointer of the pushed type to the newly added node
-     *
-     * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
+     * @return Shared pointer to the newly added node
      */
-    template <typename T, typename... Params>
-    std::shared_ptr<BaseNodeInstance<T>>
-    placeNodeAt(const ImVec2& pos, Params&&... args);
+    BaseNode& placeNodeAt(const ImVec2& pos);
 
     /**
-     * @brief <BR>Add a node to the grid using mouse position
-     * @tparam T Derived class of <BaseNode> to be added
-     * @tparam Params types of optional args to forward to derived class ctor
-     * @param args Optional arguments to be forwarded to derived class ctor
-     * @return Shared pointer of the pushed type to the newly added node
-     *
-     * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
+     * @brief Add a node to the grid using mouse position
+     * @return Shared pointer to the newly added node
      */
-    template <typename T, typename... Params>
-    std::shared_ptr<BaseNodeInstance<T>> placeNode(Params&&... args);
+    BaseNode& placeNode();
 
     /**
      * @brief Creates a link between two pins
@@ -594,7 +498,7 @@ public:
      * @brief <BR>Get editor's list of nodes
      * @return Const reference to editor's internal nodes list
      */
-    std::unordered_map<NodeUID, std::shared_ptr<BaseNode>>& getNodes()
+    std::unordered_map<NodeUID, std::unique_ptr<BaseNode>>& getNodes()
     {
         return m_nodes;
     }
@@ -685,7 +589,7 @@ private:
         bool middle = false;
     } m_singleUseClicks;
 
-    std::unordered_map<NodeUID, std::shared_ptr<BaseNode>> m_nodes;
+    std::unordered_map<NodeUID, std::unique_ptr<BaseNode>> m_nodes;
     std::vector<std::shared_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
@@ -723,11 +627,12 @@ private:
  */
 class BaseNode {
 public:
-    virtual ~BaseNode() = default;
     explicit BaseNode(ImNodeFlow& flow)
         : m_flow(flow)
     {
     }
+
+    ~BaseNode();
 
     /**
      * @brief <BR>Main loop of the node
@@ -740,7 +645,20 @@ public:
      * @details Function to be implemented by derived custom nodes.
      *	    Must contain the body of the node. If left empty the node will only have input and output pins.
      */
-    virtual void draw() { }
+    void draw();
+
+    /**
+     * @brief Registers a unique observer for the node's draw call
+     * @param draw_func lambda function called when this Node's draw()
+     * method is invoked
+     */
+    void on_draw(std::function<void()> draw_func = []() -> void { });
+
+    /**
+     * @brief Registers a unique observer for the node's destruction event
+     * @param draw_func lambda function called when this Node is destroyed
+     */
+    void on_cleanup(std::function<void()> cleanup_func = []() -> void { });
 
     /**
      * @brief <BR>Add an Input to the node
@@ -761,7 +679,7 @@ public:
     addIN(const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        std::shared_ptr<PinStyle> style = nullptr);
+        PinStyle style = Styles::default_style);
 
     /**
      * @brief <BR>Add an Input to the node
@@ -783,7 +701,7 @@ public:
         const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        std::shared_ptr<PinStyle> style = nullptr);
+        PinStyle style = Styles::default_style);
 
     /**
      * @brief <BR>Remove input pin
@@ -815,7 +733,7 @@ public:
     showIN(const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        std::shared_ptr<PinStyle> style = nullptr);
+        PinStyle style = Styles::default_style);
 
     /**
      * @brief <BR>Show a temporary input pin
@@ -836,7 +754,7 @@ public:
         const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        std::shared_ptr<PinStyle> style = nullptr);
+        PinStyle style = Styles::default_style);
 
     /**
      * @brief <BR>Add an Output to the node
@@ -853,8 +771,7 @@ public:
      */
     template <typename T>
     [[nodiscard]] OutPin<T>&
-    addOUT(const std::string& name,
-        std::shared_ptr<PinStyle> style = nullptr);
+    addOUT(const std::string& name, PinStyle style = Styles::default_style);
 
     /**
      * @brief <BR>Add an Output to the node
@@ -873,7 +790,7 @@ public:
     [[nodiscard]] OutPin<T>& addOUT_uid(
         const PinUID& uid,
         const std::string& name,
-        std::shared_ptr<PinStyle> style = nullptr);
+        PinStyle style = Styles::default_style);
 
     /**
      * @brief <BR>Remove output pin
@@ -903,7 +820,7 @@ public:
     void
     showOUT(const std::string& name,
         std::function<T()> behaviour,
-        std::shared_ptr<PinStyle> style = nullptr);
+        PinStyle style = Styles::default_style);
 
     /**
      * @brief <BR>Show a temporary output pin
@@ -922,7 +839,7 @@ public:
         const PinUID& uid,
         const std::string& name,
         std::function<T()> behaviour,
-        std::shared_ptr<PinStyle> style = nullptr);
+        PinStyle style = Styles::default_style);
 
     /**
      * @brief <BR>Get Input value from an InPin
@@ -1006,7 +923,13 @@ public:
     /**
      * @brief <BR>Delete itself
      */
-    void destroy() { m_destroyed = true; }
+    void destroy()
+    {
+        if (m_on_cleanup) {
+            m_on_cleanup();
+        }
+        m_destroyed = true;
+    }
 
     /*
      * @brief <BR>Get if node must be deleted
@@ -1183,37 +1106,13 @@ private:
     bool m_dragged = false;
     bool m_destroyed = false;
 
+    std::function<void()> m_on_draw = []() -> void { };
+    std::function<void()> m_on_cleanup = []() -> void { };
+
     std::vector<std::shared_ptr<Pin>> m_ins;
     std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicIns;
     std::vector<std::shared_ptr<Pin>> m_outs;
     std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicOuts;
-};
-
-// -----------------------------------------------------------------------------------------------------------------
-// BASE NODE INSTANCE
-
-/**
- * @brief The actual base node instance, which acts as "middleware" and hides
- * the BaseNode implementation details from a public interface
- */
-template <typename T>
-class BaseNodeInstance final : public BaseNode, public T {
-public:
-    static_assert(
-        std::is_base_of_v<INode, T>,
-        "Pushed type does not derive from INode!");
-
-    template <typename... Args>
-    explicit BaseNodeInstance(ImNodeFlow& flow, Args&&... args)
-        : BaseNode(flow)
-        , T(static_cast<BaseNode&>(*this), std::forward<Args>(args)...)
-    {
-    }
-
-    void draw() final
-    {
-        static_cast<T&>(*this).draw(static_cast<BaseNode&>(*this));
-    }
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -1243,7 +1142,7 @@ public:
         ImNodeFlow& flow,
         PinUID uid,
         std::string name,
-        std::shared_ptr<PinStyle> style,
+        PinStyle style,
         PinType kind,
         BaseNode* parent)
         : m_flow(flow)
@@ -1253,8 +1152,6 @@ public:
         , m_parent(parent)
         , m_style(std::move(style))
     {
-        if (!m_style)
-            m_style = PinStyle::cyan();
     }
 
     virtual ~Pin() = default;
@@ -1370,7 +1267,7 @@ public:
      * @brief <BR>Get pin's style
      * @return Smart pointer to pin's style
      */
-    std::shared_ptr<PinStyle>& getStyle() { return m_style; }
+    PinStyle& getStyle() { return m_style; }
 
     /**
      * @brief <BR>Get pin's link attachment point (socket)
@@ -1428,7 +1325,7 @@ protected:
     ImVec2 m_size = ImVec2(0.f, 0.f);
     PinType m_type;
     BaseNode* m_parent = nullptr;
-    std::shared_ptr<PinStyle> m_style;
+    PinStyle m_style;
     std::function<void(Pin* p)> m_renderer;
     bool m_is_hovered = false;
     bool m_was_clicked = false;
@@ -1507,7 +1404,7 @@ public:
         const std::string& name,
         T defReturn,
         std::shared_ptr<IFilter> filter,
-        std::shared_ptr<PinStyle> style,
+        PinStyle style,
         BaseNode* parent)
         : Pin(flow, uid, name, style, PinType_Input, parent)
         , m_emptyVal(defReturn)
@@ -1589,7 +1486,7 @@ public:
      */
     ImVec2 pinPoint() override
     {
-        return m_pos + ImVec2(-m_style->extra.socket_padding, m_size.y / 2);
+        return m_pos + ImVec2(-m_style.extra.socket_padding, m_size.y / 2);
     }
 
     void calculate() override;
@@ -1631,7 +1528,7 @@ public:
         ImNodeFlow& flow,
         PinUID uid,
         const std::string& name,
-        std::shared_ptr<PinStyle> style,
+        PinStyle style,
         BaseNode* parent)
         : Pin(flow, uid, name, style, PinType_Output, parent)
     {
@@ -1671,7 +1568,7 @@ public:
      */
     ImVec2 pinPoint() override
     {
-        return m_pos + ImVec2(m_size.x + m_style->extra.socket_padding, m_size.y / 2);
+        return m_pos + ImVec2(m_size.x + m_style.extra.socket_padding, m_size.y / 2);
     }
 
     void calculate() override;

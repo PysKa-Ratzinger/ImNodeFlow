@@ -2,6 +2,10 @@
 
 #include <imgui_internal.h>
 
+#include <functional>
+#include <memory>
+#include <utility>
+
 namespace ImFlow {
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -32,30 +36,30 @@ inline void
 Pin::drawSocket()
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    ImVec2 tl = pinPoint() - ImVec2(m_style->socket_radius, m_style->socket_radius);
-    ImVec2 br = pinPoint() + ImVec2(m_style->socket_radius, m_style->socket_radius);
+    ImVec2 tl = pinPoint() - ImVec2(m_style.socket_radius, m_style.socket_radius);
+    ImVec2 br = pinPoint() + ImVec2(m_style.socket_radius, m_style.socket_radius);
 
     if (isConnected())
         draw_list->AddCircleFilled(
             pinPoint(),
-            m_style->socket_connected_radius,
-            m_style->color,
-            m_style->socket_shape);
+            m_style.socket_connected_radius,
+            m_style.color,
+            m_style.socket_shape);
     else {
         if (ImGui::IsItemHovered() || ImGui::IsMouseHoveringRect(tl, br))
             draw_list->AddCircle(
                 pinPoint(),
-                m_style->socket_hovered_radius,
-                m_style->color,
-                m_style->socket_shape,
-                m_style->socket_thickness);
+                m_style.socket_hovered_radius,
+                m_style.color,
+                m_style.socket_shape,
+                m_style.socket_thickness);
         else
             draw_list->AddCircle(
                 pinPoint(),
-                m_style->socket_radius,
-                m_style->color,
-                m_style->socket_shape,
-                m_style->socket_thickness);
+                m_style.socket_radius,
+                m_style.color,
+                m_style.socket_shape,
+                m_style.socket_thickness);
     }
 
     if (ImGui::IsMouseHoveringRect(tl, br)) {
@@ -75,23 +79,23 @@ Pin::drawDecoration()
 
     if (ImGui::IsItemHovered())
         draw_list->AddRectFilled(
-            m_pos - m_style->extra.padding,
-            m_pos + m_size + m_style->extra.padding,
-            m_style->extra.bg_hover_color,
-            m_style->extra.bg_radius);
+            m_pos - m_style.extra.padding,
+            m_pos + m_size + m_style.extra.padding,
+            m_style.extra.bg_hover_color,
+            m_style.extra.bg_radius);
     else
         draw_list->AddRectFilled(
-            m_pos - m_style->extra.padding,
-            m_pos + m_size + m_style->extra.padding,
-            m_style->extra.bg_color,
-            m_style->extra.bg_radius);
+            m_pos - m_style.extra.padding,
+            m_pos + m_size + m_style.extra.padding,
+            m_style.extra.bg_color,
+            m_style.extra.bg_radius);
     draw_list->AddRect(
-        m_pos - m_style->extra.padding,
-        m_pos + m_size + m_style->extra.padding,
-        m_style->extra.border_color,
-        m_style->extra.bg_radius,
+        m_pos - m_style.extra.padding,
+        m_pos + m_size + m_style.extra.padding,
+        m_style.extra.border_color,
+        m_style.extra.bg_radius,
         0,
-        m_style->extra.border_thickness);
+        m_style.extra.border_thickness);
 }
 
 inline void
@@ -152,7 +156,7 @@ void Link::update(ImNodeFlow& ctx)
 {
     ImVec2 start = m_out_pin->pinPoint();
     ImVec2 end = m_in_pin->pinPoint();
-    float thickness = m_out_pin->getStyle()->extra.link_thickness;
+    float thickness = m_out_pin->getStyle().extra.link_thickness;
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         m_selected = false;
@@ -160,7 +164,7 @@ void Link::update(ImNodeFlow& ctx)
     if (detail::smart_bezier_collider(
             ImGui::GetMousePos(), start, end, 2.5)) {
         m_hovered = true;
-        thickness = m_out_pin->getStyle()->extra.link_hovered_thickness;
+        thickness = m_out_pin->getStyle().extra.link_hovered_thickness;
         if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
             ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
             m_selected = true;
@@ -173,10 +177,9 @@ void Link::update(ImNodeFlow& ctx)
         detail::smart_bezier(
             start,
             end,
-            m_out_pin->getStyle()->extra.outline_color,
-            thickness + m_out_pin->getStyle()->extra.link_selected_outline_thickness);
-    detail::smart_bezier(
-        start, end, m_out_pin->getStyle()->color, thickness);
+            m_out_pin->getStyle().extra.outline_color,
+            thickness + m_out_pin->getStyle().extra.link_selected_outline_thickness);
+    detail::smart_bezier(start, end, m_out_pin->getStyle().color, thickness);
 
     if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
         m_in_pin->deleteLink();
@@ -184,6 +187,8 @@ void Link::update(ImNodeFlow& ctx)
 
 // -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
+
+BaseNode::~BaseNode() = default;
 
 void BaseNode::dropIN(const PinUID& uid)
 {
@@ -487,10 +492,54 @@ void BaseNode::update(ImNodeFlow& ctx)
         ctx.grid2screen(m_pos + m_size + paddingBR));
 }
 
+void BaseNode::draw()
+{
+    if (m_on_draw) {
+        m_on_draw();
+    }
+}
+
+void BaseNode::on_draw(std::function<void()> draw_func)
+{
+    this->m_on_draw = std::move(draw_func);
+}
+
+void BaseNode::on_cleanup(std::function<void()> cleanup_func)
+{
+    this->m_on_cleanup = std::move(cleanup_func);
+}
+
 // -----------------------------------------------------------------------------------------------------------------
 // HANDLER
 
 int ImNodeFlow::m_instances = 0;
+
+BaseNode&
+ImNodeFlow::addNode(const ImVec2& pos)
+{
+    auto new_node = std::make_unique<BaseNode>(*this);
+    new_node->setPos(pos);
+    if (!new_node->getStyle()) {
+        new_node->setStyle(NodeStyle::cyan());
+    }
+    auto* raw_ptr = new_node.get();
+    auto uid = reinterpret_cast<uintptr_t>(raw_ptr);
+    new_node->setUID(uid);
+    m_nodes[uid] = std::move(new_node);
+    return *raw_ptr;
+}
+
+BaseNode&
+ImNodeFlow::placeNodeAt(const ImVec2& pos)
+{
+    return addNode(screen2grid(pos));
+}
+
+BaseNode&
+ImNodeFlow::placeNode()
+{
+    return placeNodeAt(ImGui::GetMousePos());
+}
 
 bool ImNodeFlow::mouse_on_selected_node()
 {
@@ -690,16 +739,14 @@ void ImNodeFlow::update()
             detail::smart_bezier(
                 m_dragOut->pinPoint(),
                 ImGui::GetMousePos(),
-                m_dragOut->getStyle()->color,
-                m_dragOut->getStyle()
-                    ->extra.link_dragged_thickness);
+                m_dragOut->getStyle().color,
+                m_dragOut->getStyle().extra.link_dragged_thickness);
         else
             detail::smart_bezier(
                 ImGui::GetMousePos(),
                 m_dragOut->pinPoint(),
-                m_dragOut->getStyle()->color,
-                m_dragOut->getStyle()
-                    ->extra.link_dragged_thickness);
+                m_dragOut->getStyle().color,
+                m_dragOut->getStyle().extra.link_dragged_thickness);
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             m_dragOut = nullptr;

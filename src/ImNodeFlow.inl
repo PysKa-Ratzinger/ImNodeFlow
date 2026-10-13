@@ -67,40 +67,6 @@ namespace detail {
 } // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
-// HANDLER
-
-template <typename T, typename... Params>
-std::shared_ptr<BaseNodeInstance<T>>
-ImNodeFlow::addNode(const ImVec2& pos, Params&&... args)
-{
-    auto n = std::make_shared<BaseNodeInstance<T>>(
-        *this, std::forward<Params>(args)...);
-    n->setPos(pos);
-    if (!n->getStyle()) {
-        n->setStyle(NodeStyle::cyan());
-    }
-    auto uid = reinterpret_cast<uintptr_t>(n.get());
-    n->setUID(uid);
-    m_nodes[uid] = n;
-    return n;
-}
-
-template <typename T, typename... Params>
-std::shared_ptr<BaseNodeInstance<T>>
-ImNodeFlow::placeNodeAt(const ImVec2& pos, Params&&... args)
-{
-    return addNode<T>(screen2grid(pos), std::forward<Params>(args)...);
-}
-
-template <typename T, typename... Params>
-std::shared_ptr<BaseNodeInstance<T>>
-ImNodeFlow::placeNode(Params&&... args)
-{
-    return placeNodeAt<T>(
-        ImGui::GetMousePos(), std::forward<Params>(args)...);
-}
-
-// -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
 template <typename T>
@@ -109,14 +75,10 @@ BaseNode::addIN(
     const std::string& name,
     T defReturn,
     std::shared_ptr<IFilter> filter,
-    std::shared_ptr<PinStyle> style)
+    PinStyle style)
 {
     return addIN_uid(
-        PinUID::generate(),
-        name,
-        defReturn,
-        std::move(filter),
-        std::move(style));
+        PinUID::generate(), name, defReturn, std::move(filter), style);
 }
 
 template <typename T>
@@ -126,16 +88,10 @@ BaseNode::addIN_uid(
     const std::string& name,
     T defReturn,
     std::shared_ptr<IFilter> filter,
-    std::shared_ptr<PinStyle> style)
+    PinStyle style)
 {
     auto p = std::make_shared<InPin<T>>(
-        m_flow,
-        uid,
-        name,
-        defReturn,
-        std::move(filter),
-        std::move(style),
-        this);
+        m_flow, uid, name, defReturn, std::move(filter), style, this);
     m_ins.emplace_back(p);
     return *p;
 }
@@ -146,7 +102,7 @@ BaseNode::showIN(
     const std::string& name,
     T defReturn,
     std::shared_ptr<IFilter> filter,
-    std::shared_ptr<PinStyle> style)
+    PinStyle style)
 {
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
         if (p.second->getName() == name) {
@@ -164,7 +120,7 @@ BaseNode::showIN(
                 name,
                 defReturn,
                 std::move(filter),
-                std::move(style),
+                style,
                 this)));
     return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
 }
@@ -176,7 +132,7 @@ BaseNode::showIN_uid(
     const std::string& name,
     T defReturn,
     std::shared_ptr<IFilter> filter,
-    std::shared_ptr<PinStyle> style)
+    PinStyle style)
 {
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
         if (p.second->getUid() == uid) {
@@ -194,27 +150,23 @@ BaseNode::showIN_uid(
                 name,
                 defReturn,
                 std::move(filter),
-                std::move(style),
+                style,
                 this)));
     return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
 }
 
 template <typename T>
 OutPin<T>&
-BaseNode::addOUT(const std::string& name, std::shared_ptr<PinStyle> style)
+BaseNode::addOUT(const std::string& name, PinStyle style)
 {
-    return addOUT_uid<T>(PinUID::generate(), name, std::move(style));
+    return addOUT_uid<T>(PinUID::generate(), name, style);
 }
 
 template <typename T>
 OutPin<T>&
-BaseNode::addOUT_uid(
-    const PinUID& uid,
-    const std::string& name,
-    std::shared_ptr<PinStyle> style)
+BaseNode::addOUT_uid(const PinUID& uid, const std::string& name, PinStyle style)
 {
-    auto p = std::make_shared<OutPin<T>>(
-        m_flow, uid, name, std::move(style), this);
+    auto p = std::make_shared<OutPin<T>>(m_flow, uid, name, style, this);
     m_outs.emplace_back(p);
     return *p;
 }
@@ -223,7 +175,7 @@ template <typename T>
 void BaseNode::showOUT(
     const std::string& name,
     std::function<T()> behaviour,
-    std::shared_ptr<PinStyle> style)
+    PinStyle style)
 {
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicOuts) {
         if (p.second->getName() == name) {
@@ -239,11 +191,7 @@ void BaseNode::showOUT(
         std::make_pair(
             2,
             std::make_shared<OutPin<T>>(
-                m_flow,
-                PinUID::generate(),
-                name,
-                std::move(style),
-                this)));
+                m_flow, PinUID::generate(), name, style, this)));
     static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
         ->behaviour(std::move(behaviour));
 }
@@ -253,7 +201,7 @@ void BaseNode::showOUT_uid(
     const PinUID& uid,
     const std::string& name,
     std::function<T()> behaviour,
-    std::shared_ptr<PinStyle> style)
+    PinStyle style)
 {
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicOuts) {
         if (p.second->getUid() == uid) {
@@ -269,7 +217,7 @@ void BaseNode::showOUT_uid(
         std::make_pair(
             2,
             std::make_shared<OutPin<T>>(
-                m_flow, uid, name, std::move(style), this)));
+                m_flow, uid, name, style, this)));
     static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
         ->behaviour(std::move(behaviour));
 }
