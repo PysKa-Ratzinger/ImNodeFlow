@@ -65,7 +65,7 @@ public:
     {
         node().setTitle("Simple sum");
         node().setStyle(ImFlow::NodeStyles::green);
-        node().addIN<int>("In", 0, ImFlow::ConnectionFilter::SameType());
+        node().addIN<int>("In", 0);
         node().addOUT<int>("Out").behaviour([this]() -> int {
             return node().getInVal<int>("In") + _valB;
         });
@@ -88,8 +88,8 @@ public:
     {
         node().setTitle("Collapsing node");
         node().setStyle(ImFlow::NodeStyles::red);
-        node().addIN<int>("A", 0, ImFlow::ConnectionFilter::SameType());
-        node().addIN<int>("B", 0, ImFlow::ConnectionFilter::SameType());
+        node().addIN<int>("A", 0);
+        node().addIN<int>("B", 0);
         node().addOUT<int>("Out").behaviour([this]() -> int {
             return node().getInVal<int>("A") + node().getInVal<int>("B");
         });
@@ -112,8 +112,8 @@ public:
     {
         node().setTitle("Result node");
         node().setStyle(ImFlow::NodeStyles::brown);
-        node().addIN<int>("A", 0, ImFlow::ConnectionFilter::SameType());
-        node().addIN<int>("B", 0, ImFlow::ConnectionFilter::SameType());
+        node().addIN<int>("A", 0);
+        node().addIN<int>("B", 0);
     }
 
     void draw() final
