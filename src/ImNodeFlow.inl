@@ -259,18 +259,7 @@ Pin::toOut() const
 // IN PIN
 
 template <class T>
-InPin<T>::~InPin()
-{
-    // Although I would love to place this in the Pin's dtor, by the time
-    // the Pin's dtor is called, the subclass's dtor() has already
-    // executed and as such the superclass cannot depend on the overriden
-    // virtual methods to still be reachable, which means deleteAllLinks()
-    // would be a noop in the best case, and undefined behaviour in the
-    // worst cast, that being if deleteAllLinks were pure virtual in Pin.
-    //
-    // C++ is fun. :')
-    this->deleteAllLinks();
-}
+InPin<T>::~InPin() = default;
 
 template <class T>
 void InPin<T>::calculate()
@@ -283,11 +272,11 @@ void InPin<T>::calculate()
     switch (m_strat) {
     case PinConnStrat_AllowOnlySingleConnection:
     case PinConnStrat_AllowMultiplePreferOldest:
-        m_val = m_links.front()->outPin()->toOut<T>().val();
+        m_val = m_links.front()->outPin()->template toOut<T>().val();
         return;
 
     case PinConnStrat_AllowMultiplePreferNewest:
-        m_val = m_links.back()->outPin()->toOut<T>().val();
+        m_val = m_links.back()->outPin()->template toOut<T>().val();
         return;
 
     default:
@@ -346,43 +335,6 @@ bool InPin<T>::canCreateLink(Pin& other)
 }
 
 template <class T>
-void InPin<T>::addLink(Link* link)
-{
-    for (const auto* l : m_links) {
-        if (l == link) {
-            // nothing to do
-            return;
-        }
-    }
-
-    // link does not exist
-
-    switch (m_strat) {
-    case PinConnStrat_AllowOnlySingleConnection:
-        this->deleteAllLinks();
-        m_links.emplace_back(link);
-        break;
-
-    case PinConnStrat_AllowMultiplePreferOldest:
-    case PinConnStrat_AllowMultiplePreferNewest:
-        m_links.emplace_back(link);
-        break;
-
-    default:
-        break;
-    }
-}
-
-template <class T>
-void InPin<T>::deleteAllLinks()
-{
-    for (auto* link : m_links) {
-        link->disconnect(this);
-    }
-    m_links.clear();
-}
-
-template <class T>
 void InPin<T>::removeLink(Link* link)
 {
     m_links.erase(
@@ -398,10 +350,7 @@ void InPin<T>::removeLink(Link* link)
 // OUT PIN
 
 template <class T>
-OutPin<T>::~OutPin()
-{
-    this->deleteAllLinks();
-}
+OutPin<T>::~OutPin() = default;
 
 template <class T>
 void OutPin<T>::setBehaviour(std::function<T()> new_behaviour)
@@ -436,24 +385,6 @@ bool OutPin<T>::canCreateLink(ImFlow::Pin& other)
     }
 
     return other.canCreateLink(*this);
-}
-
-template <class T>
-void OutPin<T>::addLink(Link* link)
-{
-    auto iter = std::find(m_links.begin(), m_links.end(), link);
-    if (iter == m_links.end()) {
-        m_links.emplace_back(link);
-    }
-}
-
-template <class T>
-void OutPin<T>::deleteAllLinks()
-{
-    for (auto* link : m_links) {
-        link->disconnect(this);
-    }
-    m_links.clear();
 }
 
 template <class T>

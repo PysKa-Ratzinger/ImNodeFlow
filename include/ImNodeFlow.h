@@ -1168,11 +1168,13 @@ public:
         std::string name,
         PinStyle style,
         PinType kind,
-        BaseNode* parent)
+        BaseNode* parent,
+        PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest)
         : m_flow(flow)
         , m_uid(uid)
         , m_name(std::move(name))
         , m_type(kind)
+        , m_strat(strat)
         , m_parent(parent)
         , m_style(std::move(style))
     {
@@ -1180,7 +1182,8 @@ public:
 
     virtual ~Pin()
     {
-        // Make sure we mark the link (if any) for deletion
+        // Make sure we disconnect from every connected link and mark
+        // them for disconnection
         this->deleteAllLinks();
     }
 
@@ -1270,12 +1273,12 @@ public:
      * @brief Handles the request for when a link is trying to connect
      * @param link Pointer to the link making the request
      */
-    virtual void addLink(Link* link) = 0;
+    void addLink(Link* link);
 
     /**
      * @brief Delete all link reference
      */
-    virtual void deleteAllLinks() { };
+    void deleteAllLinks();
 
     /**
      * @brief Delete a single link reference
@@ -1283,16 +1286,20 @@ public:
     virtual void removeLink(Link* link) { };
 
     /**
-     * @brief <BR>Get connected status
+     * @brief Get connected status
      * @return [TRUE] if the pin is connected
      */
-    virtual bool isConnected() const = 0;
+    bool isConnected() const { return !m_links.empty(); }
 
     /**
      * @brief Get all the links connected to this pin
      * @return A vector to an array of pointers to the connected links
      */
-    virtual std::vector<const Link*> getLinks() const = 0;
+    std::vector<const Link*> getLinks() const
+    {
+        // Return by copy
+        return std::vector<const Link*> { m_links.begin(), m_links.end() };
+    }
 
     /**
      * @brief <BR>Get pin's UID
@@ -1397,11 +1404,15 @@ protected:
     ImVec2 m_pos = ImVec2(0.f, 0.f);
     ImVec2 m_size = ImVec2(0.f, 0.f);
     const PinType m_type;
+    PinConnStrat m_strat = PinConnStrat_AllowMultiplePreferOldest;
     BaseNode* m_parent = nullptr;
     PinStyle m_style;
-    std::function<void(Pin* p)> m_renderer;
     bool m_is_hovered = false;
     bool m_was_clicked = false;
+
+    std::function<void(Pin* p)> m_renderer;
+
+    std::vector<Link*> m_links { };
 };
 
 /**
@@ -1426,12 +1437,10 @@ public:
         const std::string& name,
         T defaultValue,
         PinStyle style,
-        BaseNode* parent,
-        PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest)
+        BaseNode* parent)
         : Pin(flow, uid, name, style, PinType_Input, parent)
         , m_emptyVal(defaultValue)
         , m_val(defaultValue)
-        , m_strat(strat)
     {
     }
 
@@ -1447,17 +1456,6 @@ public:
     bool canCreateLink(Pin& other) override;
 
     /**
-     * @brief Replaces the current link, if any, with the specified link
-     * @param link Pointer to the link
-     */
-    void addLink(Link* link) override;
-
-    /**
-     * @brief Delete the link connected to the pin
-     */
-    void deleteAllLinks() override;
-
-    /**
      * @brief Removes any reference to this link, if it's held
      */
     void removeLink(Link* link) override;
@@ -1469,22 +1467,6 @@ public:
     void allowSameNodeConnections(bool state)
     {
         m_allowSelfConnection = state;
-    }
-
-    /**
-     * @brief <BR>Get connected status
-     * @return [TRUE] is pin is connected to a link
-     */
-    bool isConnected() const override { return !m_links.empty(); }
-
-    /**
-     * @brief Get all connected links
-     * @return A vector with pointers to all of this pin's connected links
-     */
-    std::vector<const Link*> getLinks() const override
-    {
-        // Return by copy
-        return std::vector<const Link*> { m_links.begin(), m_links.end() };
     }
 
     /**
@@ -1516,12 +1498,10 @@ public:
     const T& val();
 
 private:
-    std::vector<Link*> m_links { };
     T m_emptyVal;
     T m_val;
     T m_valNext;
     bool m_allowSelfConnection = false;
-    PinConnStrat m_strat = PinConnStrat_AllowMultiplePreferOldest;
 };
 
 /**
@@ -1571,36 +1551,9 @@ public:
     bool canCreateLink(Pin& other) override;
 
     /**
-     * @brief Add a connected link to the internal list
-     * @param link Pointer to the link
-     */
-    void addLink(Link* link) override;
-
-    /**
-     * @brief Delete all links associated with this pin
-     */
-    void deleteAllLinks() override;
-
-    /**
      * @brief Removes any reference to this link, if it's held
      */
     void removeLink(Link* link) override;
-
-    /**
-     * @brief <BR>Get connected status
-     * @return [TRUE] is pin is connected to one or more links
-     */
-    bool isConnected() const override { return !m_links.empty(); }
-
-    /**
-     * @brief Get all connected links
-     * @return A vector with pointers to all of this pin's connected links
-     */
-    std::vector<const Link*> getLinks() const override
-    {
-        // Return by copy
-        return std::vector<const Link*> { m_links.begin(), m_links.end() };
-    }
 
     /**
      * @brief <BR>Get pin's link attachment point (socket)
@@ -1638,7 +1591,6 @@ public:
     };
 
 private:
-    std::vector<Link*> m_links;
     std::function<T()> m_behaviour;
     T m_val;
     T m_valNext;

@@ -176,6 +176,25 @@ void Pin::linkTo(Pin& other)
     m_flow.get().createLink(*this, other);
 }
 
+void Pin::addLink(Link* link)
+{
+    auto iter = std::find(m_links.begin(), m_links.end(), link);
+    if (iter == m_links.end()) {
+        if (m_strat == PinConnStrat_AllowOnlySingleConnection) {
+            m_links.clear();
+        }
+        m_links.emplace_back(link);
+    }
+}
+
+void Pin::deleteAllLinks()
+{
+    for (auto* link : m_links) {
+        link->disconnect(this);
+    }
+    m_links.clear();
+}
+
 // -----------------------------------------------------------------------------------------------------------------
 // DYNAMIC PIN
 
