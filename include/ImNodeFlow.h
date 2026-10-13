@@ -1201,7 +1201,7 @@ class BaseNodeInstance final : public BaseNode, public T {
 public:
     static_assert(
         std::is_base_of_v<INode, T>,
-        "CRTP does not derive from IBaseNode!");
+        "Pushed type does not derive from INode!");
 
     template <typename... Args>
     explicit BaseNodeInstance(ImNodeFlow& flow, Args&&... args)
