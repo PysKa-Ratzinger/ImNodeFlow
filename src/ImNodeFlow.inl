@@ -74,27 +74,27 @@ namespace detail {
 // BASE NODE
 
 template <typename T>
-Pin& BaseNode::addIN(const std::string& name, T defReturn, PinStyle style)
+Pin& BaseNode::addIN(const std::string& name, T defaultValue, PinStyle style)
 {
-    return addIN_uid(PinUID::generate(), name, defReturn, style);
+    return addIN_uid(PinUID::generate(), name, defaultValue, style);
 }
 
 template <typename T>
 Pin& BaseNode::addIN_uid(
     const PinUID& uid,
     const std::string& name,
-    T defReturn,
+    T defaultValue,
     PinStyle style)
 {
     m_ins.emplace_back(
         std::make_unique<InPin<T>>(
-            m_flow, uid, name, defReturn, style, this));
+            m_flow, uid, name, defaultValue, style, this));
     return *m_ins.back();
 }
 
 template <typename T>
 const T&
-BaseNode::showIN(const std::string& name, T defReturn, PinStyle style)
+BaseNode::showIN(const std::string& name, T defaultValue, PinStyle style)
 {
     for (auto& dyn_pin : m_dynamicIns) {
         if (dyn_pin.pin().getName() == name) {
@@ -105,7 +105,7 @@ BaseNode::showIN(const std::string& name, T defReturn, PinStyle style)
 
     m_dynamicIns.emplace_back(
         std::make_unique<InPin<T>>(
-            m_flow, PinUID::generate(), name, defReturn, style, this));
+            m_flow, PinUID::generate(), name, defaultValue, style, this));
     return m_dynamicIns.back().pin().toIn<T>().val();
 }
 
@@ -114,7 +114,7 @@ const T&
 BaseNode::showIN_uid(
     const PinUID& uid,
     const std::string& name,
-    T defReturn,
+    T defaultValue,
     PinStyle style)
 {
     for (auto& dyn_pin : m_dynamicIns) {
@@ -126,7 +126,7 @@ BaseNode::showIN_uid(
 
     m_dynamicIns.emplace_back(
         std::make_unique<InPin<T>>(
-            m_flow, uid, name, defReturn, style, this));
+            m_flow, uid, name, defaultValue, style, this));
     return m_dynamicIns.back().pin().toIn<T>().val();
 }
 

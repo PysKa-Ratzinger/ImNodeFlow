@@ -689,7 +689,7 @@ public:
      *	    <BR> <BR> The UID must be unique only in the context of the current node's inputs.
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
-     * @param defReturn Default return value when the pin is not connected
+     * @param defaultValue Default return value when the pin is not connected
      * @param style Style of the pin
      * @return Reference to the newly added pin. Do not save this
      * reference. If you need to consult this specific pin, save it's
@@ -698,7 +698,7 @@ public:
     template <typename T>
     Pin&
     addIN(const std::string& name,
-        T defReturn,
+        T defaultValue,
         PinStyle style = PinStyles::default_style);
 
     /**
@@ -708,7 +708,7 @@ public:
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
-     * @param defReturn Default return value when the pin is not connected
+     * @param defaultValue Default return value when the pin is not connected
      * @param style Style of the pin
      * @return Reference to the newly added pin. Do not save this
      * reference. If you need to consult this specific pin, save it's
@@ -718,7 +718,7 @@ public:
     Pin& addIN_uid(
         const PinUID& uid,
         const std::string& name,
-        T defReturn,
+        T defaultValue,
         PinStyle style = PinStyles::default_style);
 
     /**
@@ -741,14 +741,14 @@ public:
      *	    <BR> <BR> The UID must be unique only in the context of the current node's inputs.
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
-     * @param defReturn Default return value when the pin is not connected
+     * @param defaultValue Default return value when the pin is not connected
      * @param style Style of the pin
-     * @return Const reference to the value of the connected link for the current frame of defReturn
+     * @return Const reference to the value of the connected link for the current frame of defaultValue
      */
     template <typename T>
     const T&
     showIN(const std::string& name,
-        T defReturn,
+        T defaultValue,
         PinStyle style = PinStyles::default_style);
 
     /**
@@ -759,15 +759,15 @@ public:
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
-     * @param defReturn Default return value when the pin is not connected
+     * @param defaultValue Default return value when the pin is not connected
      * @param style Style of the pin
-     * @return Const reference to the value of the connected link for the current frame of defReturn
+     * @return Const reference to the value of the connected link for the current frame of defaultValue
      */
     template <typename T>
     const T& showIN_uid(
         const PinUID& uid,
         const std::string& name,
-        T defReturn,
+        T defaultValue,
         PinStyle style = PinStyles::default_style);
 
     /**
@@ -1399,7 +1399,7 @@ public:
      * @brief <BR>Input pin constructor
      * @param name Name of the pin
      * @param parent Pointer to the Node containing the pin
-     * @param defReturn Default return value when the pin is not connected
+     * @param defaultValue Default return value when the pin is not connected
      * @param inf Pointer to the Grid Handler the pin is in (same as parent)
      * @param style Style of the pin
      */
@@ -1407,12 +1407,12 @@ public:
         ImNodeFlow& flow,
         PinUID uid,
         const std::string& name,
-        T defReturn,
+        T defaultValue,
         PinStyle style,
         BaseNode* parent)
         : Pin(flow, uid, name, style, PinType_Input, parent)
-        , m_emptyVal(defReturn)
-        , m_val(defReturn)
+        , m_emptyVal(defaultValue)
+        , m_val(defaultValue)
     {
     }
 
