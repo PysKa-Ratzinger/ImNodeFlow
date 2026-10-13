@@ -98,11 +98,32 @@ public:
     void draw() final
     {
         if (node().isSelected()) {
-            ImGui::SetNextItemWidth(100.f);
+            ImGui::SetNextItemWidth(100.F);
             ImGui::Text(
                 "You can only see me when the node is selected!");
+
+            const char* multiplier_label = m_multiplier ? "On" : "Off";
+            ImGui::SetNextItemWidth(100.F);
+            if (ImGui::BeginCombo("Multiplier", multiplier_label)) {
+                if (ImGui::Selectable("Off", !m_multiplier)) {
+                    m_multiplier = false;
+                }
+                if (ImGui::Selectable("On", m_multiplier)) {
+                    m_multiplier = true;
+                }
+                ImGui::EndCombo();
+            }
+        }
+
+        if (m_multiplier) {
+            node().showOUT<int>("Multiplier", [this]() -> int {
+                return node().getInVal<int>("A") * node().getInVal<int>("B");
+            });
         }
     }
+
+private:
+    bool m_multiplier = false;
 };
 
 class ResultNode : public SimpleNodeWrapper {

@@ -96,24 +96,17 @@ template <typename T>
 const T&
 BaseNode::showIN(const std::string& name, T defReturn, PinStyle style)
 {
-    for (std::pair<int, std::unique_ptr<Pin>>& p : m_dynamicIns) {
-        if (p.second->getName() == name) {
-            p.first = 1;
-            return static_cast<InPin<T>*>(p.second.get())->val();
+    for (auto& dyn_pin : m_dynamicIns) {
+        if (dyn_pin.pin().getName() == name) {
+            dyn_pin.refresh();
+            return static_cast<InPin<T>&>(dyn_pin.pin()).val();
         }
     }
 
     m_dynamicIns.emplace_back(
-        std::make_pair(
-            1,
-            std::make_unique<InPin<T>>(
-                m_flow,
-                PinUID::generate(),
-                name,
-                defReturn,
-                style,
-                this)));
-    return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
+        std::make_unique<InPin<T>>(
+            m_flow, PinUID::generate(), name, defReturn, style, this));
+    return static_cast<InPin<T>&>(m_dynamicIns.back().pin()).val();
 }
 
 template <typename T>
@@ -124,19 +117,17 @@ BaseNode::showIN_uid(
     T defReturn,
     PinStyle style)
 {
-    for (std::pair<int, std::unique_ptr<Pin>>& p : m_dynamicIns) {
-        if (p.second->getUid() == uid) {
-            p.first = 1;
-            return static_cast<InPin<T>*>(p.second.get())->val();
+    for (auto& dyn_pin : m_dynamicIns) {
+        if (dyn_pin.pin().getUid() == uid) {
+            dyn_pin.refresh();
+            return static_cast<InPin<T>&>(dyn_pin.pin()).val();
         }
     }
 
     m_dynamicIns.emplace_back(
-        std::make_pair(
-            1,
-            std::make_unique<InPin<T>>(
-                m_flow, uid, name, defReturn, style, this)));
-    return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
+        std::make_unique<InPin<T>>(
+            m_flow, uid, name, defReturn, style, this));
+    return static_cast<InPin<T>&>(m_dynamicIns.back().pin()).val();
 }
 
 template <typename T>
@@ -168,23 +159,26 @@ void BaseNode::showOUT(
     std::function<T()> behaviour,
     PinStyle style)
 {
-    for (std::pair<int, std::unique_ptr<Pin>>& p : m_dynamicOuts) {
-        if (p.second->getName() == name) {
-            p.first = 2;
-            static_cast<OutPin<T>*>(
-                m_dynamicOuts.back().second.get())
-                ->behaviour(std::move(behaviour));
+    for (auto& dyn_pin : m_dynamicOuts) {
+        if (dyn_pin.pin().getName() == name) {
+            dyn_pin.refresh();
+            static_cast<OutPin<T>&>(m_dynamicOuts.back().pin())
+                .setBehaviour(std::move(behaviour));
             return;
         }
     }
 
     m_dynamicOuts.emplace_back(
-        std::make_pair(
-            2,
-            std::make_unique<OutPin<T>>(
-                m_flow, PinUID::generate(), name, style, this)));
-    static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
-        ->behaviour(std::move(behaviour));
+        std::make_unique<OutPin<T>>(
+            m_flow,
+            PinUID::generate(),
+            name,
+            std::move(behaviour),
+            style,
+            this));
+
+    static_cast<OutPin<T>&>(m_dynamicOuts.back().pin())
+        .setBehaviour(std::move(behaviour));
 }
 
 template <typename T>
@@ -194,23 +188,20 @@ void BaseNode::showOUT_uid(
     std::function<T()> behaviour,
     PinStyle style)
 {
-    for (std::pair<int, std::unique_ptr<Pin>>& p : m_dynamicOuts) {
-        if (p.second->getUid() == uid) {
-            p.first = 2;
-            static_cast<OutPin<T>*>(
-                m_dynamicOuts.back().second.get())
-                ->behaviour(std::move(behaviour));
+    for (auto& dyn_pin : m_dynamicOuts) {
+        if (dyn_pin.pin().getUid() == uid) {
+            dyn_pin.refresh();
+            static_cast<OutPin<T>&>(m_dynamicOuts.back().pin())
+                .setBehaviour(std::move(behaviour));
             return;
         }
     }
 
     m_dynamicOuts.emplace_back(
-        std::make_pair(
-            2,
-            std::make_unique<OutPin<T>>(
-                m_flow, uid, name, style, this)));
-    static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
-        ->behaviour(std::move(behaviour));
+        std::make_unique<OutPin<T>>(
+            m_flow, uid, name, std::move(behaviour), style, this));
+    static_cast<OutPin<T>&>(m_dynamicOuts.back().pin())
+        .setBehaviour(std::move(behaviour));
 }
 
 template <typename T>
@@ -319,6 +310,12 @@ template <class T>
 OutPin<T>::~OutPin()
 {
     this->deleteAllLinks();
+}
+
+template <class T>
+void OutPin<T>::setBehaviour(std::function<T()> new_behaviour)
+{
+    this->m_behaviour = std::move(new_behaviour);
 }
 
 template <class T>

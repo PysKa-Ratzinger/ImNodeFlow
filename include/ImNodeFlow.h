@@ -231,6 +231,27 @@ namespace NodeStyles {
 }
 
 // -----------------------------------------------------------------------------------------------------------------
+// DYNAMIC PIN
+
+/**
+ * @brief A dynamic pin is a pin with a temporary lifetime, and will be marked
+ * for deletion if not refreshed before every update
+ */
+class DynamicPin {
+public:
+    explicit DynamicPin(std::unique_ptr<Pin> pin);
+
+    void refresh();
+    void update();
+    Pin& pin();
+    const Pin& pin() const;
+    [[nodiscard]] bool isStale() const;
+
+    std::unique_ptr<Pin> m_pin;
+    uint32_t m_ttl = 1;
+};
+
+// -----------------------------------------------------------------------------------------------------------------
 // LINK
 
 /**
@@ -886,32 +907,25 @@ public:
      * @brief <BR>Get internal input pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::unique_ptr<Pin>>& getIns() { return m_ins; }
+    std::vector<std::unique_ptr<Pin>>& getIns() { return m_ins; }
 
     /**
      * @brief <BR>Get internal output pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::unique_ptr<Pin>>& getOuts() { return m_outs; }
+    std::vector<std::unique_ptr<Pin>>& getOuts() { return m_outs; }
 
     /**
      * @brief <BR>Get internal dynamic input pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::pair<int, std::unique_ptr<Pin>>>& getDynamicIns()
-    {
-        return m_dynamicIns;
-    }
+    std::vector<DynamicPin>& getDynamicIns() { return m_dynamicIns; }
 
     /**
      * @brief <BR>Get internal dynamic output pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::pair<int, std::unique_ptr<Pin>>>&
-    getDynamicOuts()
-    {
-        return m_dynamicOuts;
-    }
+    std::vector<DynamicPin>& getDynamicOuts() { return m_dynamicOuts; }
 
     /**
      * @brief <BR>Delete itself
@@ -1104,9 +1118,9 @@ private:
     std::function<void()> m_on_cleanup = []() -> void { };
 
     std::vector<std::unique_ptr<Pin>> m_ins;
-    std::vector<std::pair<int, std::unique_ptr<Pin>>> m_dynamicIns;
+    std::vector<DynamicPin> m_dynamicIns;
     std::vector<std::unique_ptr<Pin>> m_outs;
-    std::vector<std::pair<int, std::unique_ptr<Pin>>> m_dynamicOuts;
+    std::vector<DynamicPin> m_dynamicOuts;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -1157,7 +1171,7 @@ public:
      * @brief <BR>Main loop of the pin
      * @details Updates position, hovering and dragging status, and renders the pin. Must be called each frame.
      */
-    void update(ImNodeFlow& ctx);
+    void update();
 
     /**
      * @brief <BR>Draw default pin's socket
@@ -1542,6 +1556,13 @@ public:
     {
         return m_pos + ImVec2(m_size.x + m_style.extra.socket_padding, m_size.y / 2);
     }
+
+    /**
+     * @brief Updates the behaviour function for this output pin
+     * @param new_behaviour The behaviour which will replace the existing
+     * one
+     */
+    void setBehaviour(std::function<T()> new_behaviour);
 
     void calculate() override;
 

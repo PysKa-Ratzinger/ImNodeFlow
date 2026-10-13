@@ -2,6 +2,7 @@
 
 #include <imgui_internal.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -125,7 +126,7 @@ Pin::drawDecoration()
 }
 
 inline void
-Pin::update(ImNodeFlow& ctx)
+Pin::update()
 {
     m_is_hovered = false;
     m_was_clicked = false;
@@ -173,6 +174,42 @@ void Pin::linkTo(Pin& other)
     }
 
     m_flow.get().createLink(*this, other);
+}
+
+// -----------------------------------------------------------------------------------------------------------------
+// DYNAMIC PIN
+
+DynamicPin::DynamicPin(std::unique_ptr<Pin> pin)
+    : m_pin(std::move(pin))
+{
+    this->refresh();
+}
+
+void DynamicPin::refresh()
+{
+    this->m_ttl = 1;
+}
+
+void DynamicPin::update()
+{
+    m_ttl = m_ttl > 0 ? m_ttl - 1 : m_ttl;
+    this->pin().update();
+}
+
+Pin& DynamicPin::pin()
+{
+    return *m_pin;
+}
+
+const Pin&
+DynamicPin::pin() const
+{
+    return *m_pin;
+}
+
+bool DynamicPin::isStale() const
+{
+    return m_ttl == 0;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -348,13 +385,13 @@ void BaseNode::calculate()
         pin->calculate();
     }
     for (auto& pin : m_dynamicOuts) {
-        pin.second->calculate();
+        pin.pin().calculate();
     }
     for (auto& pin : m_ins) {
         pin->calculate();
     }
     for (auto& pin : m_dynamicIns) {
-        pin.second->calculate();
+        pin.pin().calculate();
     }
 }
 
@@ -364,13 +401,13 @@ void BaseNode::prime()
         pin->prime();
     }
     for (auto& pin : m_dynamicOuts) {
-        pin.second->prime();
+        pin.pin().prime();
     }
     for (auto& pin : m_ins) {
         pin->prime();
     }
     for (auto& pin : m_dynamicIns) {
-        pin.second->prime();
+        pin.pin().prime();
     }
 }
 
@@ -395,19 +432,16 @@ void BaseNode::update(ImNodeFlow& ctx)
     float headerH = ImGui::GetItemRectSize().y;
     float titleW = ImGui::GetItemRectSize().x;
 
-    // Inputs
+    // Inputs (Left Side)
     if (!m_ins.empty() || !m_dynamicIns.empty()) {
         ImGui::BeginGroup();
         for (auto& p : m_ins) {
             p->setPos(ImGui::GetCursorPos());
-            p->update(ctx);
+            p->update();
         }
-        for (auto& p : m_dynamicIns) {
-            if (p.first == 1) {
-                p.second->setPos(ImGui::GetCursorPos());
-                p.second->update(ctx);
-                p.first = 0;
-            }
+        for (auto& dyn_pin : m_dynamicIns) {
+            dyn_pin.pin().setPos(ImGui::GetCursorPos());
+            dyn_pin.update();
         }
         ImGui::EndGroup();
         ImGui::SameLine();
@@ -427,36 +461,35 @@ void BaseNode::update(ImNodeFlow& ctx)
         if (w > maxW)
             maxW = w;
     }
-    for (auto& p : m_dynamicOuts) {
-        float w = p.second->calcWidth();
+    for (auto& dyn_pin : m_dynamicOuts) {
+        float w = dyn_pin.pin().calcWidth();
         if (w > maxW)
             maxW = w;
     }
     ImGui::BeginGroup();
-    for (auto& p : m_outs) {
+    for (auto& pin : m_outs) {
         // FIXME: This looks horrible
         if ((m_pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
-            p->setPos(
-                ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - p->calcWidth(), 0.f));
+            pin->setPos(
+                ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - pin->calcWidth(), 0.f));
         else
-            p->setPos(ImVec2(
-                (m_pos + ImVec2(titleW - p->calcWidth(), 0) + ctx.getGrid().scroll())
+            pin->setPos(ImVec2(
+                (m_pos + ImVec2(titleW - pin->calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
-        p->update(ctx);
+        pin->update();
     }
-    for (auto& p : m_dynamicOuts) {
+    for (auto& dyn_pin : m_dynamicOuts) {
         // FIXME: This looks horrible
         if ((m_pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
-            p.second->setPos(
-                ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - p.second->calcWidth(), 0.f));
+            dyn_pin.pin().setPos(
+                ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - dyn_pin.pin().calcWidth(), 0.f));
         else
-            p.second->setPos(ImVec2(
-                (m_pos + ImVec2(titleW - p.second->calcWidth(), 0) + ctx.getGrid().scroll())
+            dyn_pin.pin().setPos(ImVec2(
+                (m_pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
-        p.second->update(ctx);
-        p.first -= 1;
+        dyn_pin.update();
     }
 
     ImGui::EndGroup();
@@ -540,20 +573,6 @@ void BaseNode::update(ImNodeFlow& ctx)
     }
     ImGui::PopID();
 
-    // Deleting dead pins
-    m_dynamicIns.erase(
-        std::remove_if(
-            m_dynamicIns.begin(),
-            m_dynamicIns.end(),
-            [](const auto& elem) -> bool { return elem.first == 0; }),
-        m_dynamicIns.end());
-    m_dynamicOuts.erase(
-        std::remove_if(
-            m_dynamicOuts.begin(),
-            m_dynamicOuts.end(),
-            [](const auto& elem) -> bool { return elem.first == 0; }),
-        m_dynamicOuts.end());
-
     m_is_hovered = ImGui::IsMouseHoveringRect(
         ctx.grid2screen(m_pos - paddingTL),
         ctx.grid2screen(m_pos + m_size + paddingBR));
@@ -564,6 +583,21 @@ void BaseNode::draw()
     if (m_on_draw) {
         m_on_draw();
     }
+
+    // Dynamic inputs stale check can only be done after the call to
+    // m_on_draw() and before any call to DynamicPin::update()
+    m_dynamicIns.erase(
+        std::remove_if(
+            m_dynamicIns.begin(),
+            m_dynamicIns.end(),
+            [](const auto& elem) -> bool { return elem.isStale(); }),
+        m_dynamicIns.end());
+    m_dynamicOuts.erase(
+        std::remove_if(
+            m_dynamicOuts.begin(),
+            m_dynamicOuts.end(),
+            [](const auto& elem) -> bool { return elem.isStale(); }),
+        m_dynamicOuts.end());
 }
 
 void BaseNode::on_draw(std::function<void()> draw_func)
@@ -762,22 +796,22 @@ void ImNodeFlow::update()
                 clicked_pin = &*pin;
             }
         }
-        for (auto& elem : node.getDynamicIns()) {
-            auto& pin = elem.second;
-            if (pin->isHovered()) {
-                hovered_pin = &*pin;
+        for (auto& dyn_pin : node.getDynamicIns()) {
+            auto& pin = dyn_pin.pin();
+            if (pin.isHovered()) {
+                hovered_pin = &pin;
             }
-            if (pin->wasClicked()) {
-                clicked_pin = &*pin;
+            if (pin.wasClicked()) {
+                clicked_pin = &pin;
             }
         }
-        for (auto& elem : node.getDynamicOuts()) {
-            auto& pin = elem.second;
-            if (pin->isHovered()) {
-                hovered_pin = &*pin;
+        for (auto& dyn_pin : node.getDynamicOuts()) {
+            auto& pin = dyn_pin.pin();
+            if (pin.isHovered()) {
+                hovered_pin = &pin;
             }
-            if (pin->wasClicked()) {
-                clicked_pin = &*pin;
+            if (pin.wasClicked()) {
+                clicked_pin = &pin;
             }
         }
     }
