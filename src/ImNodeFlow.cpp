@@ -697,15 +697,52 @@ ImNodeFlow::grid2screen(const ImVec2& p)
 void ImNodeFlow::createLink(Pin& source_pin, Pin& target_pin)
 {
     if (source_pin.getType() == PinType_Input && target_pin.getType() == PinType_Output) {
-        return this->createLink(target_pin, source_pin);
+        this->createLink(target_pin, source_pin);
+        return;
     }
 
-    if (source_pin.getType() == PinType_Output && target_pin.getType() == PinType_Input) {
-        if (source_pin.canCreateLink(target_pin)) {
-            m_links.emplace_back(
-                std::make_unique<Link>(source_pin, target_pin));
+    if (&source_pin == &target_pin) {
+        return;
+    }
+
+    if (source_pin.getType() != PinType_Output || target_pin.getType() != PinType_Input) {
+        return;
+    }
+
+    bool same_node_allowed = source_pin.allowsSameNodeConnections() && target_pin.allowsSameNodeConnections();
+    if (&source_pin.getParent() == &target_pin.getParent() && !same_node_allowed) {
+        return;
+    }
+
+    for (const auto& link : source_pin.getLinks()) {
+        if (&link->inPin() == &target_pin) {
+            // Connection already exists
+            return;
         }
     }
+
+    // Only pins with the same type can be linked. Casts between
+    // compatible types like (float and double), or (short, int, and long)
+    // should be handled explicitly by user types.
+    //
+    // On a technical note, supporting these casts is not necessarily hard,
+    // but introduces a layer of complexity which either requires RTTI (so
+    // we know how to type-cast), or manual RTTI (using a compile-time
+    // type_id<T>, which is possible, but we are now responsible for
+    // maintaining a list of which type conversions should be possible and
+    // which aren't), or it might introduce subtle programming errors
+    // given the nature that different types might naturally have different
+    // sizes in memory, and getting a cast wrong may result in writing
+    // into out-of-bounds memory.
+    //
+    // Supporting connections only between same types avoids all these
+    // issues, and it's not something that's prohibitibly hard to work
+    // around on the client side.
+    if (source_pin.getTypeID() != target_pin.getTypeID()) {
+        return;
+    }
+
+    m_links.emplace_back(std::make_unique<Link>(source_pin, target_pin));
 }
 
 void ImNodeFlow::update()

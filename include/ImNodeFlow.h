@@ -206,9 +206,15 @@ enum PinConnStrat {
  * @brief Description of parameters customizable during pin creation
  */
 struct BasePinInfo {
+    /// Name of the pin
     std::string name;
+    /// Whether it's an input pin or an output pin
     PinType kind;
+    /// Whether links coming from the same node are allowed
+    bool allow_same_node_connections = false;
+    /// Style to apply to the pin
     PinStyle style = PinStyles::cyan;
+    /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest;
 };
 
@@ -222,6 +228,8 @@ struct InPinInfo {
     /// Default value the input pin will return when not connected
     /// to any output pin
     T default_value;
+    /// Whether links coming from the same node are allowed
+    bool allow_same_node_connections = false;
     /// Style to apply to the pin
     PinStyle style = PinStyles::cyan;
     /// Strategy to use regarding multiple link connections
@@ -237,6 +245,8 @@ struct OutPinInfo {
     std::string name;
     /// Behaviour of the pin when a value update is requested
     std::function<T()> behaviour;
+    /// Whether links coming from the same node are allowed
+    bool allow_same_node_connections = true;
     /// Style to apply to the pin
     PinStyle style = PinStyles::red;
     /// Strategy to use regarding multiple link connections
@@ -1275,12 +1285,6 @@ public:
     void linkTo(Pin& other);
 
     /**
-     * @brief Create link between pins
-     * @param other Pointer to the other pin
-     */
-    virtual bool canCreateLink(Pin& other) = 0;
-
-    /**
      * @brief Handles the request for when a link is trying to connect
      * @param link Pointer to the link making the request
      */
@@ -1361,6 +1365,15 @@ public:
     PinStyle& getStyle() { return m_style; }
 
     /**
+     * @brief Specify if connections from an output on the same node are allowed
+     * @param state New state of the flag
+     */
+    [[nodiscard]] bool allowsSameNodeConnections() const
+    {
+        return m_allowSelfConnection;
+    }
+
+    /**
      * @brief Get pin's link attachment point (socket)
      * @return Grid coordinates to the attachment point between the link and the pin's socket
      */
@@ -1417,6 +1430,7 @@ protected:
     PinType m_kind;
     PinStyle m_style;
     PinConnStrat m_strat;
+    bool m_allowSelfConnection = false;
 
     ImVec2 m_pos = ImVec2(0.F, 0.F);
     ImVec2 m_size = ImVec2(0.F, 0.F);
@@ -1455,6 +1469,7 @@ public:
               BasePinInfo {
                   .name = std::move(info.name),
                   .kind = PinType::PinType_Input,
+                  .allow_same_node_connections = info.allow_same_node_connections,
                   .style = info.style,
                   .strat = info.strat,
               })
@@ -1469,24 +1484,9 @@ public:
     ~InPin() override;
 
     /**
-     * @brief Create link between pins
-     * @param other Pointer to the other pin
-     */
-    bool canCreateLink(Pin& other) override;
-
-    /**
      * @brief Removes any reference to this link, if it's held
      */
     void removeLink(Link* link) override;
-
-    /**
-     * @brief Specify if connections from an output on the same node are allowed
-     * @param state New state of the flag
-     */
-    void allowSameNodeConnections(bool state)
-    {
-        m_allowSelfConnection = state;
-    }
 
     /**
      * @brief Get pin's data type (aka: \<T>)
@@ -1520,7 +1520,6 @@ private:
     T m_emptyVal;
     T m_val;
     T m_valNext;
-    bool m_allowSelfConnection = false;
 };
 
 /**
@@ -1553,6 +1552,7 @@ public:
               BasePinInfo {
                   .name = std::move(info.name),
                   .kind = PinType_Output,
+                  .allow_same_node_connections = info.allow_same_node_connections,
                   .style = info.style,
                   .strat = info.strat,
               })
@@ -1564,12 +1564,6 @@ public:
      * @brief When parent gets deleted, remove the links
      */
     ~OutPin() override;
-
-    /**
-     * @brief Create link between pins
-     * @param other Pointer to the other pin
-     */
-    bool canCreateLink(Pin& other) override;
 
     /**
      * @brief Removes any reference to this link, if it's held

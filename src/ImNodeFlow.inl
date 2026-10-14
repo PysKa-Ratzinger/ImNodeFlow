@@ -273,47 +273,6 @@ InPin<T>::val()
 }
 
 template <class T>
-bool InPin<T>::canCreateLink(Pin& other)
-{
-    if (&other == this) {
-        return false;
-    }
-
-    if (other.getType() == PinType_Input) {
-        return false;
-    }
-
-    if (&getParent() == &other.getParent() && !m_allowSelfConnection) {
-        return false;
-    }
-
-    for (const auto* link : m_links) {
-        if (&link->outPin() == &other) {
-            return false;
-        }
-    }
-
-    // Only pins with the same type can be linked. Casts between
-    // compatible types like (float and double), or (short, int, and long)
-    // should be handled explicitly by user types.
-    //
-    // On a technical note, supporting these casts is not necessarily hard,
-    // but introduces a layer of complexity which either requires RTTI (so
-    // we know how to type-cast), or manual RTTI (using a compile-time
-    // type_id<T>, which is possible, but we are now responsible for
-    // maintaining a list of which type conversions should be possible and
-    // which aren't), or it might introduce subtle programming errors
-    // given the nature that different types might naturally have different
-    // sizes in memory, and getting a cast wrong may result in writing
-    // into out-of-bounds memory.
-    //
-    // Supporting connections only between same types avoids all these
-    // issues, and it's not something that's prohibitibly hard to work
-    // around on the client side.
-    return other.getTypeID() == this->getTypeID();
-}
-
-template <class T>
 void InPin<T>::removeLink(Link* link)
 {
     m_links.erase(
@@ -354,16 +313,6 @@ const T&
 OutPin<T>::val()
 {
     return m_val;
-}
-
-template <class T>
-bool OutPin<T>::canCreateLink(ImFlow::Pin& other)
-{
-    if (&other == this || other.getType() == PinType_Output) {
-        return false;
-    }
-
-    return other.canCreateLink(*this);
 }
 
 template <class T>
