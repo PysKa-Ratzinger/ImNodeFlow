@@ -1,5 +1,7 @@
 #include "ImNodeFlow.h"
 
+#include <imgui_internal.h>
+
 #include <algorithm>
 #include <cassert>
 #include <memory>
@@ -176,7 +178,6 @@ void Link::update(ImNodeFlow& ctx)
     ImVec2 start = m_out_pin->pinPoint();
     ImVec2 end = m_in_pin->pinPoint();
     float thickness = m_out_pin->getStyle().extra.link_thickness;
-    bool mouseClickState = ctx.getSingleUseClick(ImGuiMouseButton_Left);
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         m_selected = false;
@@ -185,7 +186,7 @@ void Link::update(ImNodeFlow& ctx)
             ImGui::GetMousePos(), start, end, 2.5)) {
         m_hovered = true;
         thickness = m_out_pin->getStyle().extra.link_hovered_thickness;
-        if (mouseClickState) {
+        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
             ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
             m_selected = true;
         }
@@ -544,7 +545,7 @@ void Node::update()
     float thickness = m_style.border_thickness;
     ImVec2 ptl = paddingTL;
     ImVec2 pbr = paddingBR;
-    if (m_selected) {
+    if (this->isSelected()) {
         col = m_style.border_selected_color;
         thickness = m_style.border_selected_thickness;
     }
@@ -563,27 +564,29 @@ void Node::update()
         0,
         thickness);
 
-    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node())
-        selected(false);
+    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {
+        setSelected(false);
+    }
+
+    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected()) {
+        destroy();
+    }
 
     if (isHovered()) {
+        bool onHeader = ImGui::IsMouseHoveringRect(
+            offset + m_pos - paddingTL, offset + m_pos + headerSize);
+
         ctx.hoveredNode(this);
-        if (mouseClickState) {
-            selected(true);
+        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
             ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
+            setSelected(true);
+            if (onHeader) {
+                m_dragged = true;
+                ctx.draggingNode(true);
+            }
         }
     }
 
-    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected())
-        destroy();
-
-    bool onHeader = ImGui::IsMouseHoveringRect(
-        offset + m_pos - paddingTL, offset + m_pos + headerSize);
-    if (onHeader && mouseClickState) {
-        ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
-        m_dragged = true;
-        ctx.draggingNode(true);
-    }
     if (m_dragged || (m_selected && ctx.isNodeDragged())) {
         float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
         m_posTarget += ctx.getScreenSpaceDelta();
@@ -843,47 +846,57 @@ void ImNodeFlow::update()
             m_dragOut = nullptr;
     }
 
-    // Box selection
-    if (mouse_on_free_space() && !m_draggingNode && !m_dragOut && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
-        m_boxSelecting = true;
-        m_boxSelectStart = ImGui::GetMousePos();
-        // Deselect all nodes if not holding Ctrl
+    if (this->mouse_on_free_space() && !m_box.active && !m_draggingNode && !m_dragOut && getSingleUseClick(ImGuiMouseButton_Left) && ImGui::IsWindowHovered()) {
+        consumeSingleUseClick(ImGuiMouseButton_Left);
+        m_box.active = true;
+        m_box.selectionStart = ImGui::GetMousePos();
+
+        // Deselect all nodes if not holding down CTRL
         if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
             for (auto& node : m_nodes) {
-                node.second->selected(false);
+                node.second->setSelected(false);
             }
         }
     }
 
-    if (m_boxSelecting) {
-        ImVec2 boxEnd = ImGui::GetMousePos();
-        ImVec2 boxMin = ImVec2(std::min(m_boxSelectStart.x, boxEnd.x),
-            std::min(m_boxSelectStart.y, boxEnd.y));
-        ImVec2 boxMax = ImVec2(std::max(m_boxSelectStart.x, boxEnd.x),
-            std::max(m_boxSelectStart.y, boxEnd.y));
+    if (m_box.active) {
+        ImRect boxClip { m_box.selectionStart, m_box.selectionStart };
+        boxClip.Add(ImGui::GetMousePos());
 
-        // Draw selection rectangle
-        draw_list->AddRectFilled(boxMin, boxMax, m_boxSelectColor);
+        draw_list->AddRectFilled(
+            boxClip.GetBL(), boxClip.GetTR(), m_box.selectionColor);
         draw_list->AddRect(
-            boxMin, boxMax, m_boxSelectBorderColor, 0.0f, 0, 1.5f);
+            boxClip.GetBL(),
+            boxClip.GetTR(),
+            m_box.borderColor,
+            0.0F,
+            0,
+            1.5F);
 
-        // Select nodes that intersect with the box
-        for (auto& node : m_nodes) {
-            ImVec2 nodePos = grid2screen(node.second->getPos());
-            ImVec2 nodeSize = node.second->getSize() * m_context.scale();
-            ImVec2 nodeMin = nodePos;
-            ImVec2 nodeMax = nodePos + nodeSize;
-
-            // Check if node intersects with selection box
-            bool intersects = !(nodeMax.x < boxMin.x || nodeMin.x > boxMax.x || nodeMax.y < boxMin.y || nodeMin.y > boxMax.y);
-
-            if (intersects) {
-                node.second->selected(true);
-            }
-        }
+        bool shouldMarkSelected = false;
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            m_boxSelecting = false;
+            m_box.active = false;
+            shouldMarkSelected = true;
+        } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            // cancel selection
+            m_box.active = false;
+        }
+
+        for (auto& elem : m_nodes) {
+            auto& node = *elem.second;
+
+            ImVec2 nodePos = grid2screen(node.getPos());
+            ImVec2 nodeSize = node.getSize();
+
+            ImRect nodeClip { nodePos, nodePos + nodeSize };
+            if (boxClip.Overlaps(nodeClip)) {
+                if (shouldMarkSelected) {
+                    node.setSelected(true);
+                } else {
+                    node.setProvisionallySelected(true);
+                }
+            }
         }
     }
 

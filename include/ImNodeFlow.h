@@ -835,11 +835,14 @@ private:
 
     InfStyler m_style;
 
-    // Box selection
-    bool m_boxSelecting = false;
-    ImVec2 m_boxSelectStart = ImVec2(0, 0);
-    ImU32 m_boxSelectColor = IM_COL32(100, 150, 255, 50);
-    ImU32 m_boxSelectBorderColor = IM_COL32(100, 150, 255, 200);
+    struct SelectionBox {
+        bool active = false;
+        ImVec2 selectionStart;
+        ImU32 selectionColor = IM_COL32(100, 150, 255, 50);
+        ImU32 borderColor = IM_COL32(100, 150, 255, 200);
+    };
+
+    SelectionBox m_box;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -1142,7 +1145,10 @@ public:
      * @brief Get selected status
      * @return [TRUE] if the node is selected
      */
-    [[nodiscard]] bool isSelected() const { return m_selected; }
+    [[nodiscard]] bool isSelected() const
+    {
+        return m_selected || m_provisionallySelected;
+    }
 
     /**
      * @brief Get dragged status
@@ -1197,16 +1203,33 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    Node& selected(bool state)
+    Node& setSelected(bool state)
     {
         m_selectedNext = state;
         return *this;
     }
 
     /**
+     * @brief Set provisionally selected status
+     * @param state New provisionally selected state
+     *
+     * Status only updates when updatePublicStatus() is called
+     */
+    Node& setProvisionallySelected(bool state)
+    {
+        m_provisionallySelectedNext = state;
+        return *this;
+    }
+
+    /**
      * @brief Update the isSelected status of the node
      */
-    void updatePublicStatus() { m_selected = m_selectedNext; }
+    void updatePublicStatus()
+    {
+        m_selected = m_selectedNext;
+        m_provisionallySelected = m_provisionallySelectedNext;
+        m_provisionallySelectedNext = false;
+    }
 
     /**
      * @brief Have every pin calculate their next output value
@@ -1231,6 +1254,8 @@ private:
     NodeStyle m_style;
     bool m_selected = false;
     bool m_selectedNext = false;
+    bool m_provisionallySelected = false;
+    bool m_provisionallySelectedNext = false;
     bool m_dragged = false;
     bool m_destroyed = false;
 
