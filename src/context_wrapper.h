@@ -210,6 +210,7 @@ public:
     }
     ImGuiContext* getRawContext() { return m_ctx; }
     void setFontDensity();
+    void sampleHostFontDensity();
 
 private:
     ContainedContextConfig m_config;
@@ -223,11 +224,7 @@ private:
     bool m_anyWindowHovered = false;
     bool m_anyItemActive = false;
     bool m_hovered = false;
-    // Font rasterizer density of the *host* context, sampled in begin() right
-    // after BeginChild() (i.e. after ImGui has set it from the host viewport's
-    // FramebufferScale). 1.0 on a standard-DPI display, 2.0 on a typical HiDPI
-    // one. The inner context has no platform window of its own, so ImGui can
-    // only ever derive 1.0 for it -- we have to carry the host's value across.
+    /// Font rasterizer density of the *host* context
     float m_hostFontDensity = 1.f;
 
     float m_scale = m_config.default_zoom,
@@ -267,6 +264,25 @@ ContainedContext::setFontDensity()
 #endif
 }
 
+// Samples the font rasterizer density of the *host* context. Should be called
+// in begin() right after BeginChild() (i.e. after ImGui has set it from the
+// host viewport's FramebufferScale). 1.0 on a standard-DPI display, 2.0 on
+// a typical HiDPI one. The inner context has no platform window of its
+// own, so ImGui can only ever derive 1.0 for it -- we have to carry
+// the host's value across.
+inline void
+ContainedContext::sampleHostFontDensity()
+{
+#if IMGUI_VERSION_NUM >= 19'297
+    m_hostFontDensity = ImGui::GetPixelDensity();
+#elif IMGUI_VERSION_NUM >= 19'198
+    m_hostFontDensity = ImGui::GetFontRasterizerDensity();
+#endif
+
+    if (m_hostFontDensity <= 0.f)
+        m_hostFontDensity = 1.f;
+}
+
 inline void
 ContainedContext::begin()
 {
@@ -277,11 +293,7 @@ ContainedContext::begin()
     // BeginChild() -> SetCurrentWindow() has just reset the density from the
     // host viewport's FramebufferScale, so this reads the host's true display
     // density. Sample it before setFontDensity() overwrites it.
-#if IMGUI_VERSION_NUM >= 19'198
-    m_hostFontDensity = ImGui::GetFontRasterizerDensity();
-    if (m_hostFontDensity <= 0.f)
-        m_hostFontDensity = 1.f;
-#endif
+    this->sampleHostFontDensity();
     // Set font density on the OUTER context's child window so the outer renderer
     // rasterizes fonts at the correct scale before we switch context below.
     setFontDensity();
