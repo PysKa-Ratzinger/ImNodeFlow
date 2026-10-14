@@ -611,7 +611,14 @@ public:
      */
     const ImVec2& getScroll() { return m_context.scroll(); }
 
+    /**
+     * @brief Sets the context's scroll to a user specified value
+     */
     void setScroll(ImVec2 scroll) { m_context.setScroll(scroll); }
+
+    /**
+     * @brief Sets the context's scale to a user specified value
+     */
     void setScale(float scale) { m_context.setScale(scale); }
 
     /**
