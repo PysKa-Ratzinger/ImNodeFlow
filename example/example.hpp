@@ -155,6 +155,17 @@ struct NodeEditor {
     NodeEditor(float width, float height)
     {
         mINF.setSize({ width, height });
+        mINF.setSize({ width, height });
+        mINF.rightClickPopUpContent([](auto* node) -> void {
+            if (node != nullptr) {
+                ImGui::Text(
+                    "you have right-clicked on [%s]",
+                    node->getName().c_str());
+            } else {
+                ImGui::TextUnformatted(
+                    "you have right-clicked :)");
+            }
+        });
 
         auto& n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
         auto& n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
