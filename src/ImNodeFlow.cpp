@@ -372,10 +372,6 @@ Node::Node(ImNodeFlow& ctx, ImVec2 pos, NodeUID uid, NodeInfo node_info)
 
 void Node::destroy()
 {
-    if (m_indestructable) {
-        return;
-    }
-
     if (m_impl) {
         m_impl.reset();
     }
@@ -684,7 +680,7 @@ void Node::update()
         setSelected(false);
     }
 
-    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected()) {
+    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected() && !isIndestructable()) {
         destroy();
     }
 

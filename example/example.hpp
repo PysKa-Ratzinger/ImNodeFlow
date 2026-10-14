@@ -161,6 +161,8 @@ struct NodeEditor {
         auto& result = mINF.emplaceNode<ResultNode>({ 340, 20 });
         auto& multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
 
+        result.setIndestructable(true);
+
         // Add links between nodes
         n1.outPin("Out")->linkTo(*result.inPin("A"));
         n2.outPin("Out")->linkTo(*result.inPin("B"));
