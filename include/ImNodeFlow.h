@@ -1136,6 +1136,15 @@ public:
     const ImVec2& getPos() { return m_pos; }
 
     /**
+     * @brief Get node position
+     * @return Const reference to the node's position
+     */
+    ImVec2 getTLPos()
+    {
+        return m_pos - ImVec2 { m_style.padding.x, m_style.padding.y };
+    }
+
+    /**
      * @brief Get node's style
      * @return Shared pointer to the node's style
      */

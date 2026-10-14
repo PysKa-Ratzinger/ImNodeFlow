@@ -886,8 +886,8 @@ void ImNodeFlow::update()
         for (auto& elem : m_nodes) {
             auto& node = *elem.second;
 
-            ImVec2 nodePos = grid2screen(node.getPos());
-            ImVec2 nodeSize = node.getSize();
+            ImVec2 nodePos = grid2screen(node.getTLPos());
+            ImVec2 nodeSize = node.getFullSize();
 
             ImRect nodeClip { nodePos, nodePos + nodeSize };
             if (boxClip.Overlaps(nodeClip)) {
