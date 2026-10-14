@@ -100,16 +100,22 @@ public:
         node().addIN<int>({ "B", 0 });
         // NOLINTEND
 
-        node().addOUT<int>({
-            .name = "Out",
-            .behaviour = [this]() -> int {
-                return node().getInVal<int>("A") + node().getInVal<int>("B");
-            },
-        });
+        node()
+            .addOUT<int>({
+                .name = "Out",
+                .behaviour = [this]() -> int {
+                    return node().getInVal<int>("A") + node().getInVal<int>("B");
+                },
+            })
+            .renderer([](auto* pin) {
+                ImGui::TextUnformatted("<OUTPIN>");
+            });
     }
 
     void draw() final
     {
+        ImGui::TextUnformatted("Select me to see more");
+
         if (node().isSelected()) {
             ImGui::SetNextItemWidth(100.F);
             ImGui::Text(

@@ -131,30 +131,21 @@ Pin::update()
     m_is_hovered = false;
     m_was_clicked = false;
 
-    // Custom rendering
-    if (m_renderer) {
-        ImGui::BeginGroup();
+    if (!m_renderer) {
+        ImGui::SetCursorPos(m_pos);
+        ImGui::Text("%s", m_name.c_str());
+    } else {
+        // TODO: This still needs work. The bezier curves have the
+        // wrong starting position, as can be seen in the example when
+        // the multiplier out node is enabled
         m_renderer(this);
-        ImGui::EndGroup();
-        m_size = ImGui::GetItemRectSize();
-        if (ImGui::IsItemHovered()) {
-            m_is_hovered = true;
-            if (m_flow.get().getSingleUseClick(
-                    ImGuiMouseButton_Left)) {
-                m_flow.get().consumeSingleUseClick(
-                    ImGuiMouseButton_Left);
-                m_was_clicked = true;
-            }
-        }
-        return;
     }
-
-    ImGui::SetCursorPos(m_pos);
-    ImGui::Text("%s", m_name.c_str());
     m_size = ImGui::GetItemRectSize();
 
-    drawDecoration();
-    drawSocket();
+    if (!m_renderer) {
+        drawDecoration();
+        drawSocket();
+    }
 
     if (ImGui::IsItemHovered()) {
         m_is_hovered = true;
