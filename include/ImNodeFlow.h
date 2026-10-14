@@ -786,16 +786,16 @@ public:
 
     /**
      * @brief Registers a unique observer for the node's draw call
-     * @param draw_func lambda function called when this Node's draw()
-     * method is invoked
+     * @param func lambda function called when this Node's draw() method
+     * is invoked
      */
-    void on_draw(std::function<void()> draw_func = []() -> void { });
+    void on_drawHook(std::function<void()> func = []() -> void { });
 
     /**
      * @brief Registers a unique observer for the node's destruction event
-     * @param draw_func lambda function called when this Node is destroyed
+     * @param func lambda function called when this Node is destroyed
      */
-    void on_cleanup(std::function<void()> cleanup_func = []() -> void { });
+    void on_destroyHook(std::function<void()> func = []() -> void { });
 
     /**
      * @brief Add an Input to the node
@@ -1003,8 +1003,8 @@ public:
      */
     void destroy()
     {
-        if (m_on_cleanup) {
-            m_on_cleanup();
+        if (m_destroyHook) {
+            m_destroyHook();
         }
         m_destroyed = true;
     }
@@ -1202,8 +1202,8 @@ private:
     bool m_destroyed = false;
     bool m_indestructable = false;
 
-    std::function<void()> m_on_draw = []() -> void { };
-    std::function<void()> m_on_cleanup = []() -> void { };
+    std::function<void()> m_drawHook = []() -> void { };
+    std::function<void()> m_destroyHook = []() -> void { };
 
     std::vector<std::unique_ptr<Pin>> m_ins;
     std::vector<DynamicPin> m_dynamicIns;

@@ -606,12 +606,12 @@ void BaseNode::update(ImNodeFlow& ctx)
 
 void BaseNode::draw()
 {
-    if (m_on_draw) {
-        m_on_draw();
+    if (m_drawHook) {
+        m_drawHook();
     }
 
     // Dynamic inputs stale check can only be done after the call to
-    // m_on_draw() and before any call to DynamicPin::update()
+    // m_drawHook() and before any call to DynamicPin::update()
     m_dynamicIns.erase(
         std::remove_if(
             m_dynamicIns.begin(),
@@ -626,14 +626,14 @@ void BaseNode::draw()
         m_dynamicOuts.end());
 }
 
-void BaseNode::on_draw(std::function<void()> draw_func)
+void BaseNode::on_drawHook(std::function<void()> func)
 {
-    this->m_on_draw = std::move(draw_func);
+    this->m_drawHook = std::move(func);
 }
 
-void BaseNode::on_cleanup(std::function<void()> cleanup_func)
+void BaseNode::on_destroyHook(std::function<void()> func)
 {
-    this->m_on_cleanup = std::move(cleanup_func);
+    this->m_destroyHook = std::move(func);
 }
 
 // -----------------------------------------------------------------------------------------------------------------

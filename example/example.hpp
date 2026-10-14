@@ -23,19 +23,19 @@ public:
         : _node(flow.addNode(pos))
     {
         // Register ourselves as the deferred draw operation
-        node().on_draw([this]() -> void { this->draw(); });
+        node().on_drawHook([this]() -> void { this->draw(); });
 
         // Listen to cleanup events to prevent accessing the node
         // after it's destruction which is controlled by the library
-        node().on_cleanup([this]() -> void { _node.reset(); });
+        node().on_destroyHook([this]() -> void { _node.reset(); });
     }
 
     virtual ~SimpleNodeWrapper()
     {
         if (_node.has_value()) {
             // Clear all callbacks since they are no longer valid
-            node().on_draw();
-            node().on_cleanup();
+            node().on_drawHook();
+            node().on_destroyHook();
 
             // This notifies ImNodeFlow that the node should be
             // destroyed
