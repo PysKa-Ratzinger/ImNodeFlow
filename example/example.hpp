@@ -84,6 +84,56 @@ private:
     int _valB = 0;
 };
 
+class MultipleInputAdder : public SimpleNodeWrapper {
+public:
+    MultipleInputAdder(ImFlow::ImNodeFlow& flow, ImVec2 pos)
+        : SimpleNodeWrapper(flow, pos)
+    {
+        node().setTitle("Multiple input adder");
+        node().setStyle(ImFlow::NodeStyles::cyan);
+        node().addIN<int>({
+            .name = "In",
+            .default_value = 0,
+            .strat = ImFlow::PinConnStrat_AllowMultiplePreferOldest,
+            .accumulate_op =
+                [](bool first, int init, int new_input) -> int {
+                return first ? new_input : init + new_input;
+            },
+        });
+        node().addOUT<int>({
+            .name = "Out",
+            .behaviour = [this]() -> int {
+                return node().getInVal<int>("In");
+            },
+        });
+    };
+
+    void draw() final
+    {
+        ImGui::SetNextItemWidth(100.F);
+        ImGui::Text("Result: %d", node().getInVal<int>("In"));
+    }
+};
+
+class ResultNode : public SimpleNodeWrapper {
+public:
+    ResultNode(ImFlow::ImNodeFlow& flow, ImVec2 pos)
+        : SimpleNodeWrapper(flow, pos)
+    {
+        node().setTitle("Result node");
+        node().setStyle(ImFlow::NodeStyles::brown);
+        node().addIN<int>({ .name = "A", .default_value = 0 });
+        node().addIN<int>({ .name = "B", .default_value = 0 });
+    }
+
+    void draw() final
+    {
+        ImGui::Text(
+            "Result: %d",
+            node().getInVal<int>("A") + node().getInVal<int>("B"));
+    }
+};
+
 class CollapsingNode : public SimpleNodeWrapper {
 public:
     CollapsingNode(ImFlow::ImNodeFlow& flow, ImVec2 pos)
@@ -148,25 +198,6 @@ private:
     bool m_multiplier = false;
 };
 
-class ResultNode : public SimpleNodeWrapper {
-public:
-    ResultNode(ImFlow::ImNodeFlow& flow, ImVec2 pos)
-        : SimpleNodeWrapper(flow, pos)
-    {
-        node().setTitle("Result node");
-        node().setStyle(ImFlow::NodeStyles::brown);
-        node().addIN<int>({ .name = "A", .default_value = 0 });
-        node().addIN<int>({ .name = "B", .default_value = 0 });
-    }
-
-    void draw() final
-    {
-        ImGui::Text(
-            "Result: %d",
-            node().getInVal<int>("A") + node().getInVal<int>("B"));
-    }
-};
-
 /* Node editor that sets up the grid to place nodes */
 class NodeEditor {
 public:
@@ -186,15 +217,18 @@ public:
 
         auto& n1 = add<SimpleSum>({ 40, 40 });
         auto& n2 = add<SimpleSum>({ 40, 150 });
-        auto& result = add<ResultNode>({ 250, 80 });
+        auto& result = add<ResultNode>({ 270, 50 });
+        auto& multi_adder = add<MultipleInputAdder>({ 320, 140 });
 
         result.node().setIndestructable(true);
 
         n1.node().outPin("Out").linkTo(result.node().inPin("A"));
         n2.node().outPin("Out").linkTo(result.node().inPin("B"));
 
-        // Add a collapsing node
-        auto& collapsingNode = add<CollapsingNode>({ 300, 300 });
+        n1.node().outPin("Out").linkTo(multi_adder.node().inPin("In"));
+        n2.node().outPin("Out").linkTo(multi_adder.node().inPin("In"));
+
+        auto& collapsingNode = add<CollapsingNode>({ 350, 200 });
     }
 
     ~NodeEditor() { m_my_nodes.clear(); }

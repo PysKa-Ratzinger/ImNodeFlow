@@ -283,23 +283,17 @@ InPin<T>::~InPin() = default;
 template <class T>
 void InPin<T>::calculate()
 {
+    m_valNext = m_emptyVal;
+
     if (m_links.empty()) {
-        m_val = m_emptyVal;
         return;
     }
 
-    switch (m_strat) {
-    case PinConnStrat_AllowOnlySingleConnection:
-    case PinConnStrat_AllowMultiplePreferOldest:
-        m_val = m_links.front()->outPin().template toOut<T>().val();
-        return;
-
-    case PinConnStrat_AllowMultiplePreferNewest:
-        m_val = m_links.back()->outPin().template toOut<T>().val();
-        return;
-
-    default:
-        return;
+    bool first = true;
+    for (auto& link : m_links) {
+        m_valNext = m_accumulatorOp(
+            first, m_valNext, link->outPin().template toOut<T>().val());
+        first = false;
     }
 }
 
