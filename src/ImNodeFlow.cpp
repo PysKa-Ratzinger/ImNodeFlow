@@ -181,7 +181,7 @@ void Pin::addLink(Link* link)
     auto iter = std::find(m_links.begin(), m_links.end(), link);
     if (iter == m_links.end()) {
         if (m_strat == PinConnStrat_AllowOnlySingleConnection) {
-            m_links.clear();
+            this->deleteAllLinks();
         }
         m_links.emplace_back(link);
     }

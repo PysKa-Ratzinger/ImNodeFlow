@@ -74,132 +74,107 @@ namespace detail {
 // BASE NODE
 
 template <typename T>
-Pin& BaseNode::addIN(const std::string& name, T defaultValue, PinStyle style)
+Pin& BaseNode::addIN(InPinInfo<T> pin_info)
 {
-    return addIN_uid(PinUID::generate(), name, defaultValue, style);
+    // TODO: Make user UID is unique (or disallow the use of user provided UIDs)
+    return addIN(PinUID::generate(), std::move(pin_info));
 }
 
 template <typename T>
-Pin& BaseNode::addIN_uid(
-    const PinUID& uid,
-    const std::string& name,
-    T defaultValue,
-    PinStyle style)
+Pin& BaseNode::addIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
     m_ins.emplace_back(
         std::make_unique<InPin<T>>(
-            m_flow, uid, name, defaultValue, style, this));
+            m_flow, *this, uid, std::move(pin_info)));
     return *m_ins.back();
 }
 
 template <typename T>
 const T&
-BaseNode::showIN(const std::string& name, T defaultValue, PinStyle style)
+BaseNode::showIN(InPinInfo<T> pin_info)
 {
     for (auto& dyn_pin : m_dynamicIns) {
-        if (dyn_pin.pin().getName() == name) {
+        if (dyn_pin.pin().getName() == pin_info.name) {
             dyn_pin.refresh();
+            // TODO: Update pin with new styles from pin_info
             return dyn_pin.pin().toIn<T>().val();
         }
     }
 
     m_dynamicIns.emplace_back(
         std::make_unique<InPin<T>>(
-            m_flow, PinUID::generate(), name, defaultValue, style, this));
+            m_flow, *this, PinUID::generate(), std::move(pin_info)));
     return m_dynamicIns.back().pin().toIn<T>().val();
 }
 
 template <typename T>
 const T&
-BaseNode::showIN_uid(
-    const PinUID& uid,
-    const std::string& name,
-    T defaultValue,
-    PinStyle style)
+BaseNode::showIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
     for (auto& dyn_pin : m_dynamicIns) {
         if (dyn_pin.pin().getUid() == uid) {
             dyn_pin.refresh();
+            // TODO: Update pin with new styles from pin_info
             return dyn_pin.pin().toIn<T>().val();
         }
     }
 
     m_dynamicIns.emplace_back(
         std::make_unique<InPin<T>>(
-            m_flow, uid, name, defaultValue, style, this));
+            m_flow, *this, uid, std::move(pin_info)));
     return m_dynamicIns.back().pin().toIn<T>().val();
 }
 
 template <typename T>
-Pin& BaseNode::addOUT(
-    const std::string& name,
-    std::function<T()> behaviour,
-    PinStyle style)
+Pin& BaseNode::addOUT(OutPinInfo<T> pin_info)
 {
-    return addOUT_uid<T>(
-        PinUID::generate(), name, std::move(behaviour), style);
+    // TODO: Make user UID is unique (or disallow the use of user provided UIDs)
+    return addOUT<T>(PinUID::generate(), std::move(pin_info));
 }
 
 template <typename T>
-Pin& BaseNode::addOUT_uid(
-    const PinUID& uid,
-    const std::string& name,
-    std::function<T()> behaviour,
-    PinStyle style)
+Pin& BaseNode::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 {
     m_outs.emplace_back(
         std::make_unique<OutPin<T>>(
-            m_flow, uid, name, std::move(behaviour), style, this));
+            m_flow, *this, uid, std::move(pin_info)));
     return *m_outs.back();
 }
 
 template <typename T>
-void BaseNode::showOUT(
-    const std::string& name,
-    std::function<T()> behaviour,
-    PinStyle style)
+void BaseNode::showOUT(OutPinInfo<T> pin_info)
 {
     for (auto& dyn_pin : m_dynamicOuts) {
-        if (dyn_pin.pin().getName() == name) {
+        if (dyn_pin.pin().getName() == pin_info.name) {
             dyn_pin.refresh();
+            // TODO: Update pin with new styles from pin_info
             m_dynamicOuts.back().pin().toOut<T>().setBehaviour(
-                std::move(behaviour));
+                std::move(pin_info.behaviour));
             return;
         }
     }
 
     m_dynamicOuts.emplace_back(
         std::make_unique<OutPin<T>>(
-            m_flow,
-            PinUID::generate(),
-            name,
-            std::move(behaviour),
-            style,
-            this));
-
-    m_dynamicOuts.back().pin().toOut<T>().setBehaviour(std::move(behaviour));
+            m_flow, *this, PinUID::generate(), std::move(pin_info)));
 }
 
 template <typename T>
-void BaseNode::showOUT_uid(
-    const PinUID& uid,
-    const std::string& name,
-    std::function<T()> behaviour,
-    PinStyle style)
+void BaseNode::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 {
     for (auto& dyn_pin : m_dynamicOuts) {
         if (dyn_pin.pin().getUid() == uid) {
             dyn_pin.refresh();
+            // TODO: Update pin with new styles from pin_info
             m_dynamicOuts.back().pin().toOut<T>().setBehaviour(
-                std::move(behaviour));
+                std::move(pin_info.behaviour));
             return;
         }
     }
 
     m_dynamicOuts.emplace_back(
         std::make_unique<OutPin<T>>(
-            m_flow, uid, name, std::move(behaviour), style, this));
-    m_dynamicOuts.back().pin().toOut<T>().setBehaviour(std::move(behaviour));
+            m_flow, *this, uid, std::move(pin_info)));
 }
 
 template <typename T>
@@ -224,7 +199,7 @@ InPin<T>&
 Pin::toIn()
 {
     // check if casting is safe without RTTI
-    assert(m_type == PinType_Input && getTypeID() == detail::type_id<T> && "Tried to cast a pin into a different type than it was created");
+    assert(m_kind == PinType_Input && getTypeID() == detail::type_id<T> && "Tried to cast a pin into a different type than it was created");
     return static_cast<InPin<T>&>(*this);
 }
 
@@ -233,7 +208,7 @@ InPin<T> const&
 Pin::toIn() const
 {
     // check if casting is safe without RTTI
-    assert(m_type == PinType_Input && getTypeID() == detail::type_id<T> && "Tried to cast a pin into a different type than it was created");
+    assert(m_kind == PinType_Input && getTypeID() == detail::type_id<T> && "Tried to cast a pin into a different type than it was created");
     return static_cast<InPin<T> const&>(*this);
 }
 
@@ -242,7 +217,7 @@ OutPin<T>&
 Pin::toOut()
 {
     // check if casting is safe without RTTI
-    assert(m_type == PinType_Output && getTypeID() == detail::type_id<T> && "Tried to cast a pin into a different type than it was created");
+    assert(m_kind == PinType_Output && getTypeID() == detail::type_id<T> && "Tried to cast a pin into a different type than it was created");
     return static_cast<OutPin<T>&>(*this);
 }
 
@@ -251,7 +226,7 @@ OutPin<T> const&
 Pin::toOut() const
 {
     // check if casting is safe without RTTI
-    assert(m_type == PinType_Output && getTypeID() == detail::type_id<T> && "Tried to cast a pin into a different type than it was created");
+    assert(m_kind == PinType_Output && getTypeID() == detail::type_id<T> && "Tried to cast a pin into a different type than it was created");
     return static_cast<OutPin<T> const&>(*this);
 }
 
@@ -304,7 +279,7 @@ bool InPin<T>::canCreateLink(Pin& other)
         return false;
     }
 
-    if (m_parent == other.getParent() && !m_allowSelfConnection) {
+    if (&getParent() == &other.getParent() && !m_allowSelfConnection) {
         return false;
     }
 

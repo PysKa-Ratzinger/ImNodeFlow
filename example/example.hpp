@@ -65,9 +65,12 @@ public:
     {
         node().setTitle("Simple sum");
         node().setStyle(ImFlow::NodeStyles::green);
-        node().addIN<int>("In", 0);
-        node().addOUT<int>("Out", [this]() -> int {
-            return node().getInVal<int>("In") + _valB;
+        node().addIN<int>({ .name = "In", .default_value = 0 });
+        node().addOUT<int>({
+            .name = "Out",
+            .behaviour = [this]() -> int {
+                return node().getInVal<int>("In") + _valB;
+            },
         });
     }
 
@@ -88,10 +91,20 @@ public:
     {
         node().setTitle("Collapsing node");
         node().setStyle(ImFlow::NodeStyles::red);
-        node().addIN<int>("A", 0);
-        node().addIN<int>("B", 0);
-        node().addOUT<int>("Out", [this]() -> int {
-            return node().getInVal<int>("A") + node().getInVal<int>("B");
+
+        // Addind inputs without a designated initializer list also
+        // works, but linters will scream at you.
+        //
+        // NOLINTBEGIN (modernize-use-designated-initializers)
+        node().addIN<int>({ "A", 0 });
+        node().addIN<int>({ "B", 0 });
+        // NOLINTEND
+
+        node().addOUT<int>({
+            .name = "Out",
+            .behaviour = [this]() -> int {
+                return node().getInVal<int>("A") + node().getInVal<int>("B");
+            },
         });
     }
 
@@ -116,8 +129,11 @@ public:
         }
 
         if (m_multiplier) {
-            node().showOUT<int>("Multiplier", [this]() -> int {
-                return node().getInVal<int>("A") * node().getInVal<int>("B");
+            node().showOUT<int>({
+                .name = "Multiplier",
+                .behaviour = [this]() -> int {
+                    return node().getInVal<int>("A") * node().getInVal<int>("B");
+                },
             });
         }
     }
@@ -133,8 +149,8 @@ public:
     {
         node().setTitle("Result node");
         node().setStyle(ImFlow::NodeStyles::brown);
-        node().addIN<int>("A", 0);
-        node().addIN<int>("B", 0);
+        node().addIN<int>({ .name = "A", .default_value = 0 });
+        node().addIN<int>({ .name = "B", .default_value = 0 });
     }
 
     void draw() final
