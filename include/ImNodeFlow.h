@@ -356,15 +356,15 @@ public:
 
     /**
      * @brief Get output pin of the link
-     * @return Pointer to the Pin
+     * @return Reference to the Pin
      */
-    [[nodiscard]] Pin* outPin() const { return m_out_pin; }
+    [[nodiscard]] Pin& outPin() const { return *m_out_pin; }
 
     /**
      * @brief Get input pin of the link
-     * @return Pointer to the Pin
+     * @return Reference to the Pin
      */
-    [[nodiscard]] Pin* inPin() const { return m_in_pin; }
+    [[nodiscard]] Pin& inPin() const { return *m_in_pin; }
 
     /**
      * @brief Get hovering status

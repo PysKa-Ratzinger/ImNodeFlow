@@ -268,8 +268,9 @@ void Link::update(ImNodeFlow& ctx)
     ImVec2 end = m_in_pin->pinPoint();
     float thickness = m_out_pin->getStyle().extra.link_thickness;
 
-    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         m_selected = false;
+    }
 
     if (detail::smart_bezier_collider(
             ImGui::GetMousePos(), start, end, 2.5)) {

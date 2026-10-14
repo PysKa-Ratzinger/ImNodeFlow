@@ -247,11 +247,11 @@ void InPin<T>::calculate()
     switch (m_strat) {
     case PinConnStrat_AllowOnlySingleConnection:
     case PinConnStrat_AllowMultiplePreferOldest:
-        m_val = m_links.front()->outPin()->template toOut<T>().val();
+        m_val = m_links.front()->outPin().template toOut<T>().val();
         return;
 
     case PinConnStrat_AllowMultiplePreferNewest:
-        m_val = m_links.back()->outPin()->template toOut<T>().val();
+        m_val = m_links.back()->outPin().template toOut<T>().val();
         return;
 
     default:
@@ -275,7 +275,11 @@ InPin<T>::val()
 template <class T>
 bool InPin<T>::canCreateLink(Pin& other)
 {
-    if (&other == this || other.getType() == PinType_Input) {
+    if (&other == this) {
+        return false;
+    }
+
+    if (other.getType() == PinType_Input) {
         return false;
     }
 
@@ -284,7 +288,7 @@ bool InPin<T>::canCreateLink(Pin& other)
     }
 
     for (const auto* link : m_links) {
-        if (link->outPin() == &other) {
+        if (&link->outPin() == &other) {
             return false;
         }
     }
