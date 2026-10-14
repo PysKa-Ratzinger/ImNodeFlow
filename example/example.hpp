@@ -173,6 +173,16 @@ public:
     NodeEditor(float width, float height)
     {
         m_flow.setSize({ width, height });
+        m_flow.rightClickPopUpContent([](auto* node) {
+            if (node != nullptr) {
+                ImGui::Text(
+                    "you have right-clicked on [%s]",
+                    node->getName().c_str());
+            } else {
+                ImGui::TextUnformatted(
+                    "you have right-clicked :)");
+            }
+        });
 
         auto& n1 = add<SimpleSum>({ 40, 40 });
         auto& n2 = add<SimpleSum>({ 40, 150 });
