@@ -565,7 +565,7 @@ void BaseNode::update(ImNodeFlow& ctx)
         setSelected(false);
     }
 
-    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected()) {
+    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected() && !isIndestructable()) {
         destroy();
     }
 

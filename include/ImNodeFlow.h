@@ -1003,10 +1003,6 @@ public:
      */
     void destroy()
     {
-        if (m_indestructable) {
-            return;
-        }
-
         if (m_on_cleanup) {
             m_on_cleanup();
         }

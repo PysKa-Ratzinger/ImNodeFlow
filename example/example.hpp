@@ -172,6 +172,8 @@ public:
         auto& n2 = add<SimpleSum>({ 40, 150 });
         auto& result = add<ResultNode>({ 250, 80 });
 
+        result.node().setIndestructable(true);
+
         n1.node().outPin("Out").linkTo(result.node().inPin("A"));
         n2.node().outPin("Out").linkTo(result.node().inPin("B"));
 
