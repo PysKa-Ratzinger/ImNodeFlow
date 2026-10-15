@@ -115,17 +115,43 @@ namespace detail {
 } // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
+// NODE FLOW CONTEXT
+
+template <typename T, typename... Params>
+Node& ImNodeFlow::emplaceNode(const ImVec2& grid_coords, Params&&... params)
+{
+    return this->emplaceNode(
+        grid_coords,
+        std::make_unique<T>(std::forward<Params>(params)...));
+}
+
+template <typename T, typename... Params>
+Node& ImNodeFlow::emplaceNodeAt(const ImVec2& screen_coords, Params&&... params)
+{
+    return this->emplaceNodeAt(
+        screen_coords,
+        std::make_unique<T>(std::forward<Params>(params)...));
+}
+
+template <typename T, typename... Params>
+Node& ImNodeFlow::emplaceNodeOnMouse(Params&&... params)
+{
+    return this->emplaceNodeOnMouse(
+        std::make_unique<T>(std::forward<Params>(params)...));
+}
+
+// -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
 template <typename T>
-Pin& BaseNode::addIN(InPinInfo<T> pin_info)
+Pin& Node::addIN(InPinInfo<T> pin_info)
 {
     // TODO: Make user UID is unique (or disallow the use of user provided UIDs)
     return addIN(PinUID::generate(), std::move(pin_info));
 }
 
 template <typename T>
-Pin& BaseNode::addIN(const PinUID& uid, InPinInfo<T> pin_info)
+Pin& Node::addIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
     m_ins.emplace_back(
         std::make_unique<InPin<T>>(
@@ -135,7 +161,7 @@ Pin& BaseNode::addIN(const PinUID& uid, InPinInfo<T> pin_info)
 
 template <typename T>
 const T&
-BaseNode::showIN(InPinInfo<T> pin_info)
+Node::showIN(InPinInfo<T> pin_info)
 {
     for (auto& dyn_pin : m_dynamicIns) {
         if (dyn_pin.pin().getName() == pin_info.name) {
@@ -153,7 +179,7 @@ BaseNode::showIN(InPinInfo<T> pin_info)
 
 template <typename T>
 const T&
-BaseNode::showIN(const PinUID& uid, InPinInfo<T> pin_info)
+Node::showIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
     for (auto& dyn_pin : m_dynamicIns) {
         if (dyn_pin.pin().getUid() == uid) {
@@ -170,14 +196,14 @@ BaseNode::showIN(const PinUID& uid, InPinInfo<T> pin_info)
 }
 
 template <typename T>
-Pin& BaseNode::addOUT(OutPinInfo<T> pin_info)
+Pin& Node::addOUT(OutPinInfo<T> pin_info)
 {
     // TODO: Make user UID is unique (or disallow the use of user provided UIDs)
     return addOUT<T>(PinUID::generate(), std::move(pin_info));
 }
 
 template <typename T>
-Pin& BaseNode::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
+Pin& Node::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 {
     m_outs.emplace_back(
         std::make_unique<OutPin<T>>(
@@ -186,7 +212,7 @@ Pin& BaseNode::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 }
 
 template <typename T>
-void BaseNode::showOUT(OutPinInfo<T> pin_info)
+void Node::showOUT(OutPinInfo<T> pin_info)
 {
     for (auto& dyn_pin : m_dynamicOuts) {
         if (dyn_pin.pin().getName() == pin_info.name) {
@@ -204,7 +230,7 @@ void BaseNode::showOUT(OutPinInfo<T> pin_info)
 }
 
 template <typename T>
-void BaseNode::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
+void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 {
     for (auto& dyn_pin : m_dynamicOuts) {
         if (dyn_pin.pin().getUid() == uid) {
@@ -223,16 +249,44 @@ void BaseNode::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 
 template <typename T>
 const T&
-BaseNode::getInVal(const PinUID& uid)
+Node::getInVal(const PinUID& uid)
 {
-    return this->inPin(uid).toIn<T>().val();
+    return this->inPin<T>(uid).val();
 }
 
 template <typename T>
 const T&
-BaseNode::getInVal(const char* name)
+Node::getInVal(const char* name)
 {
-    return this->inPin(name).toIn<T>().val();
+    return this->inPin<T>(name).val();
+}
+
+template <typename T>
+InPin<T>&
+Node::inPin(const PinUID& uid)
+{
+    return this->inPin(uid).toIn<T>();
+}
+
+template <typename T>
+InPin<T>&
+Node::inPin(const char* name)
+{
+    return this->inPin(name).toIn<T>();
+}
+
+template <typename T>
+OutPin<T>&
+Node::outPin(const PinUID& uid)
+{
+    return this->outPin(uid).toOut<T>();
+}
+
+template <typename T>
+OutPin<T>&
+Node::outPin(const char* name)
+{
+    return this->outPin(name).toOut<T>();
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -281,7 +335,7 @@ template <class T>
 InPin<T>::~InPin() = default;
 
 template <class T>
-void InPin<T>::calculate()
+void InPin<T>::calculate([[maybe_unused]] Node& node)
 {
     m_valNext = m_emptyVal;
 
@@ -329,21 +383,27 @@ template <class T>
 OutPin<T>::~OutPin() = default;
 
 template <class T>
-void OutPin<T>::setBehaviour(std::function<T()> new_behaviour)
+void OutPin<T>::setBehaviour(std::function<T(Node&)> new_behaviour)
 {
     this->m_behaviour = std::move(new_behaviour);
 }
 
 template <class T>
-void OutPin<T>::calculate()
+void OutPin<T>::calculate(ImFlow::Node& node)
 {
-    m_valNext = m_behaviour();
+    m_valNext = m_behaviour(node);
 }
 
 template <class T>
 void OutPin<T>::prime()
 {
     m_val = m_valNext;
+}
+
+template <class T>
+void OutPin<T>::setNextValue(T next_value)
+{
+    m_valNext = next_value;
 }
 
 template <class T>

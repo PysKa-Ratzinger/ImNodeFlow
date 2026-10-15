@@ -9,89 +9,43 @@
 #include <optional>
 #include <vector>
 
-// Wrapper for common operations among the example's nodes
-class SimpleNodeWrapper {
+class SimpleSum : public ImFlow::INodeBehaviour {
 public:
-    // Delete all these operations to avoid accidentally copying or moving
-    // this class
-    SimpleNodeWrapper(const SimpleNodeWrapper&) = delete;
-    SimpleNodeWrapper(SimpleNodeWrapper&&) = delete;
-    SimpleNodeWrapper& operator=(const SimpleNodeWrapper&) = delete;
-    SimpleNodeWrapper& operator=(SimpleNodeWrapper&&) = delete;
-
-    SimpleNodeWrapper(ImFlow::ImNodeFlow& flow, ImVec2 pos)
-        : _node(flow.addNode(pos))
+    void setup(ImFlow::Node& node) override
     {
-        // Register ourselves as the deferred draw operation
-        node().on_drawHook([this]() -> void { this->draw(); });
-
-        // Listen to cleanup events to prevent accessing the node
-        // after it's destruction which is controlled by the library
-        node().on_destroyHook([this]() -> void { _node.reset(); });
-    }
-
-    virtual ~SimpleNodeWrapper()
-    {
-        if (_node.has_value()) {
-            // Clear all callbacks since they are no longer valid
-            node().on_drawHook();
-            node().on_destroyHook();
-
-            // This notifies ImNodeFlow that the node should be
-            // destroyed
-            node().destroy();
-        }
-    }
-
-    /// Shoft-hand accessor
-    [[nodiscard]] auto node() const -> ImFlow::BaseNode&
-    {
-        return _node.value().get();
-    }
-
-    /// To be implemented by the specific nodes in this example
-    virtual void draw() = 0;
-
-    [[nodiscard]] bool valid() const { return _node.has_value(); }
-
-private:
-    std::optional<std::reference_wrapper<ImFlow::BaseNode>> _node;
-};
-
-class SimpleSum : public SimpleNodeWrapper {
-public:
-    SimpleSum(ImFlow::ImNodeFlow& flow, ImVec2 pos)
-        : SimpleNodeWrapper(flow, pos)
-    {
-        node().setTitle("Simple sum");
-        node().setStyle(ImFlow::NodeStyles::green);
-        node().addIN<int>({ .name = "In", .default_value = 0 });
-        node().addOUT<int>({
+        node.setTitle("Simple sum");
+        node.setStyle(ImFlow::NodeStyles::green);
+        node.addIN<int>({ .name = "In", .default_value = 0 });
+        node.addOUT<int>({
             .name = "Out",
-            .behaviour = [this]() -> int {
-                return node().getInVal<int>("In") + _valB;
+            .behaviour = [this](ImFlow::Node& node) -> int {
+                return node.getInVal<int>("In") + _valB;
             },
         });
     }
 
-    void draw() final
+    void draw(ImFlow::Node& node) override
     {
         ImGui::SetNextItemWidth(100.F);
         ImGui::InputInt("##ValB", &_valB);
+    }
+
+    std::unique_ptr<ImFlow::INodeBehaviour> clone() override
+    {
+        return std::make_unique<SimpleSum>();
     }
 
 private:
     int _valB = 0;
 };
 
-class MultipleInputAdder : public SimpleNodeWrapper {
+class MultipleInputAdder : public ImFlow::INodeBehaviour {
 public:
-    MultipleInputAdder(ImFlow::ImNodeFlow& flow, ImVec2 pos)
-        : SimpleNodeWrapper(flow, pos)
+    void setup(ImFlow::Node& node) override
     {
-        node().setTitle("Multiple input adder");
-        node().setStyle(ImFlow::NodeStyles::cyan);
-        node().addIN<int>({
+        node.setTitle("Multiple input adder");
+        node.setStyle(ImFlow::NodeStyles::cyan);
+        node.addIN<int>({
             .name = "In",
             .default_value = 0,
             .strat = ImFlow::PinConnStrat_AllowMultiplePreferOldest,
@@ -100,73 +54,75 @@ public:
                 return first ? new_input : init + new_input;
             },
         });
-        node().addOUT<int>({
+        node.addOUT<int>({
             .name = "Out",
-            .behaviour = [this]() -> int {
-                return node().getInVal<int>("In");
+            .behaviour = [](ImFlow::Node& node) -> int {
+                return node.getInVal<int>("In");
             },
         });
     };
 
-    void draw() final
+    void draw(ImFlow::Node& node) override
     {
         ImGui::SetNextItemWidth(100.F);
-        ImGui::Text("Result: %d", node().getInVal<int>("In"));
+        ImGui::Text("Result: %d", node.getInVal<int>("In"));
+    }
+
+    std::unique_ptr<ImFlow::INodeBehaviour> clone() override
+    {
+        return std::make_unique<MultipleInputAdder>();
     }
 };
 
-class ResultNode : public SimpleNodeWrapper {
+class ResultNode : public ImFlow::INodeBehaviour {
 public:
-    ResultNode(ImFlow::ImNodeFlow& flow, ImVec2 pos)
-        : SimpleNodeWrapper(flow, pos)
+    void setup(ImFlow::Node& node) override
     {
-        node().setTitle("Result node");
-        node().setStyle(ImFlow::NodeStyles::brown);
-        node().addIN<int>({ .name = "A", .default_value = 0 });
-        node().addIN<int>({ .name = "B", .default_value = 0 });
+        node.setTitle("Result node");
+        node.setStyle(ImFlow::NodeStyles::brown);
+        node.addIN<int>({ .name = "A", .default_value = 0 });
+        node.addIN<int>({ .name = "B", .default_value = 0 });
     }
 
-    void draw() final
+    void draw(ImFlow::Node& node) override
     {
         ImGui::Text(
             "Result: %d",
-            node().getInVal<int>("A") + node().getInVal<int>("B"));
+            node.getInVal<int>("A") + node.getInVal<int>("B"));
     }
 };
 
-class CollapsingNode : public SimpleNodeWrapper {
+class CollapsingNode : public ImFlow::INodeBehaviour {
 public:
-    CollapsingNode(ImFlow::ImNodeFlow& flow, ImVec2 pos)
-        : SimpleNodeWrapper(flow, pos)
+    void setup(ImFlow::Node& node) override
     {
-        node().setTitle("Collapsing node");
-        node().setStyle(ImFlow::NodeStyles::red);
+        node.setTitle("Collapsing node");
+        node.setStyle(ImFlow::NodeStyles::red);
 
         // Addind inputs without a designated initializer list also
         // works, but linters will scream at you.
         //
         // NOLINTBEGIN (modernize-use-designated-initializers)
-        node().addIN<int>({ "A", 0 });
-        node().addIN<int>({ "B", 0 });
+        node.addIN<int>({ "A", 0 });
+        node.addIN<int>({ "B", 0 });
         // NOLINTEND
 
-        node()
-            .addOUT<int>({
-                .name = "Out",
-                .behaviour = [this]() -> int {
-                    return node().getInVal<int>("A") + node().getInVal<int>("B");
-                },
-            })
-            .renderer([](auto* pin) {
+        node.addOUT<int>({
+            .name = "Out",
+            .behaviour = [this](ImFlow::Node& node) -> int {
+                return node.getInVal<int>("A") + node.getInVal<int>("B");
+            },
+            .renderer = [](auto* pin) -> void {
                 ImGui::TextUnformatted("<OUTPIN>");
-            });
+            },
+        });
     }
 
-    void draw() final
+    void draw(ImFlow::Node& node) override
     {
         ImGui::TextUnformatted("Select me to see more");
 
-        if (node().isSelected()) {
+        if (node.isSelected()) {
             ImGui::SetNextItemWidth(100.F);
             ImGui::Text(
                 "You can only see me when the node is selected!");
@@ -185,10 +141,10 @@ public:
         }
 
         if (m_multiplier) {
-            node().showOUT<int>({
+            node.showOUT<int>({
                 .name = "Multiplier",
-                .behaviour = [this]() -> int {
-                    return node().getInVal<int>("A") * node().getInVal<int>("B");
+                .behaviour = [](ImFlow::Node& node) -> int {
+                    return node.getInVal<int>("A") * node.getInVal<int>("B");
                 },
             });
         }
@@ -215,51 +171,25 @@ public:
             }
         });
 
-        auto& n1 = add<SimpleSum>({ 40, 40 });
-        auto& n2 = add<SimpleSum>({ 40, 150 });
-        auto& result = add<ResultNode>({ 270, 50 });
-        auto& multi_adder = add<MultipleInputAdder>({ 320, 140 });
+        auto& n1 = m_flow.emplaceNode<SimpleSum>({ 40, 40 });
+        auto& n2 = m_flow.emplaceNode<SimpleSum>({ 40, 150 });
+        auto& result = m_flow.emplaceNode<ResultNode>({ 270, 50 });
+        auto& multi_adder = m_flow.emplaceNode<MultipleInputAdder>({ 320, 140 });
 
-        result.node().setIndestructable(true);
+        result.setIndestructable(true);
 
-        n1.node().outPin("Out").linkTo(result.node().inPin("A"));
-        n2.node().outPin("Out").linkTo(result.node().inPin("B"));
+        n1.outPin("Out").linkTo(result.inPin("A"));
+        n2.outPin("Out").linkTo(result.inPin("B"));
 
-        n1.node().outPin("Out").linkTo(multi_adder.node().inPin("In"));
-        n2.node().outPin("Out").linkTo(multi_adder.node().inPin("In"));
+        n1.outPin("Out").linkTo(multi_adder.inPin("In"));
+        n2.outPin("Out").linkTo(multi_adder.inPin("In"));
 
-        auto& collapsingNode = add<CollapsingNode>({ 350, 200 });
+        auto& collapsingNode = m_flow.emplaceNode<CollapsingNode>({ 350, 200 });
     }
-
-    ~NodeEditor() { m_my_nodes.clear(); }
 
     void set_size(ImVec2 d) { m_flow.setSize(d); }
 
-    /// @brief Short-hand creator for the example nodes
-    template <typename T>
-    T& add(ImVec2 pos)
-    {
-        auto node = std::make_unique<T>(m_flow, pos);
-        auto* raw_ptr = node.get();
-        m_my_nodes.emplace_back(std::move(node));
-        return *raw_ptr;
-    }
-
-    void draw()
-    {
-        m_flow.update();
-
-        m_my_nodes.erase(
-            std::remove_if(
-                m_my_nodes.begin(),
-                m_my_nodes.end(),
-                [](const std::unique_ptr<SimpleNodeWrapper>&
-                        holder) -> bool {
-                    return !holder->valid();
-                }),
-            m_my_nodes.end());
-    }
+    void draw() { m_flow.update(); }
 
     ImFlow::ImNodeFlow m_flow;
-    std::vector<std::unique_ptr<SimpleNodeWrapper>> m_my_nodes;
 };

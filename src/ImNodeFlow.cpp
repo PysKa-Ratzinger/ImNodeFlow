@@ -338,9 +338,9 @@ void Link::disconnect(Pin* pin)
 // -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
-BaseNode::~BaseNode() = default;
+Node::~Node() = default;
 
-void BaseNode::dropIN(const PinUID& uid)
+void Node::dropIN(const PinUID& uid)
 {
     m_ins.erase(
         std::find_if(
@@ -351,7 +351,7 @@ void BaseNode::dropIN(const PinUID& uid)
             }));
 }
 
-void BaseNode::dropIN(const char* name)
+void Node::dropIN(const char* name)
 {
     m_ins.erase(
         std::remove_if(
@@ -363,7 +363,7 @@ void BaseNode::dropIN(const char* name)
         m_ins.end());
 }
 
-void BaseNode::dropOUT(const PinUID& uid)
+void Node::dropOUT(const PinUID& uid)
 {
     m_outs.erase(
         std::find_if(
@@ -375,7 +375,7 @@ void BaseNode::dropOUT(const PinUID& uid)
 }
 
 inline void
-BaseNode::dropOUT(const char* name)
+Node::dropOUT(const char* name)
 {
     m_outs.erase(
         std::remove_if(
@@ -387,7 +387,7 @@ BaseNode::dropOUT(const char* name)
         m_outs.end());
 }
 
-Pin& BaseNode::inPin(const PinUID& uid)
+Pin& Node::inPin(const PinUID& uid)
 {
     auto it = std::find_if(m_ins.begin(), m_ins.end(), [&uid](const auto& p) {
         return p->getUid() == uid;
@@ -396,7 +396,7 @@ Pin& BaseNode::inPin(const PinUID& uid)
     return **it;
 }
 
-Pin& BaseNode::inPin(const char* name)
+Pin& Node::inPin(const char* name)
 {
     auto it = std::find_if(
         m_ins.begin(), m_ins.end(), [&name](const auto& p) {
@@ -406,7 +406,7 @@ Pin& BaseNode::inPin(const char* name)
     return **it;
 }
 
-Pin& BaseNode::outPin(const PinUID& uid)
+Pin& Node::outPin(const PinUID& uid)
 {
     auto it = std::find_if(
         m_outs.begin(), m_outs.end(), [&uid](const auto& p) {
@@ -416,7 +416,7 @@ Pin& BaseNode::outPin(const PinUID& uid)
     return **it;
 }
 
-Pin& BaseNode::outPin(const char* name)
+Pin& Node::outPin(const char* name)
 {
     auto it = std::find_if(
         m_outs.begin(), m_outs.end(), [&name](const auto& p) {
@@ -426,23 +426,23 @@ Pin& BaseNode::outPin(const char* name)
     return **it;
 }
 
-void BaseNode::calculate()
+void Node::calculate()
 {
     for (auto& pin : m_outs) {
-        pin->calculate();
+        pin->calculate(*this);
     }
     for (auto& pin : m_dynamicOuts) {
-        pin.pin().calculate();
+        pin.pin().calculate(*this);
     }
     for (auto& pin : m_ins) {
-        pin->calculate();
+        pin->calculate(*this);
     }
     for (auto& pin : m_dynamicIns) {
-        pin.pin().calculate();
+        pin.pin().calculate(*this);
     }
 }
 
-void BaseNode::prime()
+void Node::prime()
 {
     for (auto& pin : m_outs) {
         pin->prime();
@@ -458,7 +458,7 @@ void BaseNode::prime()
     }
 }
 
-void BaseNode::update(ImNodeFlow& ctx)
+void Node::draw(ImNodeFlow& ctx)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
@@ -496,7 +496,26 @@ void BaseNode::update(ImNodeFlow& ctx)
 
     // Content
     ImGui::BeginGroup();
-    draw();
+
+    if (m_impl) {
+        m_impl->draw(*this);
+    }
+
+    // Dynamic inputs stale check can only be done after the call to
+    // m_impl->draw() and before any call to DynamicPin::update()
+    m_dynamicIns.erase(
+        std::remove_if(
+            m_dynamicIns.begin(),
+            m_dynamicIns.end(),
+            [](const auto& elem) -> bool { return elem.isStale(); }),
+        m_dynamicIns.end());
+    m_dynamicOuts.erase(
+        std::remove_if(
+            m_dynamicOuts.begin(),
+            m_dynamicOuts.end(),
+            [](const auto& elem) -> bool { return elem.isStale(); }),
+        m_dynamicOuts.end());
+
     ImGui::Dummy(ImVec2(0.f, 0.f));
     ImGui::EndGroup();
     ImGui::SameLine();
@@ -625,49 +644,17 @@ void BaseNode::update(ImNodeFlow& ctx)
         ctx.grid2screen(m_pos + m_size + paddingBR));
 }
 
-void BaseNode::draw()
-{
-    if (m_drawHook) {
-        m_drawHook();
-    }
-
-    // Dynamic inputs stale check can only be done after the call to
-    // m_drawHook() and before any call to DynamicPin::update()
-    m_dynamicIns.erase(
-        std::remove_if(
-            m_dynamicIns.begin(),
-            m_dynamicIns.end(),
-            [](const auto& elem) -> bool { return elem.isStale(); }),
-        m_dynamicIns.end());
-    m_dynamicOuts.erase(
-        std::remove_if(
-            m_dynamicOuts.begin(),
-            m_dynamicOuts.end(),
-            [](const auto& elem) -> bool { return elem.isStale(); }),
-        m_dynamicOuts.end());
-}
-
-void BaseNode::on_drawHook(std::function<void()> func)
-{
-    this->m_drawHook = std::move(func);
-}
-
-void BaseNode::on_destroyHook(std::function<void()> func)
-{
-    this->m_destroyHook = std::move(func);
-}
-
 // -----------------------------------------------------------------------------------------------------------------
 // HANDLER
 
 int ImNodeFlow::m_instances = 0;
 
-BaseNode&
-ImNodeFlow::addNode(const ImVec2& pos)
+Node& ImNodeFlow::emplaceNode(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
 {
     auto uid = NodeUID::generate();
 
-    auto res = m_nodes.emplace(uid, std::make_unique<BaseNode>(*this, uid));
+    auto res = m_nodes.emplace(
+        uid, std::make_unique<Node>(*this, uid, std::move(impl)));
     assert(res.second);
 
     auto& new_node = *res.first->second;
@@ -675,16 +662,16 @@ ImNodeFlow::addNode(const ImVec2& pos)
     return new_node;
 }
 
-BaseNode&
-ImNodeFlow::placeNodeAt(const ImVec2& pos)
+Node& ImNodeFlow::emplaceNodeAt(
+    const ImVec2& pos,
+    std::unique_ptr<INodeBehaviour> impl)
 {
-    return addNode(screen2grid(pos));
+    return emplaceNode(screen2grid(pos), std::move(impl));
 }
 
-BaseNode&
-ImNodeFlow::placeNode()
+Node& ImNodeFlow::emplaceNodeOnMouse(std::unique_ptr<INodeBehaviour> impl)
 {
-    return placeNodeAt(ImGui::GetMousePos());
+    return emplaceNodeAt(ImGui::GetMousePos(), std::move(impl));
 }
 
 bool ImNodeFlow::mouse_on_selected_node()
@@ -834,7 +821,7 @@ void ImNodeFlow::update()
     // TODO: I don't like this
     draw_list->ChannelsSplit(2);
     for (auto& node : m_nodes) {
-        node.second->update(*this);
+        node.second->draw(*this);
     }
     // Remove "toDelete" nodes
     for (auto iter = m_nodes.begin(); iter != m_nodes.end();) {
@@ -863,7 +850,7 @@ void ImNodeFlow::update()
     Pin* hovered_pin = nullptr;
     Pin* clicked_pin = nullptr;
     for (auto& elem : m_nodes) {
-        BaseNode& node = *elem.second;
+        Node& node = *elem.second;
         for (auto& pin : node.getIns()) {
             if (pin->isHovered()) {
                 hovered_pin = &*pin;

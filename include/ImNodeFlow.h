@@ -87,7 +87,8 @@ class InPin;
 template <typename T>
 class OutPin;
 class Pin;
-class BaseNode;
+class INodeBehaviour;
+class Node;
 class ImNodeFlow;
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -233,6 +234,8 @@ struct BasePinInfo {
     PinStyle style = PinStyles::cyan;
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest;
+    /// Custom render function
+    std::function<void(Pin* p)> renderer;
 };
 
 /**
@@ -267,7 +270,9 @@ struct OutPinInfo {
     /// Name of the pin
     std::string name;
     /// Behaviour of the pin when a value update is requested
-    std::function<T()> behaviour;
+    std::function<T(Node&)> behaviour;
+    /// Custom render function
+    std::function<void(Pin* p)> renderer;
     /// Whether links coming from the same node are allowed
     bool allow_same_node_connections = true;
     /// Style to apply to the pin
@@ -508,22 +513,59 @@ public:
     /**
      * @brief Add a node to the grid
      * @param pos Position of the Node in grid coordinates
+     * @param impl Unique pointer with a behaviour strategy
      * @return Shared pointer of the newly added node
      */
-    BaseNode& addNode(const ImVec2& pos);
+    Node& emplaceNode(
+        const ImVec2& grid_coords,
+        std::unique_ptr<INodeBehaviour> impl = nullptr);
 
     /**
      * @brief Add a node to the grid
      * @param pos Position of the Node in screen coordinates
-     * @return Shared pointer to the newly added node
+     * @param impl Unique pointer with a behaviour strategy
+     * @return Shared pointer of the newly added node
      */
-    BaseNode& placeNodeAt(const ImVec2& pos);
+    Node& emplaceNodeAt(
+        const ImVec2& screen_coords,
+        std::unique_ptr<INodeBehaviour> impl = nullptr);
 
     /**
      * @brief Add a node to the grid using mouse position
+     * @param impl Unique pointer with a behaviour strategy
      * @return Shared pointer to the newly added node
      */
-    BaseNode& placeNode();
+    Node&
+    emplaceNodeOnMouse(std::unique_ptr<INodeBehaviour> impl = nullptr);
+
+    /**
+     * @brief Add a node to the grid
+     * @tparam T Concrete type implementing INodeBehaviour
+     * @param pos Position of the Node in grid coordinates
+     * @param args Arguments to forward to T's constructor
+     * @return Shared pointer of the newly added node
+     */
+    template <typename T, typename... Params>
+    Node& emplaceNode(const ImVec2& grid_coords, Params&&... args);
+
+    /**
+     * @brief Add a node to the grid
+     * @tparam T Concrete type implementing INodeBehaviour
+     * @param pos Position of the Node in screen coordinates
+     * @param args Arguments to forward to T's constructor
+     * @return Shared pointer of the newly added node
+     */
+    template <typename T, typename... Params>
+    Node& emplaceNodeAt(const ImVec2& screen_coords, Params&&... args);
+
+    /**
+     * @brief Add a node to the grid using mouse position
+     * @tparam T Concrete type implementing INodeBehaviour
+     * @param args Arguments to forward to T's constructor
+     * @return Shared pointer to the newly added node
+     */
+    template <typename T, typename... Params>
+    Node& emplaceNodeOnMouse(Params&&... args);
 
     /**
      * @brief Creates a link between two pins
@@ -552,7 +594,7 @@ public:
      * @details Sets the content of a pop-up that can be displayed when right-clicking on the grid.
      * @param content Function or Lambda containing only the contents of the pop-up and the subsequent logic
      */
-    void rightClickPopUpContent(std::function<void(BaseNode* node)> content)
+    void rightClickPopUpContent(std::function<void(Node* node)> content)
     {
         m_rightClickPopUp = std::move(content);
     }
@@ -648,7 +690,7 @@ public:
      * @brief Get editor's list of nodes
      * @return Const reference to editor's internal nodes list
      */
-    std::unordered_map<NodeUID, std::unique_ptr<BaseNode>, NodeUID::Hash>&
+    std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>&
     getNodes()
     {
         return m_nodes;
@@ -702,7 +744,7 @@ public:
      * @brief Set what node is being hovered
      * @param hovering Pointer to the hovered node
      */
-    void hoveredNode(BaseNode* hovering) { m_hoveredNode = hovering; }
+    void hoveredNode(Node* hovering) { m_hoveredNode = hovering; }
 
     /**
      * @brief Convert coordinates from screen to grid
@@ -740,18 +782,18 @@ private:
         bool middle = false;
     } m_singleUseClicks;
 
-    std::unordered_map<NodeUID, std::unique_ptr<BaseNode>, NodeUID::Hash>
+    std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>
         m_nodes;
     std::vector<std::unique_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
     ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
     Pin* m_droppedLinkLeft = nullptr;
-    std::function<void(BaseNode* node)> m_rightClickPopUp;
+    std::function<void(Node* node)> m_rightClickPopUp;
     std::function<void(const ImVec2&)> m_dragdropTarget;
-    BaseNode* m_hoveredNodeAux = nullptr;
+    Node* m_hoveredNodeAux = nullptr;
 
-    BaseNode* m_hoveredNode = nullptr;
+    Node* m_hoveredNode = nullptr;
     bool m_draggingNode = false;
     bool m_draggingNodeNext = false;
     Pin* m_hovering = nullptr;
@@ -772,47 +814,70 @@ private:
 };
 
 // -----------------------------------------------------------------------------------------------------------------
+// NODE BEHAVIOUR INTERFACE
+
+/**
+ * @brief Node behaviour strategy.
+ *
+ * This is what allows the user to customize the node's appearance and
+ * behaviour
+ */
+class INodeBehaviour {
+public:
+    virtual ~INodeBehaviour() = default;
+
+    /**
+     * @brief Called immediately after a node is constructed.
+     */
+    virtual void setup(ImFlow::Node& node) { }
+
+    /**
+     * @brief Called each frame. Responsible for the appearance of the
+     * node's inner content
+     */
+    virtual void draw(ImFlow::Node& node) = 0;
+
+    /**
+     * @brief Called during a node cloning event. If not implemented or
+     * nullptr is returned, the cloning event fails for the corresponding
+     * node.
+     */
+    [[nodiscard]] virtual std::unique_ptr<INodeBehaviour> clone()
+    {
+        return { };
+    }
+};
+
+// -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
 /**
  * @brief Parent class for custom nodes
  * @details Main class from which custom nodes can be created. All interactions with the main grid are handled internally.
  */
-class BaseNode {
+class Node {
 public:
-    explicit BaseNode(ImNodeFlow& flow, NodeUID uid)
+    explicit Node(
+        ImNodeFlow& flow,
+        NodeUID uid,
+        std::unique_ptr<INodeBehaviour> impl = nullptr)
         : m_flow(flow)
         , m_uid(uid)
+        , m_impl(std::move(impl))
     {
+        if (m_impl) {
+            m_impl->setup(*this);
+        }
     }
 
-    ~BaseNode();
+    ~Node();
 
     /**
      * @brief Main loop of the node
-     * @details Updates position, hovering and selected status, and renders the node. Must be called each frame.
+     * @details Updates position, hovering and selected status, and
+     * renders the node. Must be called each frame.
      */
-    void update(ImNodeFlow& ctx);
-
-    /**
-     * @brief Content of the node
-     * @details Function to be implemented by derived custom nodes.
-     *	    Must contain the body of the node. If left empty the node will only have input and output pins.
-     */
-    void draw();
-
-    /**
-     * @brief Registers a unique observer for the node's draw call
-     * @param func lambda function called when this Node's draw() method
-     * is invoked
-     */
-    void on_drawHook(std::function<void()> func = []() -> void { });
-
-    /**
-     * @brief Registers a unique observer for the node's destruction event
-     * @param func lambda function called when this Node is destroyed
-     */
-    void on_destroyHook(std::function<void()> func = []() -> void { });
+    void draw(ImNodeFlow& ctx);
 
     /**
      * @brief Add an Input to the node
@@ -992,6 +1057,42 @@ public:
     Pin& outPin(const char* uid);
 
     /**
+     * @brief Get reference to input pin
+     * @tparam Underlying type of the input pin
+     * @param uid Unique identifier of the pin
+     * @return Reference to the pin
+     */
+    template <typename T>
+    InPin<T>& inPin(const PinUID& uid);
+
+    /**
+     * @brief Get reference to input pin with the specified name
+     * @tparam Underlying type of the input pin
+     * @param uid Unique identifier of the pin
+     * @return Reference to the pin
+     */
+    template <typename T>
+    InPin<T>& inPin(const char* name);
+
+    /**
+     * @brief Get generic reference to output pin
+     * @tparam Underlying type of the output pin
+     * @param uid Unique identifier of the pin
+     * @return Reference to the pin
+     */
+    template <typename T>
+    OutPin<T>& outPin(const PinUID& uid);
+
+    /**
+     * @brief Get generic reference to output pin with the specified name
+     * @tparam Underlying type of the output pin
+     * @param uid Unique identifier of the pin
+     * @return Reference to the pin
+     */
+    template <typename T>
+    OutPin<T>& outPin(const char* name);
+
+    /**
      * @brief Get internal input pins list
      * @return Const reference to node's internal list
      */
@@ -1020,8 +1121,8 @@ public:
      */
     void destroy()
     {
-        if (m_destroyHook) {
-            m_destroyHook();
+        if (m_impl) {
+            m_impl.reset();
         }
         m_destroyed = true;
     }
@@ -1101,7 +1202,7 @@ public:
      * @brief Set node's uid
      * @param uid Node's unique identifier
      */
-    BaseNode* setUID(NodeUID uid)
+    Node* setUID(NodeUID uid)
     {
         m_uid = uid;
         return this;
@@ -1111,7 +1212,7 @@ public:
      * @brief Set node's name
      * @param name New title
      */
-    BaseNode* setTitle(const std::string& title)
+    Node* setTitle(const std::string& title)
     {
         m_title = title;
         return this;
@@ -1121,7 +1222,7 @@ public:
      * @brief Set node's position
      * @param pos Position in grid coordinates
      */
-    BaseNode* setPos(const ImVec2& pos)
+    Node* setPos(const ImVec2& pos)
     {
         m_pos = pos;
         m_posTarget = pos;
@@ -1132,7 +1233,7 @@ public:
      * @brief Set node's style
      * @param style New style
      */
-    BaseNode* setStyle(NodeStyle style)
+    Node* setStyle(NodeStyle style)
     {
         m_style = std::move(style);
         return this;
@@ -1142,7 +1243,7 @@ public:
      * @brief Set node's style
      * @param style New style
      */
-    BaseNode* setIndestructable(bool indestruct)
+    Node* setIndestructable(bool indestruct)
     {
         m_indestructable = indestruct;
         return this;
@@ -1154,7 +1255,7 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    BaseNode* setSelected(bool state)
+    Node* setSelected(bool state)
     {
         m_selectedNext = state;
         return this;
@@ -1166,7 +1267,7 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    BaseNode* setProvisionallySelected(bool state)
+    Node* setProvisionallySelected(bool state)
     {
         m_provisionallySelectedNext = state;
         return this;
@@ -1201,6 +1302,7 @@ public:
 
 private:
     std::reference_wrapper<ImNodeFlow> m_flow;
+    std::unique_ptr<INodeBehaviour> m_impl;
 
     NodeUID m_uid;
     std::string m_title;
@@ -1218,9 +1320,6 @@ private:
     bool m_dragged = false;
     bool m_destroyed = false;
     bool m_indestructable = false;
-
-    std::function<void()> m_drawHook = []() -> void { };
-    std::function<void()> m_destroyHook = []() -> void { };
 
     std::vector<std::unique_ptr<Pin>> m_ins;
     std::vector<DynamicPin> m_dynamicIns;
@@ -1244,11 +1343,7 @@ public:
      * @param inf Pointer to the Grid Handler the pin is in (same as parent)
      * @param style Style of the pin
      */
-    explicit Pin(
-        ImNodeFlow& flow,
-        BaseNode& parent,
-        PinUID uid,
-        BasePinInfo info)
+    explicit Pin(ImNodeFlow& flow, Node& parent, PinUID uid, BasePinInfo info)
         : m_flow(flow)
         , m_parent(parent)
         , m_uid(uid)
@@ -1256,6 +1351,7 @@ public:
         , m_kind(info.kind)
         , m_style(std::move(info.style))
         , m_strat(info.strat)
+        , m_renderer(std::move(info.renderer))
     {
     }
 
@@ -1336,7 +1432,7 @@ public:
      * @brief Custom render function to override Pin appearance
      * @param r Function or lambda expression with new ImGui rendering
      */
-    Pin* renderer(std::function<void(Pin* p)> r)
+    Pin* setRenderer(std::function<void(Pin* p)> r)
     {
         m_renderer = std::move(r);
         return this;
@@ -1407,7 +1503,7 @@ public:
      * @brief Get pin's parent node
      * @return Generic type pointer to pin's parent node. (Node that contains it)
      */
-    BaseNode& getParent() { return m_parent; }
+    Node& getParent() { return m_parent; }
 
     /**
      * @brief Get pin's type
@@ -1489,7 +1585,7 @@ public:
      * the calculation step, to query what every other pin's output value
      * was in the closing iteration step.
      */
-    virtual void calculate() = 0;
+    virtual void calculate(Node&) = 0;
 
     /**
      * @brief When the context calls this method, the pins should update
@@ -1502,7 +1598,7 @@ public:
 
 protected:
     std::reference_wrapper<ImNodeFlow> m_flow;
-    std::reference_wrapper<BaseNode> m_parent;
+    std::reference_wrapper<Node> m_parent;
 
     PinUID m_uid;
 
@@ -1541,7 +1637,7 @@ public:
      */
     explicit InPin(
         ImNodeFlow& flow,
-        BaseNode& parent,
+        Node& parent,
         PinUID uid,
         InPinInfo<T> info)
         : Pin(flow,
@@ -1610,7 +1706,7 @@ public:
         return m_pos + ImVec2(-getStyle().extra.socket_padding, m_size.y / 2);
     }
 
-    void calculate() override;
+    void calculate(Node& node) override;
 
     void prime() override;
 
@@ -1649,7 +1745,7 @@ public:
      */
     explicit OutPin(
         ImNodeFlow& flow,
-        BaseNode& parent,
+        Node& parent,
         PinUID uid,
         OutPinInfo<T> info)
         : Pin(flow,
@@ -1661,6 +1757,7 @@ public:
                   .allow_same_node_connections = info.allow_same_node_connections,
                   .style = info.style,
                   .strat = info.strat,
+                  .renderer = std::move(info.renderer),
               })
         , m_behaviour(std::move(info.behaviour))
     {
@@ -1690,11 +1787,18 @@ public:
      * @param new_behaviour The behaviour which will replace the existing
      * one
      */
-    void setBehaviour(std::function<T()> new_behaviour);
+    void setBehaviour(std::function<T(Node&)> new_behaviour);
 
-    void calculate() override;
+    void calculate(Node& node) override;
 
     void prime() override;
+
+    /**
+     * @brief Set's this outpint pin's output starting next iteration
+     * @param next_value The next output for this pin starting next
+     * ieration
+     */
+    void setNextValue(T next_value);
 
     /**
      * @brief Get output value
@@ -1712,7 +1816,7 @@ public:
     };
 
 private:
-    std::function<T()> m_behaviour;
+    std::function<T(Node&)> m_behaviour;
     T m_val;
     T m_valNext;
 };
