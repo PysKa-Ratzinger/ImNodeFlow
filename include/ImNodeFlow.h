@@ -70,6 +70,7 @@ class OutPin;
 class Pin;
 class BaseNode;
 class ImNodeFlow;
+class IFilter;
 class ConnectionFilter;
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -695,7 +696,7 @@ public:
     std::shared_ptr<InPin<T>>
     addIN(const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
+        std::shared_ptr<IFilter> filter,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
@@ -715,7 +716,7 @@ public:
         const PinUID& uid,
         const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
+        std::shared_ptr<IFilter> filter,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
@@ -747,7 +748,7 @@ public:
     const T&
     showIN(const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
+        std::shared_ptr<IFilter> filter,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
@@ -768,7 +769,7 @@ public:
         const PinUID& uid,
         const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
+        std::shared_ptr<IFilter> filter,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
@@ -1287,25 +1288,52 @@ protected:
 };
 
 /**
+ * @brief Common filter interface
+ */
+class IFilter {
+public:
+    virtual bool operator()(Pin const& out, Pin const& in) const = 0;
+};
+
+/**
  * @brief Collection of Pin's collection filters
  */
 class ConnectionFilter {
 public:
-    static std::function<bool(Pin*, Pin*)> None()
+    struct None_t : public IFilter {
+        bool operator()(Pin const& out, Pin const& in) const final
+        {
+            return true;
+        }
+    };
+
+    struct SameType_t : public IFilter {
+        bool operator()(Pin const& out, Pin const& in) const final
+        {
+            return out.getTypeID() == in.getTypeID();
+        }
+    };
+
+    struct Numbers_t : public IFilter {
+        bool operator()(Pin const& out, Pin const& in) const final
+        {
+            return out.getTypeID() == detail::get_type_id<double>() || out.getTypeID() == detail::get_type_id<float>() || out.getTypeID() == detail::get_type_id<int>();
+        }
+    };
+
+    static std::shared_ptr<IFilter> None()
     {
-        return [](Pin* out, Pin* in) { return true; };
+        return std::make_shared<None_t>();
     }
-    static std::function<bool(Pin*, Pin*)> SameType()
+
+    static std::shared_ptr<IFilter> SameType()
     {
-        return [](Pin* out, Pin* in) {
-            return out->getTypeID() == in->getTypeID();
-        };
+        return std::make_shared<SameType_t>();
     }
-    static std::function<bool(Pin*, Pin*)> Numbers()
+
+    static std::shared_ptr<IFilter> Numbers()
     {
-        return [](Pin* out, Pin* in) {
-            return out->getTypeID() == detail::get_type_id<double>() || out->getTypeID() == detail::get_type_id<float>() || out->getTypeID() == detail::get_type_id<int>();
-        };
+        return std::make_shared<Numbers_t>();
     }
 };
 
@@ -1330,7 +1358,7 @@ public:
         PinUID uid,
         const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
+        std::shared_ptr<IFilter> filter,
         std::shared_ptr<PinStyle> style,
         BaseNode* parent)
         : Pin(uid, name, style, PinType_Input, parent)
@@ -1397,10 +1425,7 @@ public:
      * @brief <BR>Get InPin's connection filter
      * @return InPin's connection filter configuration
      */
-    [[nodiscard]] const std::function<bool(Pin*, Pin*)>& getFilter() const
-    {
-        return m_filter;
-    }
+    [[nodiscard]] const IFilter& getFilter() const { return *m_filter; }
 
     /**
      * @brief <BR>Get pin's data type (aka: \<T>)
@@ -1435,7 +1460,7 @@ private:
     T m_emptyVal;
     T m_val;
     T m_valNext;
-    std::function<bool(Pin*, Pin*)> m_filter;
+    std::shared_ptr<IFilter> m_filter;
     bool m_allowSelfConnection = false;
 };
 

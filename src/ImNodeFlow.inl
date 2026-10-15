@@ -111,7 +111,7 @@ std::shared_ptr<InPin<T>>
 BaseNode::addIN(
     const std::string& name,
     T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
+    std::shared_ptr<IFilter> filter,
     std::shared_ptr<PinStyle> style)
 {
     return addIN_uid(
@@ -128,7 +128,7 @@ BaseNode::addIN_uid(
     const PinUID& uid,
     const std::string& name,
     T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
+    std::shared_ptr<IFilter> filter,
     std::shared_ptr<PinStyle> style)
 {
     auto p = std::make_shared<InPin<T>>(
@@ -142,7 +142,7 @@ const T&
 BaseNode::showIN(
     const std::string& name,
     T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
+    std::shared_ptr<IFilter> filter,
     std::shared_ptr<PinStyle> style)
 {
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
@@ -171,7 +171,7 @@ BaseNode::showIN_uid(
     const PinUID& uid,
     const std::string& name,
     T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
+    std::shared_ptr<IFilter> filter,
     std::shared_ptr<PinStyle> style)
 {
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
@@ -402,7 +402,7 @@ bool InPin<T>::canCreateLink(Pin* other)
         return false;
     }
 
-    return m_filter(other, this);
+    return (*m_filter)(*other, *this);
 }
 
 template <class T>
