@@ -71,7 +71,6 @@ class Pin;
 class INodeBehaviour;
 class Node;
 class ImNodeFlow;
-class ConnectionFilter;
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
@@ -724,7 +723,6 @@ public:
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
      * @param defReturn Default return value when the pin is not connected
-     * @param filter Connection filter
      * @param style Style of the pin
      * @return Shared pointer to the newly added pin
      */
@@ -732,7 +730,6 @@ public:
     std::shared_ptr<InPin<T>>
     addIN(const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
@@ -744,7 +741,6 @@ public:
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
      * @param defReturn Default return value when the pin is not connected
-     * @param filter Connection filter
      * @param style Style of the pin
      * @return Shared pointer to the newly added pin
      */
@@ -753,7 +749,6 @@ public:
         const PinUID& uid,
         const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
@@ -778,7 +773,6 @@ public:
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
      * @param defReturn Default return value when the pin is not connected
-     * @param filter Connection filter
      * @param style Style of the pin
      * @return Const reference to the value of the connected link for the current frame of defReturn
      */
@@ -786,7 +780,6 @@ public:
     const T&
     showIN(const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
@@ -799,7 +792,6 @@ public:
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
      * @param defReturn Default return value when the pin is not connected
-     * @param filter Connection filter
      * @param style Style of the pin
      * @return Const reference to the value of the connected link for the current frame of defReturn
      */
@@ -808,7 +800,6 @@ public:
         const PinUID& uid,
         const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
@@ -819,7 +810,6 @@ public:
      *
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
-     * @param filter Connection filter
      * @param style Style of the pin
      * @return Shared pointer to the newly added pin. Must be used to set the behaviour
      */
@@ -836,7 +826,6 @@ public:
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
-     * @param filter Connection filter
      * @param style Style of the pin
      * @return Shared pointer to the newly added pin. Must be used to set the behaviour
      */
@@ -868,7 +857,6 @@ public:
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
      * @param behaviour Function or lambda expression used to calculate output value
-     * @param filter Connection filter
      * @param style Style of the pin
      */
     template <typename T>
@@ -887,7 +875,6 @@ public:
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
      * @param behaviour Function or lambda expression used to calculate output value
-     * @param filter Connection filter
      * @param style Style of the pin
      */
     template <typename T>
@@ -1145,7 +1132,6 @@ public:
     /**
      * @brief Generic pin constructor
      * @param name Name of the pin
-     * @param filter Connection filter
      * @param kind Specifies Input or Output
      * @param parent Pointer to the Node containing the pin
      * @param inf Pointer to the Grid Handler the pin is in (same as parent)
@@ -1327,29 +1313,6 @@ protected:
 };
 
 /**
- * @brief Collection of Pin's collection filters
- */
-class ConnectionFilter {
-public:
-    static std::function<bool(Pin*, Pin*)> None()
-    {
-        return [](Pin* out, Pin* in) { return true; };
-    }
-    static std::function<bool(Pin*, Pin*)> SameType()
-    {
-        return [](Pin* out, Pin* in) {
-            return out->getTypeID() == in->getTypeID();
-        };
-    }
-    static std::function<bool(Pin*, Pin*)> Numbers()
-    {
-        return [](Pin* out, Pin* in) {
-            return out->getTypeID() == detail::get_type_id<double>() || out->getTypeID() == detail::get_type_id<float>() || out->getTypeID() == detail::get_type_id<int>();
-        };
-    }
-};
-
-/**
  * @brief Input specific pin
  * @details Derived from the generic class Pin. The input pin owns the link pointer.
  * @tparam T Data type handled by the pin
@@ -1360,7 +1323,6 @@ public:
     /**
      * @brief Input pin constructor
      * @param name Name of the pin
-     * @param filter Connection filter
      * @param parent Pointer to the Node containing the pin
      * @param defReturn Default return value when the pin is not connected
      * @param inf Pointer to the Grid Handler the pin is in (same as parent)
@@ -1370,14 +1332,12 @@ public:
         PinUID uid,
         const std::string& name,
         T defReturn,
-        std::function<bool(Pin*, Pin*)> filter,
         std::shared_ptr<PinStyle> style,
         Node* parent,
         ImNodeFlow** inf)
         : Pin(uid, name, style, PinType_Input, parent, inf)
         , m_emptyVal(defReturn)
         , m_val(defReturn)
-        , m_filter(std::move(filter))
     {
     }
 
@@ -1414,15 +1374,6 @@ public:
     std::weak_ptr<Link> getLink() override { return m_link; }
 
     /**
-     * @brief Get InPin's connection filter
-     * @return InPin's connection filter configuration
-     */
-    [[nodiscard]] const std::function<bool(Pin*, Pin*)>& getFilter() const
-    {
-        return m_filter;
-    }
-
-    /**
      * @brief Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
@@ -1455,7 +1406,6 @@ private:
     T m_emptyVal;
     T m_val;
     T m_valNext;
-    std::function<bool(Pin*, Pin*)> m_filter;
     bool m_allowSelfConnection = false;
 };
 
@@ -1470,7 +1420,6 @@ public:
     /**
      * @brief Output pin constructor
      * @param name Name of the pin
-     * @param filter Connection filter
      * @param parent Pointer to the Node containing the pin
      * @param inf Pointer to the Grid Handler the pin is in (same as parent)
      * @param style Style of the pin

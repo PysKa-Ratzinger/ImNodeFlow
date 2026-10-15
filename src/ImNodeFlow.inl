@@ -99,15 +99,9 @@ std::shared_ptr<InPin<T>>
 Node::addIN(
     const std::string& name,
     T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
     std::shared_ptr<PinStyle> style)
 {
-    return addIN_uid(
-        PinUID::generate(),
-        name,
-        defReturn,
-        std::move(filter),
-        std::move(style));
+    return addIN_uid(PinUID::generate(), name, defReturn, std::move(style));
 }
 
 template <typename T>
@@ -116,17 +110,10 @@ Node::addIN_uid(
     const PinUID& uid,
     const std::string& name,
     T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
     std::shared_ptr<PinStyle> style)
 {
     auto p = std::make_shared<InPin<T>>(
-        uid,
-        name,
-        defReturn,
-        std::move(filter),
-        std::move(style),
-        this,
-        &m_inf);
+        uid, name, defReturn, std::move(style), this, &m_inf);
     m_ins.emplace_back(p);
     return p;
 }
@@ -136,7 +123,6 @@ const T&
 Node::showIN(
     const std::string& name,
     T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
     std::shared_ptr<PinStyle> style)
 {
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
@@ -153,7 +139,6 @@ Node::showIN(
                 PinUID::generate(),
                 name,
                 defReturn,
-                std::move(filter),
                 std::move(style),
                 this,
                 &m_inf)));
@@ -166,7 +151,6 @@ Node::showIN_uid(
     const PinUID& uid,
     const std::string& name,
     T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
     std::shared_ptr<PinStyle> style)
 {
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
@@ -180,13 +164,7 @@ Node::showIN_uid(
         std::make_pair(
             1,
             std::make_shared<InPin<T>>(
-                uid,
-                name,
-                defReturn,
-                std::move(filter),
-                std::move(style),
-                this,
-                &m_inf)));
+                uid, name, defReturn, std::move(style), this, &m_inf)));
     return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
 }
 
@@ -391,8 +369,26 @@ void InPin<T>::createLink(Pin* other)
         return;
     }
 
-    if (!m_filter(other, this)) // Check Filter
+    // Only pins with the same type can be linked. Casts between
+    // compatible types like (float and double), or (short, int, and long)
+    // should be handled explicitly by user types.
+    //
+    // On a technical note, supporting these casts is not necessarily hard,
+    // but introduces a layer of complexity which either requires RTTI (so
+    // we know how to type-cast), or manual RTTI (using a compile-time
+    // type_id<T>, which is possible, but we are now responsible for
+    // maintaining a list of which type conversions should be possible and
+    // which aren't), or it might introduce subtle programming errors
+    // given the nature that different types might naturally have different
+    // sizes in memory, and getting a cast wrong may result in writing
+    // into out-of-bounds memory.
+    //
+    // Supporting connections only between same types avoids all these
+    // issues, and it's not something that's prohibitibly hard to work
+    // around on the client side.
+    if (this->getTypeID() != other->getTypeID()) {
         return;
+    }
 
     m_link = std::make_shared<Link>(other, this, (*m_inf));
     other->setLink(m_link);
