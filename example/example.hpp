@@ -2,21 +2,20 @@
 
 #include "ImNodeFlow.h"
 
-class SimpleSum : public ImFlow::BaseNode {
+class SimpleSum : public ImFlow::INodeBehaviour {
 public:
-    SimpleSum()
+    void setup(ImFlow::Node& node) override
     {
-        setTitle("Simple sum");
-        setStyle(ImFlow::NodeStyle::green());
-        ImFlow::BaseNode::addIN<int>(
-            "In", 0, ImFlow::ConnectionFilter::SameType());
-        ImFlow::BaseNode::addOUT<int>("Out", nullptr)
-            ->behaviour([this]() {
-                return getInVal<int>("In") + m_valB;
+        node.setTitle("Simple sum");
+        node.setStyle(ImFlow::NodeStyle::green());
+        node.addIN<int>("In", 0, ImFlow::ConnectionFilter::SameType());
+        node.addOUT<int>("Out", nullptr)
+            ->behaviour([this](ImFlow::Node& node) -> int {
+                return node.getInVal<int>("In") + m_valB;
             });
     }
 
-    void draw() override
+    void draw(ImFlow::Node& node) override
     {
         ImGui::SetNextItemWidth(100.f);
         ImGui::InputInt("##ValB", &m_valB);
@@ -26,25 +25,23 @@ private:
     int m_valB = 0;
 };
 
-class CollapsingNode : public ImFlow::BaseNode {
+class CollapsingNode : public ImFlow::INodeBehaviour {
 public:
-    CollapsingNode()
+    void setup(ImFlow::Node& node) override
     {
-        setTitle("Collapsing node");
-        setStyle(ImFlow::NodeStyle::red());
-        ImFlow::BaseNode::addIN<int>(
-            "A", 0, ImFlow::ConnectionFilter::SameType());
-        ImFlow::BaseNode::addIN<int>(
-            "B", 0, ImFlow::ConnectionFilter::SameType());
-        ImFlow::BaseNode::addOUT<int>("Out", nullptr)
-            ->behaviour([this]() {
-                return getInVal<int>("A") + getInVal<int>("B");
+        node.setTitle("Collapsing node");
+        node.setStyle(ImFlow::NodeStyle::red());
+        node.addIN<int>("A", 0, ImFlow::ConnectionFilter::SameType());
+        node.addIN<int>("B", 0, ImFlow::ConnectionFilter::SameType());
+        node.addOUT<int>("Out", nullptr)
+            ->behaviour([this](ImFlow::Node& node) {
+                return node.getInVal<int>("A") + node.getInVal<int>("B");
             });
     }
 
-    void draw() override
+    void draw(ImFlow::Node& node) override
     {
-        if (ImFlow::BaseNode::isSelected()) {
+        if (node.isSelected()) {
             ImGui::SetNextItemWidth(100.f);
             ImGui::Text(
                 "You can only see me when the node is selected!");
@@ -52,48 +49,45 @@ public:
     }
 };
 
-class ResultNode : public ImFlow::BaseNode {
+class ResultNode : public ImFlow::INodeBehaviour {
 public:
-    ResultNode()
+    void setup(ImFlow::Node& node) override
     {
-        setTitle("Result node");
-        setStyle(ImFlow::NodeStyle::brown());
-        ImFlow::BaseNode::addIN<int>(
-            "A", 0, ImFlow::ConnectionFilter::SameType());
-        ImFlow::BaseNode::addIN<int>(
-            "B", 0, ImFlow::ConnectionFilter::SameType());
+        node.setTitle("Result node");
+        node.setStyle(ImFlow::NodeStyle::brown());
+        node.addIN<int>("A", 0, ImFlow::ConnectionFilter::SameType());
+        node.addIN<int>("B", 0, ImFlow::ConnectionFilter::SameType());
     }
 
-    void draw() override
+    void draw(ImFlow::Node& node) override
     {
         ImGui::Text(
-            "Result: %d", getInVal<int>("A") + getInVal<int>("B"));
+            "Result: %d",
+            node.getInVal<int>("A") + node.getInVal<int>("B"));
     }
 };
 
 /* Node editor that sets up the grid to place nodes */
-struct NodeEditor : ImFlow::BaseNode {
+struct NodeEditor {
     ImFlow::ImNodeFlow mINF;
 
-    NodeEditor(float d, std::size_t r)
-        : BaseNode()
+    NodeEditor(float width, float height)
     {
-        mINF.setSize({ d, d });
-        if (r > 0) {
-            auto n1 = mINF.addNode<SimpleSum>({ 40, 40 });
-            auto n2 = mINF.addNode<SimpleSum>({ 40, 150 });
-            auto result = mINF.addNode<ResultNode>({ 250, 80 });
+        mINF.setSize({ width, height });
 
-            // Add links between nodes
-            n1->outPin("Out")->createLink(result->inPin("A"));
-            n2->outPin("Out")->createLink(result->inPin("B"));
+        auto n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
+        auto n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
+        auto result = mINF.emplaceNode<ResultNode>({ 250, 80 });
 
-            // Add a collapsing node
-            auto collapsingNode = mINF.addNode<CollapsingNode>({ 300, 300 });
-        }
+        // Add links between nodes
+        n1->outPin("Out")->createLink(result->inPin("A"));
+        n2->outPin("Out")->createLink(result->inPin("B"));
+
+        // Add a collapsing node
+        auto collapsingNode = mINF.emplaceNode<CollapsingNode>({ 300, 300 });
     }
 
     void set_size(ImVec2 d) { mINF.setSize(d); }
 
-    void draw() override { mINF.update(); }
+    void draw() { mINF.update(); }
 };

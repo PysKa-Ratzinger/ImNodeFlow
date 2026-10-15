@@ -100,7 +100,7 @@ int main(int, char**)
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Create a node editor with width and height
-    NodeEditor* neditor = new (NodeEditor)(500, 500);
+    auto* neditor = new NodeEditor(500, 500);
 
     // Main loop
     bool done = false;

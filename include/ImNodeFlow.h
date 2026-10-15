@@ -68,7 +68,8 @@ class InPin;
 template <typename T>
 class OutPin;
 class Pin;
-class BaseNode;
+class INodeBehaviour;
+class Node;
 class ImNodeFlow;
 class ConnectionFilter;
 
@@ -355,6 +356,44 @@ struct InfStyler {
     InfColors colors;
 };
 
+// -----------------------------------------------------------------------------------------------------------------
+// NODE BEHAVIOUR INTERFACE
+
+/**
+ * @brief Node behaviour strategy.
+ *
+ * This is what allows the user to customize the node's appearance and
+ * behaviour
+ */
+class INodeBehaviour {
+public:
+    virtual ~INodeBehaviour() = default;
+
+    /**
+     * @brief Called immediately after a node is constructed.
+     */
+    virtual void setup(ImFlow::Node& node) { }
+
+    /**
+     * @brief Called each frame. Responsible for the appearance of the
+     * node's inner content
+     */
+    virtual void draw(ImFlow::Node& node) = 0;
+
+    /**
+     * @brief Called during a node cloning event. If not implemented or
+     * nullptr is returned, the cloning event fails for the corresponding
+     * node.
+     */
+    [[nodiscard]] virtual std::unique_ptr<INodeBehaviour> clone()
+    {
+        return { };
+    }
+};
+
+// -----------------------------------------------------------------------------------------------------------------
+// NODE FLOW CONTEXT
+
 /**
  * @brief Main node editor
  * @details Handles the infinite grid, nodes and links. Also handles all the logic.
@@ -394,73 +433,83 @@ public:
 
     /**
      * @brief Add a node to the grid
-     * @tparam T Derived class of <BaseNode> to be added
-     * @tparam Params types of optional args to forward to derived class ctor
      * @param pos Position of the Node in grid coordinates
-     * @param args Optional arguments to be forwarded to derived class ctor
+     * @param impl Unique pointer to an object implementing the
+     * INodeBehaviour interface
      * @return Shared pointer of the pushed type to the newly added node
      *
-     * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
+     * Inheritance is checked at compile time, \<T> MUST be derived from Node.
      */
-    template <typename T, typename... Params>
-    std::shared_ptr<T> addNode(const ImVec2& pos, Params&&... args);
-
-private:
-    /**
-     * @brief Helper struct for creating a node struct from a lambda
-     * @sa addLambdaNode which wraps creating one of these
-     * @tparam L the type of the lambda
-     * @tparam B always BaseNode, tparam because BaseNode is incomplete here
-     */
-    template <typename L, typename B = BaseNode>
-    struct NodeWrapper : public B {
-        L mLambda;
-        NodeWrapper(L&& l)
-            : BaseNode()
-            , mLambda(std::forward<L>(l))
-        {
-        }
-        void draw() { mLambda(this); }
-    };
-
-public:
-    /**
-     * @brief Add a node whos operation can be defined within a lambda.
-     * @tparam L the type of the lambda
-     * @param lambda the lambda that defines the nodes operation
-     * @param pos the position at which to place the node
-     */
-    template <typename L>
-    std::shared_ptr<NodeWrapper<L>>
-    addLambdaNode(L&& lambda, const ImVec2& pos)
-    {
-        return addNode<NodeWrapper<L>>(pos, std::forward<L>(lambda));
-    }
+    std::shared_ptr<Node>
+    addNode(const ImVec2& pos,
+        std::unique_ptr<INodeBehaviour> impl = nullptr);
 
     /**
      * @brief Add a node to the grid
-     * @tparam T Derived class of <BaseNode> to be added
-     * @tparam Params types of optional args to forward to derived class ctor
      * @param pos Position of the Node in screen coordinates
-     * @param args Optional arguments to be forwarded to derived class ctor
+     * @param impl Unique pointer to an object implementing the
+     * INodeBehaviour interface
      * @return Shared pointer of the pushed type to the newly added node
      *
-     * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
+     * Inheritance is checked at compile time, \<T> MUST be derived from Node.
      */
-    template <typename T, typename... Params>
-    std::shared_ptr<T> placeNodeAt(const ImVec2& pos, Params&&... args);
+    std::shared_ptr<Node> placeNodeAt(
+        const ImVec2& pos,
+        std::unique_ptr<INodeBehaviour> impl = nullptr);
 
     /**
      * @brief Add a node to the grid using mouse position
-     * @tparam T Derived class of <BaseNode> to be added
-     * @tparam Params types of optional args to forward to derived class ctor
      * @param args Optional arguments to be forwarded to derived class ctor
+     * @param impl Unique pointer to an object implementing the
+     * INodeBehaviour interface
      * @return Shared pointer of the pushed type to the newly added node
      *
-     * Inheritance is checked at compile time, \<T> MUST be derived from BaseNode.
+     * Inheritance is checked at compile time, \<T> MUST be derived from Node.
+     */
+    std::shared_ptr<Node>
+    placeNode(std::unique_ptr<INodeBehaviour> impl = nullptr);
+
+    /**
+     * @brief Add a node whos operation can be defined within a lambda.
+     * @tparam L the type of the lambda
+     * @param pos the position at which to place the node
+     * @param draw_func the draw_func that defines the nodes operation
+     */
+    std::shared_ptr<Node>
+    addNodeLambda(const ImVec2& pos, std::function<void(Node&)> draw_func);
+
+    /**
+     * @brief Add a node to the grid
+     * @tparam T Derived class of <INodeBehaviour> to be added
+     * @tparam Params types of optional args to forward to derived class ctor
+     * @param pos Position of the Node in grid coordinates
+     * @param args Arguments to be forwarded to derived class ctor
+     * @return Shared pointer of the pushed type to the newly added node
      */
     template <typename T, typename... Params>
-    std::shared_ptr<T> placeNode(Params&&... args);
+    std::shared_ptr<Node> emplaceNode(const ImVec2& pos, Params&&... args);
+
+    /**
+     * @brief Add a node to the grid
+     * @tparam T Derived class of <INodeBehaviour> to be added
+     * @tparam Params types of optional args to forward to derived class ctor
+     * @param pos Position of the Node in screen coordinates
+     * @param args Arguments to be forwarded to derived class ctor
+     * @return Shared pointer of the pushed type to the newly added node
+     */
+    template <typename T, typename... Params>
+    std::shared_ptr<Node>
+    emplaceNodeAt(const ImVec2& pos, Params&&... args);
+
+    /**
+     * @brief Add a node to the grid using mouse position
+     * @tparam T Derived class of <Node> to be added
+     * @tparam Params types of optional args to forward to derived class ctor
+     * @param args Arguments to be forwarded to derived class ctor
+     * @return Shared pointer of the pushed type to the newly added node
+     */
+    template <typename T, typename... Params>
+    std::shared_ptr<Node> emplaceNodeOnMouse(Params&&... args);
 
     /**
      * @brief Add link to the handler internal list
@@ -488,7 +537,7 @@ public:
      * @details Sets the content of a pop-up that can be displayed when right-clicking on the grid.
      * @param content Function or Lambda containing only the contents of the pop-up and the subsequent logic
      */
-    void rightClickPopUpContent(std::function<void(BaseNode* node)> content)
+    void rightClickPopUpContent(std::function<void(Node* node)> content)
     {
         m_rightClickPopUp = std::move(content);
     }
@@ -537,7 +586,7 @@ public:
      * @brief Get editor's list of nodes
      * @return Const reference to editor's internal nodes list
      */
-    std::unordered_map<NodeUID, std::shared_ptr<BaseNode>>& getNodes()
+    std::unordered_map<NodeUID, std::shared_ptr<Node>>& getNodes()
     {
         return m_nodes;
     }
@@ -596,7 +645,7 @@ public:
      * @brief Set what node is being hovered
      * @param hovering Pointer to the hovered node
      */
-    void hoveredNode(BaseNode* hovering) { m_hoveredNode = hovering; }
+    void hoveredNode(Node* hovering) { m_hoveredNode = hovering; }
 
     /**
      * @brief Convert coordinates from screen to grid
@@ -630,16 +679,16 @@ private:
 
     bool m_singleUseClick = false;
 
-    std::unordered_map<NodeUID, std::shared_ptr<BaseNode>> m_nodes;
+    std::unordered_map<NodeUID, std::shared_ptr<Node>> m_nodes;
     std::vector<std::weak_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
     ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
     Pin* m_droppedLinkLeft = nullptr;
-    std::function<void(BaseNode* node)> m_rightClickPopUp;
-    BaseNode* m_hoveredNodeAux = nullptr;
+    std::function<void(Node* node)> m_rightClickPopUp;
+    Node* m_hoveredNodeAux = nullptr;
 
-    BaseNode* m_hoveredNode = nullptr;
+    Node* m_hoveredNode = nullptr;
     bool m_draggingNode = false, m_draggingNodeNext = false;
     Pin* m_hovering = nullptr;
     Pin* m_dragOut = nullptr;
@@ -654,23 +703,17 @@ private:
  * @brief Parent class for custom nodes
  * @details Main class from which custom nodes can be created. All interactions with the main grid are handled internally.
  */
-class BaseNode {
+class Node {
 public:
-    virtual ~BaseNode() = default;
-    BaseNode() = default;
+    virtual ~Node() = default;
+
+    explicit Node(std::unique_ptr<INodeBehaviour> behaviour = nullptr);
 
     /**
      * @brief Main loop of the node
      * @details Updates position, hovering and selected status, and renders the node. Must be called each frame.
      */
     void update();
-
-    /**
-     * @brief Content of the node
-     * @details Function to be implemented by derived custom nodes.
-     * Must contain the body of the node. If left empty the node will only have input and output pins.
-     */
-    virtual void draw() { }
 
     /**
      * @brief Add an Input to the node
@@ -917,7 +960,7 @@ public:
     /**
      * @brief Delete itself
      */
-    void destroy() { m_destroyed = true; }
+    void destroy();
 
     /*
      * @brief Get if node must be deleted
@@ -988,7 +1031,7 @@ public:
      * @brief Set node's uid
      * @param uid Node's unique identifier
      */
-    BaseNode* setUID(NodeUID uid)
+    Node* setUID(NodeUID uid)
     {
         m_uid = uid;
         return this;
@@ -998,7 +1041,7 @@ public:
      * @brief Set node's name
      * @param name New title
      */
-    BaseNode* setTitle(const std::string& title)
+    Node* setTitle(const std::string& title)
     {
         m_title = title;
         return this;
@@ -1008,7 +1051,7 @@ public:
      * @brief Set node's position
      * @param pos Position in grid coordinates
      */
-    BaseNode* setPos(const ImVec2& pos)
+    Node* setPos(const ImVec2& pos)
     {
         m_pos = pos;
         m_posTarget = pos;
@@ -1019,7 +1062,7 @@ public:
      * @brief Set ImNodeFlow handler
      * @param inf Grid handler for the node
      */
-    BaseNode* setHandler(ImNodeFlow* inf)
+    Node* setHandler(ImNodeFlow* inf)
     {
         m_inf = inf;
         return this;
@@ -1029,7 +1072,7 @@ public:
      * @brief Set node's style
      * @param style New style
      */
-    BaseNode* setStyle(std::shared_ptr<NodeStyle> style)
+    Node* setStyle(std::shared_ptr<NodeStyle> style)
     {
         m_style = std::move(style);
         return this;
@@ -1041,7 +1084,7 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    BaseNode* selected(bool state)
+    Node* selected(bool state)
     {
         m_selectedNext = state;
         return this;
@@ -1077,6 +1120,8 @@ private:
     bool m_dragged = false;
     bool m_destroyed = false;
 
+    std::unique_ptr<INodeBehaviour> m_impl;
+
     std::vector<std::shared_ptr<Pin>> m_ins;
     std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicIns;
     std::vector<std::shared_ptr<Pin>> m_outs;
@@ -1111,7 +1156,7 @@ public:
         std::string name,
         std::shared_ptr<PinStyle> style,
         PinType kind,
-        BaseNode* parent,
+        Node* parent,
         ImNodeFlow** inf)
         : m_uid(uid)
         , m_name(std::move(name))
@@ -1214,7 +1259,7 @@ public:
      * @brief Get pin's parent node
      * @return Generic type pointer to pin's parent node. (Node that contains it)
      */
-    BaseNode* getParent() { return m_parent; }
+    Node* getParent() { return m_parent; }
 
     /**
      * @brief Get pin's type
@@ -1275,7 +1320,7 @@ protected:
     ImVec2 m_pos = ImVec2(0.f, 0.f);
     ImVec2 m_size = ImVec2(0.f, 0.f);
     PinType m_type;
-    BaseNode* m_parent = nullptr;
+    Node* m_parent = nullptr;
     ImNodeFlow** m_inf;
     std::shared_ptr<PinStyle> m_style;
     std::function<void(Pin* p)> m_renderer;
@@ -1327,7 +1372,7 @@ public:
         T defReturn,
         std::function<bool(Pin*, Pin*)> filter,
         std::shared_ptr<PinStyle> style,
-        BaseNode* parent,
+        Node* parent,
         ImNodeFlow** inf)
         : Pin(uid, name, style, PinType_Input, parent, inf)
         , m_emptyVal(defReturn)
@@ -1434,7 +1479,7 @@ public:
         PinUID uid,
         const std::string& name,
         std::shared_ptr<PinStyle> style,
-        BaseNode* parent,
+        Node* parent,
         ImNodeFlow** inf)
         : Pin(uid, name, style, PinType_Output, parent, inf)
     {
@@ -1498,7 +1543,7 @@ public:
      * @details Used to define the pin behaviour. This is what gets the data from the parent's inputs, and applies the needed logic.
      * @param func Function or lambda expression used to calculate output value
      */
-    OutPin<T>* behaviour(std::function<T()> func)
+    OutPin<T>* behaviour(std::function<T(Node&)> func)
     {
         m_behaviour = std::move(func);
         return this;
@@ -1515,7 +1560,7 @@ public:
 
 private:
     std::vector<std::weak_ptr<Link>> m_links;
-    std::function<T()> m_behaviour;
+    std::function<T(Node&)> m_behaviour;
     T m_val;
     T m_valNext;
 };

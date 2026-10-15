@@ -67,41 +67,28 @@ namespace detail {
 } // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
-// HANDLER
+// FLOW CONTEXT
 
 template <typename T, typename... Params>
-std::shared_ptr<T>
-ImNodeFlow::addNode(const ImVec2& pos, Params&&... args)
+std::shared_ptr<Node>
+ImNodeFlow::emplaceNode(const ImVec2& pos, Params&&... args)
 {
-    static_assert(
-        std::is_base_of<BaseNode, T>::value,
-        "Pushed type is not a subclass of BaseNode!");
-
-    std::shared_ptr<T> n = std::make_shared<T>(std::forward<Params>(args)...);
-    n->setPos(pos);
-    n->setHandler(this);
-    if (!n->getStyle())
-        n->setStyle(NodeStyle::cyan());
-
-    auto uid = reinterpret_cast<uintptr_t>(n.get());
-    n->setUID(uid);
-    m_nodes[uid] = n;
-    return n;
+    return addNode(pos, std::make_unique<T>(std::forward<Params>(args)...));
 }
 
 template <typename T, typename... Params>
-std::shared_ptr<T>
-ImNodeFlow::placeNodeAt(const ImVec2& pos, Params&&... args)
+std::shared_ptr<Node>
+ImNodeFlow::emplaceNodeAt(const ImVec2& pos, Params&&... args)
 {
-    return addNode<T>(screen2grid(pos), std::forward<Params>(args)...);
+    return placeNodeAt(
+        pos, std::make_unique<T>(std::forward<Params>(args)...));
 }
 
 template <typename T, typename... Params>
-std::shared_ptr<T>
-ImNodeFlow::placeNode(Params&&... args)
+std::shared_ptr<Node>
+ImNodeFlow::emplaceNodeOnMouse(Params&&... args)
 {
-    return placeNodeAt<T>(
-        ImGui::GetMousePos(), std::forward<Params>(args)...);
+    return placeNode(std::make_unique<T>(std::forward<Params>(args)...));
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -109,7 +96,7 @@ ImNodeFlow::placeNode(Params&&... args)
 
 template <typename T>
 std::shared_ptr<InPin<T>>
-BaseNode::addIN(
+Node::addIN(
     const std::string& name,
     T defReturn,
     std::function<bool(Pin*, Pin*)> filter,
@@ -125,7 +112,7 @@ BaseNode::addIN(
 
 template <typename T>
 std::shared_ptr<InPin<T>>
-BaseNode::addIN_uid(
+Node::addIN_uid(
     const PinUID& uid,
     const std::string& name,
     T defReturn,
@@ -146,7 +133,7 @@ BaseNode::addIN_uid(
 
 template <typename T>
 const T&
-BaseNode::showIN(
+Node::showIN(
     const std::string& name,
     T defReturn,
     std::function<bool(Pin*, Pin*)> filter,
@@ -175,7 +162,7 @@ BaseNode::showIN(
 
 template <typename T>
 const T&
-BaseNode::showIN_uid(
+Node::showIN_uid(
     const PinUID& uid,
     const std::string& name,
     T defReturn,
@@ -205,14 +192,14 @@ BaseNode::showIN_uid(
 
 template <typename T>
 std::shared_ptr<OutPin<T>>
-BaseNode::addOUT(const std::string& name, std::shared_ptr<PinStyle> style)
+Node::addOUT(const std::string& name, std::shared_ptr<PinStyle> style)
 {
     return addOUT_uid<T>(PinUID::generate(), name, std::move(style));
 }
 
 template <typename T>
 std::shared_ptr<OutPin<T>>
-BaseNode::addOUT_uid(
+Node::addOUT_uid(
     const PinUID& uid,
     const std::string& name,
     std::shared_ptr<PinStyle> style)
@@ -224,7 +211,7 @@ BaseNode::addOUT_uid(
 }
 
 template <typename T>
-void BaseNode::showOUT(
+void Node::showOUT(
     const std::string& name,
     std::function<T()> behaviour,
     std::shared_ptr<PinStyle> style)
@@ -233,7 +220,7 @@ void BaseNode::showOUT(
 }
 
 template <typename T>
-void BaseNode::showOUT_uid(
+void Node::showOUT_uid(
     const PinUID& uid,
     const std::string& name,
     std::function<T()> behaviour,
@@ -260,7 +247,7 @@ void BaseNode::showOUT_uid(
 
 template <typename T>
 const T&
-BaseNode::getInVal(const PinUID& uid)
+Node::getInVal(const PinUID& uid)
 {
     auto* pin = inPin(uid);
     assert(pin != nullptr && "Pin UID not found!");
@@ -269,7 +256,7 @@ BaseNode::getInVal(const PinUID& uid)
 
 template <typename T>
 const T&
-BaseNode::getInVal(const char* name)
+Node::getInVal(const char* name)
 {
     auto* pin = inPin(name);
     assert(pin != nullptr && "Pin UID not found!");
@@ -418,7 +405,7 @@ void InPin<T>::createLink(Pin* other)
 template <class T>
 void OutPin<T>::calculate()
 {
-    m_valNext = m_behaviour();
+    m_valNext = m_behaviour(*getParent());
 }
 
 template <class T>

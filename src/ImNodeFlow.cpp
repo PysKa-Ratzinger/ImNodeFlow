@@ -1,5 +1,8 @@
 #include "ImNodeFlow.h"
 
+#include <memory>
+#include <utility>
+
 namespace ImFlow {
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -54,7 +57,8 @@ void Link::update()
             end,
             m_out_pin->getStyle()->extra.outline_color,
             thickness + m_out_pin->getStyle()->extra.link_selected_outline_thickness);
-    detail::smart_bezier(start, end, m_out_pin->getStyle()->color, thickness);
+    detail::smart_bezier(
+        start, end, m_out_pin->getStyle()->color, thickness);
 
     if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
         m_in_pin->deleteLink();
@@ -68,9 +72,81 @@ Link::~Link()
 }
 
 // -----------------------------------------------------------------------------------------------------------------
+// FLOW CONTEXT
+
+namespace {
+
+    /**
+     * @brief Helper struct for creating a node from a lambda
+     */
+    struct NodeWrapper : public INodeBehaviour {
+        std::function<void(Node&)> m_draw_func;
+
+        NodeWrapper(std::function<void(Node&)> draw_func)
+            : m_draw_func(std::move(draw_func))
+        {
+        }
+
+        void draw(Node& node) override { m_draw_func(node); }
+    };
+
+} // anonymous namespace
+
+std::shared_ptr<Node>
+ImNodeFlow::addNode(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
+{
+    auto node = std::make_shared<Node>(std::move(impl));
+    node->setPos(pos);
+    node->setHandler(this);
+    if (!node->getStyle()) {
+        node->setStyle(NodeStyle::cyan());
+    }
+    auto uid = reinterpret_cast<uintptr_t>(node.get());
+    node->setUID(uid);
+    m_nodes[uid] = node;
+    return node;
+}
+
+std::shared_ptr<Node>
+ImNodeFlow::placeNodeAt(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
+{
+    return addNode(screen2grid(pos), std::move(impl));
+}
+
+std::shared_ptr<Node>
+ImNodeFlow::placeNode(std::unique_ptr<INodeBehaviour> impl)
+{
+    return placeNodeAt(ImGui::GetMousePos(), std::move(impl));
+}
+
+std::shared_ptr<Node>
+ImNodeFlow::addNodeLambda(
+    const ImVec2& pos,
+    std::function<void(Node&)> draw_func)
+{
+    return addNode(pos, std::make_unique<NodeWrapper>(std::move(draw_func)));
+}
+
+// -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
-bool BaseNode::isHovered()
+Node::Node(std::unique_ptr<INodeBehaviour> behaviour)
+    : m_impl(std::move(behaviour))
+{
+    if (m_impl) {
+        m_impl->setup(*this);
+    }
+}
+
+void Node::destroy()
+{
+    if (m_impl) {
+        m_impl.reset();
+    }
+    m_destroyed = true;
+}
+
+bool Node::isHovered()
 {
     ImVec2 paddingTL = { m_style->padding.x, m_style->padding.y };
     ImVec2 paddingBR = { m_style->padding.z, m_style->padding.w };
@@ -79,7 +155,7 @@ bool BaseNode::isHovered()
         m_inf->grid2screen(m_pos + m_size + paddingBR));
 }
 
-void BaseNode::dropIN(const PinUID& uid)
+void Node::dropIN(const PinUID& uid)
 {
     auto iter = std::find_if(m_ins.begin(), m_ins.end(), [&](auto pin) -> bool {
         return pin->getUid() == uid;
@@ -90,7 +166,7 @@ void BaseNode::dropIN(const PinUID& uid)
     }
 }
 
-void BaseNode::dropIN(const char* name)
+void Node::dropIN(const char* name)
 {
     m_ins.erase(
         std::remove_if(
@@ -100,7 +176,7 @@ void BaseNode::dropIN(const char* name)
         m_ins.end());
 }
 
-void BaseNode::dropOUT(const PinUID& uid)
+void Node::dropOUT(const PinUID& uid)
 {
     auto iter = std::find_if(
         m_outs.begin(), m_outs.end(), [&uid](auto const& pin) -> bool {
@@ -113,7 +189,7 @@ void BaseNode::dropOUT(const PinUID& uid)
 }
 
 inline void
-BaseNode::dropOUT(const char* name)
+Node::dropOUT(const char* name)
 {
     m_outs.erase(
         std::remove_if(
@@ -125,7 +201,7 @@ BaseNode::dropOUT(const char* name)
         m_outs.end());
 }
 
-Pin* BaseNode::inPin(const PinUID& uid)
+Pin* Node::inPin(const PinUID& uid)
 {
     auto it = std::find_if(m_ins.begin(), m_ins.end(), [&uid](const auto& p) {
         return p->getUid() == uid;
@@ -133,7 +209,7 @@ Pin* BaseNode::inPin(const PinUID& uid)
     return it == m_ins.end() ? nullptr : &**it;
 }
 
-Pin* BaseNode::inPin(const char* name)
+Pin* Node::inPin(const char* name)
 {
     auto it = std::find_if(
         m_ins.begin(), m_ins.end(), [&name](const auto& p) {
@@ -142,7 +218,7 @@ Pin* BaseNode::inPin(const char* name)
     return it == m_ins.end() ? nullptr : &**it;
 }
 
-Pin* BaseNode::outPin(const PinUID& uid)
+Pin* Node::outPin(const PinUID& uid)
 {
     auto it = std::find_if(
         m_outs.begin(), m_outs.end(), [&uid](const auto& p) {
@@ -151,7 +227,7 @@ Pin* BaseNode::outPin(const PinUID& uid)
     return it == m_outs.end() ? nullptr : &**it;
 }
 
-Pin* BaseNode::outPin(const char* name)
+Pin* Node::outPin(const char* name)
 {
     auto it = std::find_if(
         m_outs.begin(), m_outs.end(), [&name](const auto& p) {
@@ -160,7 +236,7 @@ Pin* BaseNode::outPin(const char* name)
     return it == m_outs.end() ? nullptr : &**it;
 }
 
-void BaseNode::calculate()
+void Node::calculate()
 {
     for (auto& pin : m_outs) {
         pin->calculate();
@@ -176,7 +252,7 @@ void BaseNode::calculate()
     }
 }
 
-void BaseNode::prime()
+void Node::prime()
 {
     for (auto& pin : m_outs) {
         pin->prime();
@@ -192,7 +268,7 @@ void BaseNode::prime()
     }
 }
 
-void BaseNode::update()
+void Node::update()
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
@@ -234,7 +310,13 @@ void BaseNode::update()
 
     // Content
     ImGui::BeginGroup();
-    draw();
+
+    if (m_impl) {
+        m_impl->draw(*this);
+    } else {
+        ImGui::TextUnformatted("<no renderer provided>");
+    }
+
     ImGui::Dummy(ImVec2(0.f, 0.f));
     ImGui::EndGroup();
     ImGui::SameLine();
