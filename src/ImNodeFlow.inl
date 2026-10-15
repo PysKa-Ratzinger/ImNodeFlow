@@ -373,7 +373,7 @@ void InPin<T>::calculate()
     if (!m_link) {
         m_valNext = m_emptyVal;
     } else {
-        m_valNext = reinterpret_cast<OutPin<T>*>(m_link->left())->val();
+        m_valNext = reinterpret_cast<OutPin<T>*>(m_link->outPin())->val();
     }
 }
 
@@ -399,7 +399,7 @@ void InPin<T>::createLink(Pin* other)
     if (m_parent == other->getParent() && !m_allowSelfConnection)
         return;
 
-    if (m_link && m_link->left() == other) {
+    if (m_link && m_link->outPin() == other) {
         m_link.reset();
         return;
     }
