@@ -2,7 +2,9 @@
 
 #include "ImNodeFlow.h"
 
+#include <cassert>
 #include <cstdint>
+#include <memory>
 
 namespace ImFlow {
 
@@ -114,21 +116,24 @@ BaseNode::addIN(
     std::shared_ptr<PinStyle> style)
 {
     return addIN_uid(
-        name, name, defReturn, std::move(filter), std::move(style));
+        PinUID::generate(),
+        name,
+        defReturn,
+        std::move(filter),
+        std::move(style));
 }
 
-template <typename T, typename U>
+template <typename T>
 std::shared_ptr<InPin<T>>
 BaseNode::addIN_uid(
-    const U& uid,
+    const PinUID& uid,
     const std::string& name,
     T defReturn,
     std::function<bool(Pin*, Pin*)> filter,
     std::shared_ptr<PinStyle> style)
 {
-    PinUID h = std::hash<U> { }(uid);
     auto p = std::make_shared<InPin<T>>(
-        h,
+        uid,
         name,
         defReturn,
         std::move(filter),
@@ -139,24 +144,6 @@ BaseNode::addIN_uid(
     return p;
 }
 
-template <typename U>
-void BaseNode::dropIN(const U& uid)
-{
-    PinUID h = std::hash<U> { }(uid);
-    for (auto it = m_ins.begin(); it != m_ins.end(); it++) {
-        if (it->get()->getUid() == h) {
-            m_ins.erase(it);
-            return;
-        }
-    }
-}
-
-inline void
-BaseNode::dropIN(const char* uid)
-{
-    dropIN<std::string>(uid);
-}
-
 template <typename T>
 const T&
 BaseNode::showIN(
@@ -165,22 +152,8 @@ BaseNode::showIN(
     std::function<bool(Pin*, Pin*)> filter,
     std::shared_ptr<PinStyle> style)
 {
-    return showIN_uid(
-        name, name, defReturn, std::move(filter), std::move(style));
-}
-
-template <typename T, typename U>
-const T&
-BaseNode::showIN_uid(
-    const U& uid,
-    const std::string& name,
-    T defReturn,
-    std::function<bool(Pin*, Pin*)> filter,
-    std::shared_ptr<PinStyle> style)
-{
-    PinUID h = std::hash<U> { }(uid);
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
-        if (p.second->getUid() == h) {
+        if (p.second->getName() == name) {
             p.first = 1;
             return static_cast<InPin<T>*>(p.second.get())->val();
         }
@@ -190,7 +163,37 @@ BaseNode::showIN_uid(
         std::make_pair(
             1,
             std::make_shared<InPin<T>>(
-                h,
+                PinUID::generate(),
+                name,
+                defReturn,
+                std::move(filter),
+                std::move(style),
+                this,
+                &m_inf)));
+    return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
+}
+
+template <typename T>
+const T&
+BaseNode::showIN_uid(
+    const PinUID& uid,
+    const std::string& name,
+    T defReturn,
+    std::function<bool(Pin*, Pin*)> filter,
+    std::shared_ptr<PinStyle> style)
+{
+    for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
+        if (p.second->getUid() == uid) {
+            p.first = 1;
+            return static_cast<InPin<T>*>(p.second.get())->val();
+        }
+    }
+
+    m_dynamicIns.emplace_back(
+        std::make_pair(
+            1,
+            std::make_shared<InPin<T>>(
+                uid,
                 name,
                 defReturn,
                 std::move(filter),
@@ -204,39 +207,20 @@ template <typename T>
 std::shared_ptr<OutPin<T>>
 BaseNode::addOUT(const std::string& name, std::shared_ptr<PinStyle> style)
 {
-    return addOUT_uid<T>(name, name, std::move(style));
+    return addOUT_uid<T>(PinUID::generate(), name, std::move(style));
 }
 
-template <typename T, typename U>
+template <typename T>
 std::shared_ptr<OutPin<T>>
 BaseNode::addOUT_uid(
-    const U& uid,
+    const PinUID& uid,
     const std::string& name,
     std::shared_ptr<PinStyle> style)
 {
-    PinUID h = std::hash<U> { }(uid);
     auto p = std::make_shared<OutPin<T>>(
-        h, name, std::move(style), this, &m_inf);
+        uid, name, std::move(style), this, &m_inf);
     m_outs.emplace_back(p);
     return p;
-}
-
-template <typename U>
-void BaseNode::dropOUT(const U& uid)
-{
-    PinUID h = std::hash<U> { }(uid);
-    for (auto it = m_outs.begin(); it != m_outs.end(); it++) {
-        if (it->get()->getUid() == h) {
-            m_outs.erase(it);
-            return;
-        }
-    }
-}
-
-inline void
-BaseNode::dropOUT(const char* uid)
-{
-    dropOUT<std::string>(uid);
 }
 
 template <typename T>
@@ -248,16 +232,15 @@ void BaseNode::showOUT(
     showOUT_uid<T>(name, name, std::move(behaviour), std::move(style));
 }
 
-template <typename T, typename U>
+template <typename T>
 void BaseNode::showOUT_uid(
-    const U& uid,
+    const PinUID& uid,
     const std::string& name,
     std::function<T()> behaviour,
     std::shared_ptr<PinStyle> style)
 {
-    PinUID h = std::hash<U> { }(uid);
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicOuts) {
-        if (p.second->getUid() == h) {
+        if (p.second->getUid() == uid) {
             p.first = 2;
             static_cast<OutPin<T>*>(
                 m_dynamicOuts.back().second.get())
@@ -270,65 +253,27 @@ void BaseNode::showOUT_uid(
         std::make_pair(
             2,
             std::make_shared<OutPin<T>>(
-                h, name, std::move(style), this, &m_inf)));
+                uid, name, std::move(style), this, &m_inf)));
     static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
         ->behaviour(std::move(behaviour));
 }
 
-template <typename T, typename U>
+template <typename T>
 const T&
-BaseNode::getInVal(const U& uid)
+BaseNode::getInVal(const PinUID& uid)
 {
-    PinUID h = std::hash<U> { }(uid);
-    auto it = std::find_if(
-        m_ins.begin(), m_ins.end(), [&h](std::shared_ptr<Pin>& p) {
-            return p->getUid() == h;
-        });
-    assert(it != m_ins.end() && "Pin UID not found!");
-    return static_cast<InPin<T>*>(it->get())->val();
+    auto* pin = inPin(uid);
+    assert(pin != nullptr && "Pin UID not found!");
+    return static_cast<InPin<T>*>(pin)->val();
 }
 
 template <typename T>
 const T&
-BaseNode::getInVal(const char* uid)
+BaseNode::getInVal(const char* name)
 {
-    return getInVal<T, std::string>(uid);
-}
-
-template <typename U>
-Pin* BaseNode::inPin(const U& uid)
-{
-    PinUID h = std::hash<U> { }(uid);
-    auto it = std::find_if(
-        m_ins.begin(), m_ins.end(), [&h](std::shared_ptr<Pin>& p) {
-            return p->getUid() == h;
-        });
-    assert(it != m_ins.end() && "Pin UID not found!");
-    return it->get();
-}
-
-inline Pin*
-BaseNode::inPin(const char* uid)
-{
-    return inPin<std::string>(uid);
-}
-
-template <typename U>
-Pin* BaseNode::outPin(const U& uid)
-{
-    PinUID h = std::hash<U> { }(uid);
-    auto it = std::find_if(
-        m_outs.begin(), m_outs.end(), [&h](std::shared_ptr<Pin>& p) {
-            return p->getUid() == h;
-        });
-    assert(it != m_outs.end() && "Pin UID not found!");
-    return it->get();
-}
-
-inline Pin*
-BaseNode::outPin(const char* uid)
-{
-    return outPin<std::string>(uid);
+    auto* pin = inPin(name);
+    assert(pin != nullptr && "Pin UID not found!");
+    return static_cast<InPin<T>*>(pin)->val();
 }
 
 // -----------------------------------------------------------------------------------------------------------------
