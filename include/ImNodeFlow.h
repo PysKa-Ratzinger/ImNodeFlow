@@ -609,13 +609,13 @@ public:
      * @brief <BR>Check if mouse is on selected node
      * @return [TRUE] if the mouse is hovering a selected node
      */
-    bool on_selected_node();
+    bool mouse_on_selected_node();
 
     /**
      * @brief <BR>Check if mouse is on a free point on the grid
      * @return [TRUE] if the mouse is not hovering a node or a link
      */
-    bool on_free_space();
+    bool mouse_on_free_space();
 
 private:
     std::string m_name;

@@ -219,7 +219,7 @@ void BaseNode::update()
         0,
         thickness);
 
-    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_inf->on_selected_node())
+    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_inf->mouse_on_selected_node())
         selected(false);
 
     if (isHovered()) {
@@ -279,14 +279,14 @@ void BaseNode::update()
 
 int ImNodeFlow::m_instances = 0;
 
-bool ImNodeFlow::on_selected_node()
+bool ImNodeFlow::mouse_on_selected_node()
 {
     return std::any_of(m_nodes.begin(), m_nodes.end(), [](const auto& n) {
         return n.second->isSelected() && n.second->isHovered();
     });
 }
 
-bool ImNodeFlow::on_free_space()
+bool ImNodeFlow::mouse_on_free_space()
 {
     return std::all_of(
                m_nodes.begin(),
@@ -401,7 +401,7 @@ void ImNodeFlow::update()
     // Links drop-off
     if (m_dragOut && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
         if (!m_hovering) {
-            if (on_free_space() && m_droppedLinkPopUp) {
+            if (mouse_on_free_space() && m_droppedLinkPopUp) {
                 if (m_droppedLinkPupUpComboKey == ImGuiKey_None || ImGui::IsKeyDown(m_droppedLinkPupUpComboKey)) {
                     m_droppedLinkLeft = m_dragOut;
                     ImGui::OpenPopup("DroppedLinkPopUp");
