@@ -75,7 +75,14 @@ class ConnectionFilter;
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
 
-typedef unsigned long long int PinUID;
+struct PinUID {
+    PinUID(uint64_t value) noexcept;
+
+    static PinUID generate() noexcept;
+    bool operator==(PinUID const& other) const noexcept;
+
+    uint64_t id;
+};
 
 /**
  * @brief Extra pin's style setting
@@ -691,7 +698,6 @@ public:
      * The UID must be unique only in the context of the current node's inputs.
      *
      * @tparam T Type of the data the pin will handle
-     * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
      * @param defReturn Default return value when the pin is not connected
@@ -699,9 +705,9 @@ public:
      * @param style Style of the pin
      * @return Shared pointer to the newly added pin
      */
-    template <typename T, typename U>
+    template <typename T>
     std::shared_ptr<InPin<T>> addIN_uid(
-        const U& uid,
+        const PinUID& uid,
         const std::string& name,
         T defReturn,
         std::function<bool(Pin*, Pin*)> filter,
@@ -709,17 +715,15 @@ public:
 
     /**
      * @brief Remove input pin
-     * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      */
-    template <typename U>
-    void dropIN(const U& uid);
+    void dropIN(const PinUID& uid);
 
     /**
-     * @brief Remove input pin
-     * @param uid Unique identifier of the pin
+     * @brief Remove all input pin's with the associated name
+     * @param name Pin's name filter
      */
-    void dropIN(const char* uid);
+    void dropIN(const char* name);
 
     /**
      * @brief Show a temporary input pin
@@ -749,7 +753,6 @@ public:
      * The UID must be unique only in the context of the current node's inputs.
      *
      * @tparam T Type of the data the pin will handle
-     * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
      * @param defReturn Default return value when the pin is not connected
@@ -757,9 +760,9 @@ public:
      * @param style Style of the pin
      * @return Const reference to the value of the connected link for the current frame of defReturn
      */
-    template <typename T, typename U>
+    template <typename T>
     const T& showIN_uid(
-        const U& uid,
+        const PinUID& uid,
         const std::string& name,
         T defReturn,
         std::function<bool(Pin*, Pin*)> filter,
@@ -788,32 +791,29 @@ public:
      * The UID must be unique only in the context of the current node's outputs.
      *
      * @tparam T Type of the data the pin will handle
-     * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
      * @param filter Connection filter
      * @param style Style of the pin
      * @return Shared pointer to the newly added pin. Must be used to set the behaviour
      */
-    template <typename T, typename U>
+    template <typename T>
     [[nodiscard]] std::shared_ptr<OutPin<T>> addOUT_uid(
-        const U& uid,
+        const PinUID& uid,
         const std::string& name,
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
      * @brief Remove output pin
-     * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      */
-    template <typename U>
-    void dropOUT(const U& uid);
+    void dropOUT(const PinUID& uid);
 
     /**
-     * @brief Remove output pin
-     * @param uid Unique identifier of the pin
+     * @brief Remove all output pins with a matching name
+     * @param name The name to filter for
      */
-    void dropOUT(const char* uid);
+    void dropOUT(const char* name);
 
     /**
      * @brief Show a temporary output pin
@@ -841,30 +841,18 @@ public:
      * The UID must be unique only in the context of the current node's outputs.
      *
      * @tparam T Type of the data the pin will handle
-     * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      * @param name Name of the pin
      * @param behaviour Function or lambda expression used to calculate output value
      * @param filter Connection filter
      * @param style Style of the pin
      */
-    template <typename T, typename U>
+    template <typename T>
     void showOUT_uid(
-        const U& uid,
+        const PinUID& uid,
         const std::string& name,
         std::function<T()> behaviour,
         std::shared_ptr<PinStyle> style = nullptr);
-
-    /**
-     * @brief Get Input value from an InPin
-     * @details Get a reference to the value of an input pin, the value is stored in the output pin at the other end of the link.
-     * @tparam T Data type
-     * @tparam U Type of the UID
-     * @param uid Unique identifier of the pin
-     * @return Const reference to the value
-     */
-    template <typename T, typename U>
-    const T& getInVal(const U& uid);
 
     /**
      * @brief Get Input value from an InPin
@@ -874,39 +862,45 @@ public:
      * @return Const reference to the value
      */
     template <typename T>
-    const T& getInVal(const char* uid);
+    const T& getInVal(const PinUID& uid);
+
+    /**
+     * @brief Get Input value from the first InPin with the specified name
+     * @details Get a reference to the value of an input pin, the value is stored in the output pin at the other end of the link.
+     * @tparam T Data type
+     * @param name Name of the pin
+     * @return Const reference to the value
+     */
+    template <typename T>
+    const T& getInVal(const char* name);
 
     /**
      * @brief Get generic reference to input pin
-     * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
-     * @return Generic pointer to the pin
+     * @return Reference to the pin
      */
-    template <typename U>
-    Pin* inPin(const U& uid);
+    Pin* inPin(const PinUID& uid);
 
     /**
-     * @brief Get generic reference to input pin
+     * @brief Get generic reference to input pin with the specified name
      * @param uid Unique identifier of the pin
-     * @return Generic pointer to the pin
+     * @return Reference to the pin
      */
-    Pin* inPin(const char* uid);
-
-    /**
-     * @brief Get generic reference to output pin
-     * @tparam U Type of the UID
-     * @param uid Unique identifier of the pin
-     * @return Generic pointer to the pin
-     */
-    template <typename U>
-    Pin* outPin(const U& uid);
+    Pin* inPin(const char* name);
 
     /**
      * @brief Get generic reference to output pin
      * @param uid Unique identifier of the pin
-     * @return Generic pointer to the pin
+     * @return Reference to the pin
      */
-    Pin* outPin(const char* uid);
+    Pin* outPin(const PinUID& uid);
+
+    /**
+     * @brief Get generic reference to output pin of the same name
+     * @param name Unique identifier of the pin
+     * @return Reference to the pin
+     */
+    Pin* outPin(const char* name);
 
     /**
      * @brief Get internal input pins list

@@ -3,6 +3,27 @@
 namespace ImFlow {
 
 // -----------------------------------------------------------------------------------------------------------------
+// PinUID
+
+PinUID::PinUID(uint64_t value) noexcept
+    : id(value)
+{
+}
+
+PinUID
+PinUID::generate() noexcept
+{
+    static uint64_t id = 0;
+
+    return PinUID { id++ };
+}
+
+bool PinUID::operator==(PinUID const& other) const noexcept
+{
+    return this->id == other.id;
+}
+
+// -----------------------------------------------------------------------------------------------------------------
 // LINK
 
 void Link::update()
@@ -56,6 +77,87 @@ bool BaseNode::isHovered()
     return ImGui::IsMouseHoveringRect(
         m_inf->grid2screen(m_pos - paddingTL),
         m_inf->grid2screen(m_pos + m_size + paddingBR));
+}
+
+void BaseNode::dropIN(const PinUID& uid)
+{
+    auto iter = std::find_if(m_ins.begin(), m_ins.end(), [&](auto pin) -> bool {
+        return pin->getUid() == uid;
+    });
+
+    if (iter != m_ins.end()) {
+        m_ins.erase(iter);
+    }
+}
+
+void BaseNode::dropIN(const char* name)
+{
+    m_ins.erase(
+        std::remove_if(
+            m_ins.begin(),
+            m_ins.end(),
+            [&](auto pin) -> bool { return pin->getName() == name; }),
+        m_ins.end());
+}
+
+void BaseNode::dropOUT(const PinUID& uid)
+{
+    auto iter = std::find_if(
+        m_outs.begin(), m_outs.end(), [&uid](auto const& pin) -> bool {
+            return pin->getUid() == uid;
+        });
+
+    if (iter != m_outs.end()) {
+        m_outs.erase(iter);
+    }
+}
+
+inline void
+BaseNode::dropOUT(const char* name)
+{
+    m_outs.erase(
+        std::remove_if(
+            m_outs.begin(),
+            m_outs.end(),
+            [&name](auto const& pin) -> bool {
+                return pin->getName() == name;
+            }),
+        m_outs.end());
+}
+
+Pin* BaseNode::inPin(const PinUID& uid)
+{
+    auto it = std::find_if(m_ins.begin(), m_ins.end(), [&uid](const auto& p) {
+        return p->getUid() == uid;
+    });
+    return it == m_ins.end() ? nullptr : &**it;
+}
+
+Pin* BaseNode::inPin(const char* name)
+{
+    auto it = std::find_if(
+        m_ins.begin(), m_ins.end(), [&name](const auto& p) {
+            return p->getName() == name;
+        });
+    return it == m_ins.end() ? nullptr : &**it;
+}
+
+Pin* BaseNode::outPin(const PinUID& uid)
+{
+    auto it = std::find_if(
+        m_outs.begin(), m_outs.end(), [&uid](const auto& p) {
+            return p->getUid() == uid;
+        });
+    return it == m_outs.end() ? nullptr : &**it;
+}
+
+Pin* BaseNode::outPin(const char* name)
+{
+    auto it = std::find_if(
+        m_outs.begin(), m_outs.end(), [&name](const auto& p) {
+            return p->getName() == name;
+        });
+    return it == m_outs.end() ? nullptr : &**it;
 }
 
 void BaseNode::calculate()
