@@ -435,11 +435,10 @@ public:
      * @param pos Position of the Node in grid coordinates
      * @param impl Unique pointer to an object implementing the
      * INodeBehaviour interface
-     * @return Shared pointer of the pushed type to the newly added node
-     *
-     * Inheritance is checked at compile time, \<T> MUST be derived from Node.
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
-    std::shared_ptr<Node>
+    Node&
     addNode(const ImVec2& pos,
         std::unique_ptr<INodeBehaviour> impl = nullptr);
 
@@ -448,11 +447,10 @@ public:
      * @param pos Position of the Node in screen coordinates
      * @param impl Unique pointer to an object implementing the
      * INodeBehaviour interface
-     * @return Shared pointer of the pushed type to the newly added node
-     *
-     * Inheritance is checked at compile time, \<T> MUST be derived from Node.
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
-    std::shared_ptr<Node> placeNodeAt(
+    Node& placeNodeAt(
         const ImVec2& pos,
         std::unique_ptr<INodeBehaviour> impl = nullptr);
 
@@ -461,20 +459,20 @@ public:
      * @param args Optional arguments to be forwarded to derived class ctor
      * @param impl Unique pointer to an object implementing the
      * INodeBehaviour interface
-     * @return Shared pointer of the pushed type to the newly added node
-     *
-     * Inheritance is checked at compile time, \<T> MUST be derived from Node.
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
-    std::shared_ptr<Node>
-    placeNode(std::unique_ptr<INodeBehaviour> impl = nullptr);
+    Node& placeNode(std::unique_ptr<INodeBehaviour> impl = nullptr);
 
     /**
      * @brief Add a node whos operation can be defined within a lambda.
      * @tparam L the type of the lambda
      * @param pos the position at which to place the node
      * @param draw_func the draw_func that defines the nodes operation
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
-    std::shared_ptr<Node>
+    Node&
     addNodeLambda(const ImVec2& pos, std::function<void(Node&)> draw_func);
 
     /**
@@ -483,10 +481,11 @@ public:
      * @tparam Params types of optional args to forward to derived class ctor
      * @param pos Position of the Node in grid coordinates
      * @param args Arguments to be forwarded to derived class ctor
-     * @return Shared pointer of the pushed type to the newly added node
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
     template <typename T, typename... Params>
-    std::shared_ptr<Node> emplaceNode(const ImVec2& pos, Params&&... args);
+    Node& emplaceNode(const ImVec2& pos, Params&&... args);
 
     /**
      * @brief Add a node to the grid
@@ -494,21 +493,22 @@ public:
      * @tparam Params types of optional args to forward to derived class ctor
      * @param pos Position of the Node in screen coordinates
      * @param args Arguments to be forwarded to derived class ctor
-     * @return Shared pointer of the pushed type to the newly added node
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
     template <typename T, typename... Params>
-    std::shared_ptr<Node>
-    emplaceNodeAt(const ImVec2& pos, Params&&... args);
+    Node& emplaceNodeAt(const ImVec2& pos, Params&&... args);
 
     /**
      * @brief Add a node to the grid using mouse position
      * @tparam T Derived class of <Node> to be added
      * @tparam Params types of optional args to forward to derived class ctor
      * @param args Arguments to be forwarded to derived class ctor
-     * @return Shared pointer of the pushed type to the newly added node
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
     template <typename T, typename... Params>
-    std::shared_ptr<Node> emplaceNodeOnMouse(Params&&... args);
+    Node& emplaceNodeOnMouse(Params&&... args);
 
     /**
      * @brief Add link to the handler internal list
@@ -585,7 +585,7 @@ public:
      * @brief Get editor's list of nodes
      * @return Const reference to editor's internal nodes list
      */
-    std::unordered_map<NodeUID, std::shared_ptr<Node>>& getNodes()
+    std::unordered_map<NodeUID, std::unique_ptr<Node>>& getNodes()
     {
         return m_nodes;
     }
@@ -678,7 +678,7 @@ private:
 
     bool m_singleUseClick = false;
 
-    std::unordered_map<NodeUID, std::shared_ptr<Node>> m_nodes;
+    std::unordered_map<NodeUID, std::unique_ptr<Node>> m_nodes;
     std::vector<std::weak_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;

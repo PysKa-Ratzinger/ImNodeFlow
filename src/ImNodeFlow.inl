@@ -70,23 +70,20 @@ namespace detail {
 // FLOW CONTEXT
 
 template <typename T, typename... Params>
-std::shared_ptr<Node>
-ImNodeFlow::emplaceNode(const ImVec2& pos, Params&&... args)
+Node& ImNodeFlow::emplaceNode(const ImVec2& pos, Params&&... args)
 {
     return addNode(pos, std::make_unique<T>(std::forward<Params>(args)...));
 }
 
 template <typename T, typename... Params>
-std::shared_ptr<Node>
-ImNodeFlow::emplaceNodeAt(const ImVec2& pos, Params&&... args)
+Node& ImNodeFlow::emplaceNodeAt(const ImVec2& pos, Params&&... args)
 {
     return placeNodeAt(
         pos, std::make_unique<T>(std::forward<Params>(args)...));
 }
 
 template <typename T, typename... Params>
-std::shared_ptr<Node>
-ImNodeFlow::emplaceNodeOnMouse(Params&&... args)
+Node& ImNodeFlow::emplaceNodeOnMouse(Params&&... args)
 {
     return placeNode(std::make_unique<T>(std::forward<Params>(args)...));
 }

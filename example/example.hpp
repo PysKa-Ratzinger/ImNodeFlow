@@ -75,16 +75,16 @@ struct NodeEditor {
     {
         mINF.setSize({ width, height });
 
-        auto n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
-        auto n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
-        auto result = mINF.emplaceNode<ResultNode>({ 250, 80 });
+        auto& n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
+        auto& n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
+        auto& result = mINF.emplaceNode<ResultNode>({ 250, 80 });
 
         // Add links between nodes
-        n1->outPin("Out")->createLink(result->inPin("A"));
-        n2->outPin("Out")->createLink(result->inPin("B"));
+        n1.outPin("Out")->createLink(result.inPin("A"));
+        n2.outPin("Out")->createLink(result.inPin("B"));
 
         // Add a collapsing node
-        auto collapsingNode = mINF.emplaceNode<CollapsingNode>({ 300, 300 });
+        auto& collapsingNode = mINF.emplaceNode<CollapsingNode>({ 300, 300 });
     }
 
     void set_size(ImVec2 d) { mINF.setSize(d); }

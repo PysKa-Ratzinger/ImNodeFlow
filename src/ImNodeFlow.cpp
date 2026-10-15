@@ -92,35 +92,32 @@ namespace {
 
 } // anonymous namespace
 
-std::shared_ptr<Node>
-ImNodeFlow::addNode(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::addNode(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
 {
-    auto node = std::make_shared<Node>(std::move(impl));
+    auto node = std::make_unique<Node>(std::move(impl));
     node->setPos(pos);
     node->setHandler(this);
     if (!node->getStyle()) {
         node->setStyle(NodeStyle::cyan());
     }
-    auto uid = reinterpret_cast<uintptr_t>(node.get());
+    auto* node_ptr = node.get();
+    auto uid = reinterpret_cast<uintptr_t>(node_ptr);
     node->setUID(uid);
-    m_nodes[uid] = node;
-    return node;
+    m_nodes[uid] = std::move(node);
+    return *node_ptr;
 }
 
-std::shared_ptr<Node>
-ImNodeFlow::placeNodeAt(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::placeNodeAt(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
 {
     return addNode(screen2grid(pos), std::move(impl));
 }
 
-std::shared_ptr<Node>
-ImNodeFlow::placeNode(std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::placeNode(std::unique_ptr<INodeBehaviour> impl)
 {
     return placeNodeAt(ImGui::GetMousePos(), std::move(impl));
 }
 
-std::shared_ptr<Node>
-ImNodeFlow::addNodeLambda(
+Node& ImNodeFlow::addNodeLambda(
     const ImVec2& pos,
     std::function<void(Node&)> draw_func)
 {
