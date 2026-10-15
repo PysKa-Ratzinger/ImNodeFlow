@@ -273,13 +273,13 @@ class Link {
 public:
     /**
      * @brief Construct a link
-     * @param left Pointer to the output Pin of the Link
-     * @param right Pointer to the input Pin of the Link
+     * @param out_pin Pointer to the output Pin of the Link
+     * @param in_pin Pointer to the input Pin of the Link
      * @param inf Pointer to the Handler that contains the Link
      */
-    explicit Link(Pin* left, Pin* right, ImNodeFlow* inf)
-        : m_left(left)
-        , m_right(right)
+    explicit Link(Pin* out_pin, Pin* in_pin, ImNodeFlow* inf)
+        : m_out_pin(out_pin)
+        , m_in_pin(in_pin)
         , m_inf(inf)
     {
     }
@@ -297,16 +297,16 @@ public:
     void update();
 
     /**
-     * @brief Get Left pin of the link
+     * @brief Get output pin of the link
      * @return Pointer to the Pin
      */
-    [[nodiscard]] Pin* left() const { return m_left; }
+    [[nodiscard]] Pin* outPin() const { return m_out_pin; }
 
     /**
-     * @brief Get Right pin of the link
+     * @brief Get input pin of the link
      * @return Pointer to the Pin
      */
-    [[nodiscard]] Pin* right() const { return m_right; }
+    [[nodiscard]] Pin* inPin() const { return m_in_pin; }
 
     /**
      * @brief Get hovering status
@@ -321,8 +321,8 @@ public:
     [[nodiscard]] bool isSelected() const { return m_selected; }
 
 private:
-    Pin* m_left;
-    Pin* m_right;
+    Pin* m_out_pin;
+    Pin* m_in_pin;
     ImNodeFlow* m_inf;
     bool m_hovered = false;
     bool m_selected = false;
@@ -1448,7 +1448,7 @@ public:
         std::vector<std::weak_ptr<Link>> links = std::move(m_links);
         for (auto& l : links)
             if (!l.expired())
-                l.lock()->right()->deleteLink();
+                l.lock()->inPin()->deleteLink();
     }
 
     /**

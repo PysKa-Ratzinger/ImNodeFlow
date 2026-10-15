@@ -28,9 +28,9 @@ bool PinUID::operator==(PinUID const& other) const noexcept
 
 void Link::update()
 {
-    ImVec2 start = m_left->pinPoint();
-    ImVec2 end = m_right->pinPoint();
-    float thickness = m_left->getStyle()->extra.link_thickness;
+    ImVec2 start = m_out_pin->pinPoint();
+    ImVec2 end = m_in_pin->pinPoint();
+    float thickness = m_out_pin->getStyle()->extra.link_thickness;
     bool mouseClickState = m_inf->getSingleUseClick();
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
@@ -39,7 +39,7 @@ void Link::update()
     if (detail::smart_bezier_collider(
             ImGui::GetMousePos(), start, end, 2.5)) {
         m_hovered = true;
-        thickness = m_left->getStyle()->extra.link_hovered_thickness;
+        thickness = m_out_pin->getStyle()->extra.link_hovered_thickness;
         if (mouseClickState) {
             m_inf->consumeSingleUseClick();
             m_selected = true;
@@ -52,19 +52,19 @@ void Link::update()
         detail::smart_bezier(
             start,
             end,
-            m_left->getStyle()->extra.outline_color,
-            thickness + m_left->getStyle()->extra.link_selected_outline_thickness);
-    detail::smart_bezier(start, end, m_left->getStyle()->color, thickness);
+            m_out_pin->getStyle()->extra.outline_color,
+            thickness + m_out_pin->getStyle()->extra.link_selected_outline_thickness);
+    detail::smart_bezier(start, end, m_out_pin->getStyle()->color, thickness);
 
     if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
-        m_right->deleteLink();
+        m_in_pin->deleteLink();
 }
 
 Link::~Link()
 {
-    if (!m_left)
+    if (!m_out_pin)
         return;
-    m_left->deleteLink();
+    m_out_pin->deleteLink();
 }
 
 // -----------------------------------------------------------------------------------------------------------------
