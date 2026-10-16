@@ -473,6 +473,44 @@ struct InfStyler {
     InfColors colors;
 };
 
+// -----------------------------------------------------------------------------------------------------------------
+// NODE BEHAVIOUR INTERFACE
+
+/**
+ * @brief Node behaviour strategy.
+ *
+ * This is what allows the user to customize the node's appearance and
+ * behaviour
+ */
+class INodeBehaviour {
+public:
+    virtual ~INodeBehaviour() = default;
+
+    /**
+     * @brief Called immediately after a node is constructed.
+     */
+    virtual void setup(ImFlow::Node& node) { }
+
+    /**
+     * @brief Called each frame. Responsible for the appearance of the
+     * node's inner content
+     */
+    virtual void draw(ImFlow::Node& node) = 0;
+
+    /**
+     * @brief Called during a node cloning event. If not implemented or
+     * nullptr is returned, the cloning event fails for the corresponding
+     * node.
+     */
+    [[nodiscard]] virtual std::unique_ptr<INodeBehaviour> clone()
+    {
+        return { };
+    }
+};
+
+// -----------------------------------------------------------------------------------------------------------------
+// NODE FLOW CONTEXT
+
 /**
  * @brief Main node editor
  * @details Handles the infinite grid, nodes and links. Also handles all the logic.
@@ -811,41 +849,6 @@ private:
     SelectionBox m_box;
 
     bool m_draggingCanvas = false;
-};
-
-// -----------------------------------------------------------------------------------------------------------------
-// NODE BEHAVIOUR INTERFACE
-
-/**
- * @brief Node behaviour strategy.
- *
- * This is what allows the user to customize the node's appearance and
- * behaviour
- */
-class INodeBehaviour {
-public:
-    virtual ~INodeBehaviour() = default;
-
-    /**
-     * @brief Called immediately after a node is constructed.
-     */
-    virtual void setup(ImFlow::Node& node) { }
-
-    /**
-     * @brief Called each frame. Responsible for the appearance of the
-     * node's inner content
-     */
-    virtual void draw(ImFlow::Node& node) = 0;
-
-    /**
-     * @brief Called during a node cloning event. If not implemented or
-     * nullptr is returned, the cloning event fails for the corresponding
-     * node.
-     */
-    [[nodiscard]] virtual std::unique_ptr<INodeBehaviour> clone()
-    {
-        return { };
-    }
 };
 
 // -----------------------------------------------------------------------------------------------------------------
