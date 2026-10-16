@@ -108,7 +108,7 @@ std::shared_ptr<InPin<T>>
 Node::addIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
     auto p = std::make_shared<InPin<T>>(
-        uid, this, &m_inf, std::move(pin_info));
+        m_ctx, uid, this, std::move(pin_info));
     m_ins.emplace_back(p);
     return p;
 }
@@ -127,7 +127,7 @@ Node::showIN(InPinInfo<T> pin_info)
 
     m_dynamicIns.emplace_back(
         std::make_unique<InPin<T>>(
-            PinUID::generate(), this, &m_inf, std::move(pin_info)));
+            m_ctx, PinUID::generate(), this, std::move(pin_info)));
     return m_dynamicIns.back().pin().toIn<T>().val();
 }
 
@@ -144,8 +144,7 @@ Node::showIN(const PinUID& uid, InPinInfo<T> pin_info)
     }
 
     m_dynamicIns.emplace_back(
-        std::make_unique<InPin<T>>(
-            uid, this, &m_inf, std::move(pin_info)));
+        std::make_unique<InPin<T>>(m_ctx, uid, this, std::move(pin_info)));
     return m_dynamicIns.back().pin().toIn<T>().val();
 }
 
@@ -161,7 +160,7 @@ std::shared_ptr<OutPin<T>>
 Node::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 {
     auto p = std::make_shared<OutPin<T>>(
-        uid, this, &m_inf, std::move(pin_info));
+        m_ctx, uid, this, std::move(pin_info));
     m_outs.emplace_back(p);
     return p;
 }
@@ -181,7 +180,7 @@ void Node::showOUT(OutPinInfo<T> pin_info)
 
     m_dynamicOuts.emplace_back(
         std::make_unique<OutPin<T>>(
-            PinUID::generate(), this, &m_inf, std::move(pin_info)));
+            m_ctx, PinUID::generate(), this, std::move(pin_info)));
 }
 
 template <typename T>
@@ -199,7 +198,7 @@ void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 
     m_dynamicOuts.emplace_back(
         std::make_unique<OutPin<T>>(
-            uid, this, &m_inf, std::move(pin_info)));
+            m_ctx, uid, this, std::move(pin_info)));
     m_dynamicOuts.back().pin().toOut<T>().behaviour(
         std::move(pin_info.behaviour));
 }
@@ -269,8 +268,9 @@ Pin::drawSocket()
                 m_style.socket_thickness);
     }
 
-    if (ImGui::IsMouseHoveringRect(tl, br))
-        (*m_inf)->hovering(this);
+    if (ImGui::IsMouseHoveringRect(tl, br)) {
+        m_ctx.get().hovering(this);
+    }
 }
 
 inline void
@@ -319,10 +319,12 @@ Pin::update()
     }
 
     if (ImGui::IsItemHovered()) {
-        (*m_inf)->hovering(this);
-        if ((*m_inf)->getSingleUseClick(ImGuiMouseButton_Left)) {
-            (*m_inf)->consumeSingleUseClick(ImGuiMouseButton_Left);
-            (*m_inf)->dragging(this);
+        auto& ctx = m_ctx.get();
+
+        ctx.hovering(this);
+        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
+            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
+            ctx.dragging(this);
         }
     }
 }

@@ -58,12 +58,12 @@ auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
 
 void Pin::linkTo(Pin& other)
 {
-    if ((*m_inf) != (*other.m_inf)) {
+    if (&m_ctx.get() != &other.m_ctx.get()) {
         // Cannot link pins across different contexts
         return;
     }
 
-    (*m_inf)->createLink(*this, other);
+    m_ctx.get().createLink(*this, other);
 }
 
 void Pin::deleteAllLinks()
@@ -232,7 +232,7 @@ Node& ImNodeFlow::addNode(const ImVec2& pos, NodeInfo node_info)
     auto uid = NodeUID::generate();
     auto res = m_nodes.emplace(
         uid,
-        std::make_unique<Node>(pos, this, uid, std::move(node_info)));
+        std::make_unique<Node>(*this, pos, uid, std::move(node_info)));
 
     assert(res.second && "Failed to create new Node");
     return *res.first->second;
@@ -262,11 +262,11 @@ Node& ImNodeFlow::addNodeLambda(
 // -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
-Node::Node(ImVec2 pos, ImNodeFlow* inf, NodeUID uid, NodeInfo node_info)
-    : m_uid(uid)
+Node::Node(ImNodeFlow& ctx, ImVec2 pos, NodeUID uid, NodeInfo node_info)
+    : m_ctx(ctx)
+    , m_uid(uid)
     , m_pos(pos)
     , m_posTarget(pos)
-    , m_inf(inf)
     , m_style(std::move(node_info.style))
     , m_impl(std::move(node_info.behaviour))
 {
@@ -288,8 +288,8 @@ bool Node::isHovered()
     ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
     ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
     return ImGui::IsMouseHoveringRect(
-        m_inf->grid2screen(m_pos - paddingTL),
-        m_inf->grid2screen(m_pos + m_size + paddingBR));
+        m_ctx.get().grid2screen(m_pos - paddingTL),
+        m_ctx.get().grid2screen(m_pos + m_size + paddingBR));
 }
 
 void Node::dropIN(const PinUID& uid)
@@ -407,10 +407,12 @@ void Node::prime()
 
 void Node::update()
 {
+    auto& ctx = m_ctx.get();
+
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
-    bool mouseClickState = m_inf->getSingleUseClick(ImGuiMouseButton_Left);
-    ImVec2 offset = m_inf->grid2screen({ 0.f, 0.f });
+    bool mouseClickState = ctx.getSingleUseClick(ImGuiMouseButton_Left);
+    ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
     ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
     ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
 
@@ -485,24 +487,24 @@ void Node::update()
     ImGui::BeginGroup();
     for (auto& p : m_outs) {
         // FIXME: This looks horrible
-        if ((m_pos + ImVec2(titleW, 0) + m_inf->getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
+        if ((m_pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
             p->setPos(
                 ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - p->calcWidth(), 0.f));
         else
             p->setPos(ImVec2(
-                (m_pos + ImVec2(titleW - p->calcWidth(), 0) + m_inf->getGrid().scroll())
+                (m_pos + ImVec2(titleW - p->calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         p->update();
     }
     for (auto& dyn_pin : m_dynamicOuts) {
         // FIXME: This looks horrible
-        if ((m_pos + ImVec2(titleW, 0) + m_inf->getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
+        if ((m_pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
             dyn_pin.pin().setPos(
                 ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - dyn_pin.pin().calcWidth(), 0.f));
         else
             dyn_pin.pin().setPos(ImVec2(
-                (m_pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + m_inf->getGrid().scroll())
+                (m_pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         dyn_pin.update();
@@ -551,14 +553,14 @@ void Node::update()
         0,
         thickness);
 
-    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_inf->mouse_on_selected_node())
+    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node())
         selected(false);
 
     if (isHovered()) {
-        m_inf->hoveredNode(this);
+        ctx.hoveredNode(this);
         if (mouseClickState) {
             selected(true);
-            m_inf->consumeSingleUseClick(ImGuiMouseButton_Left);
+            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
         }
     }
 
@@ -568,20 +570,20 @@ void Node::update()
     bool onHeader = ImGui::IsMouseHoveringRect(
         offset + m_pos - paddingTL, offset + m_pos + headerSize);
     if (onHeader && mouseClickState) {
-        m_inf->consumeSingleUseClick(ImGuiMouseButton_Left);
+        ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
         m_dragged = true;
-        m_inf->draggingNode(true);
+        ctx.draggingNode(true);
     }
-    if (m_dragged || (m_selected && m_inf->isNodeDragged())) {
-        float step = m_inf->getStyle().grid_size / m_inf->getStyle().grid_subdivisions;
-        m_posTarget += m_inf->getScreenSpaceDelta();
+    if (m_dragged || (m_selected && ctx.isNodeDragged())) {
+        float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
+        m_posTarget += ctx.getScreenSpaceDelta();
         // "Slam" The position
         m_pos.x = round(m_posTarget.x / step) * step;
         m_pos.y = round(m_posTarget.y / step) * step;
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             m_dragged = false;
-            m_inf->draggingNode(false);
+            ctx.draggingNode(false);
             m_posTarget = m_pos;
         }
     }

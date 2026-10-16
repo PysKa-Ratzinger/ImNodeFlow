@@ -825,14 +825,14 @@ public:
 
     /**
      * @brief Node's ctor
+     * @param ctx Reference to the ImFlow context
      * @param pos Position for the new node
-     * @param inf Pointer to the ImFlow context
      * @param uid The UID of this node
      * @param node_info User provided customization options
      */
     explicit Node(
+        ImNodeFlow& ctx,
         ImVec2 pos,
-        ImNodeFlow* inf,
         NodeUID uid,
         NodeInfo node_info);
 
@@ -1184,13 +1184,14 @@ public:
     void prime();
 
 private:
+    std::reference_wrapper<ImNodeFlow> m_ctx;
+
     NodeUID m_uid = 0;
     std::string m_title;
     ImVec2 m_pos;
     ImVec2 m_posTarget;
     ImVec2 m_size;
     ImVec2 m_fullSize;
-    ImNodeFlow* m_inf = nullptr;
     NodeStyle m_style;
     bool m_selected = false;
     bool m_selectedNext = false;
@@ -1215,18 +1216,18 @@ class Pin {
 public:
     /**
      * @brief Generic pin constructor
+     * @param ctx Reference to the ImNodeFlow context
      * @param name Name of the pin
      * @param kind Specifies Input or Output
      * @param parent Pointer to the Node containing the pin
-     * @param inf Pointer to the Grid Handler the pin is in (same as parent)
      * @param style Style of the pin
      */
-    explicit Pin(PinUID uid, Node* parent, ImNodeFlow** inf, BasePinInfo info)
-        : m_uid(uid)
+    explicit Pin(ImNodeFlow& ctx, PinUID uid, Node* parent, BasePinInfo info)
+        : m_ctx(ctx)
+        , m_uid(uid)
         , m_name(std::move(info.name))
         , m_type(info.kind)
         , m_parent(parent)
-        , m_inf(inf)
         , m_style(std::move(info.style))
         , m_strat(info.strat)
         , m_allowSelfConnection(info.allow_same_node_connections)
@@ -1455,13 +1456,13 @@ public:
     virtual void prime() = 0;
 
 protected:
+    std::reference_wrapper<ImNodeFlow> m_ctx;
     PinUID m_uid;
     std::string m_name;
     ImVec2 m_pos = ImVec2(0.f, 0.f);
     ImVec2 m_size = ImVec2(0.f, 0.f);
     PinType m_type;
     Node* m_parent = nullptr;
-    ImNodeFlow** m_inf;
     PinStyle m_style;
     PinConnStrat m_strat;
     bool m_allowSelfConnection = false;
@@ -1479,20 +1480,20 @@ class InPin : public Pin {
 public:
     /**
      * @brief Input pin constructor
+     * @param ctx Reference to the ImNodeFlow context
      * @param name Name of the pin
      * @param parent Pointer to the Node containing the pin
      * @param defReturn Default return value when the pin is not connected
-     * @param inf Pointer to the Grid Handler the pin is in (same as parent)
      * @param style Style of the pin
      */
     explicit InPin(
+        ImNodeFlow& ctx,
         PinUID uid,
         Node* parent,
-        ImNodeFlow** inf,
         InPinInfo<T> info)
-        : Pin(uid,
+        : Pin(ctx,
+              uid,
               parent,
-              inf,
               BasePinInfo {
                   .name = std::move(info.name),
                   .kind = PinType::PinType_Input,
@@ -1575,19 +1576,19 @@ class OutPin : public Pin {
 public:
     /**
      * @brief Output pin constructor
+     * @param ctx Reference to the ImNodeFlow context
      * @param uid UID for the current pin
      * @param parent Pointer to the Node containing the pin
-     * @param inf Pointer to the Grid Handler the pin is in (same as parent)
      * @param info user-provided customization options
      */
     explicit OutPin(
+        ImNodeFlow& ctx,
         PinUID uid,
         Node* parent,
-        ImNodeFlow** inf,
         OutPinInfo<T> info)
-        : Pin(uid,
+        : Pin(ctx,
+              uid,
               parent,
-              inf,
               BasePinInfo {
                   .name = std::move(info.name),
                   .kind = PinType::PinType_Output,
