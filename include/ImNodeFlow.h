@@ -300,6 +300,27 @@ struct NodeInfo {
 };
 
 // -----------------------------------------------------------------------------------------------------------------
+// DYNAMIC PIN
+
+/**
+ * @brief A dynamic pin is a pin with a temporary lifetime, and will be marked
+ * for deletion if not refreshed before every update
+ */
+class DynamicPin {
+public:
+    explicit DynamicPin(std::unique_ptr<Pin> pin);
+
+    void refresh();
+    void update();
+    Pin& pin();
+    const Pin& pin() const;
+    [[nodiscard]] bool isStale() const;
+
+    std::unique_ptr<Pin> m_pin;
+    uint32_t m_ttl = 1;
+};
+
+// -----------------------------------------------------------------------------------------------------------------
 // LINK
 
 /**
@@ -1098,9 +1119,9 @@ private:
     std::unique_ptr<INodeBehaviour> m_impl;
 
     std::vector<std::shared_ptr<Pin>> m_ins;
-    std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicIns;
+    std::vector<DynamicPin> m_dynamicIns;
     std::vector<std::shared_ptr<Pin>> m_outs;
-    std::vector<std::pair<int, std::shared_ptr<Pin>>> m_dynamicOuts;
+    std::vector<DynamicPin> m_dynamicOuts;
 };
 
 // -----------------------------------------------------------------------------------------------------------------

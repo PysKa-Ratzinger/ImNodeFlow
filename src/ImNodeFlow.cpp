@@ -53,6 +53,42 @@ auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
 }
 
 // -----------------------------------------------------------------------------------------------------------------
+// DYNAMIC PIN
+
+DynamicPin::DynamicPin(std::unique_ptr<Pin> pin)
+    : m_pin(std::move(pin))
+{
+    this->refresh();
+}
+
+void DynamicPin::refresh()
+{
+    this->m_ttl = 1;
+}
+
+void DynamicPin::update()
+{
+    m_ttl = m_ttl > 0 ? m_ttl - 1 : m_ttl;
+    this->pin().update();
+}
+
+Pin& DynamicPin::pin()
+{
+    return *m_pin;
+}
+
+const Pin&
+DynamicPin::pin() const
+{
+    return *m_pin;
+}
+
+bool DynamicPin::isStale() const
+{
+    return m_ttl == 0;
+}
+
+// -----------------------------------------------------------------------------------------------------------------
 // LINK
 
 void Link::update()
@@ -269,13 +305,13 @@ void Node::calculate()
         pin->calculate();
     }
     for (auto& pin : m_dynamicOuts) {
-        pin.second->calculate();
+        pin.pin().calculate();
     }
     for (auto& pin : m_ins) {
         pin->calculate();
     }
     for (auto& pin : m_dynamicIns) {
-        pin.second->calculate();
+        pin.pin().calculate();
     }
 }
 
@@ -285,13 +321,13 @@ void Node::prime()
         pin->prime();
     }
     for (auto& pin : m_dynamicOuts) {
-        pin.second->prime();
+        pin.pin().prime();
     }
     for (auto& pin : m_ins) {
         pin->prime();
     }
     for (auto& pin : m_dynamicIns) {
-        pin.second->prime();
+        pin.pin().prime();
     }
 }
 
@@ -324,12 +360,9 @@ void Node::update()
             p->setPos(ImGui::GetCursorPos());
             p->update();
         }
-        for (auto& p : m_dynamicIns) {
-            if (p.first == 1) {
-                p.second->setPos(ImGui::GetCursorPos());
-                p.second->update();
-                p.first = 0;
-            }
+        for (auto& dyn_pin : m_dynamicIns) {
+            dyn_pin.pin().setPos(ImGui::GetCursorPos());
+            dyn_pin.update();
         }
         ImGui::EndGroup();
         ImGui::SameLine();
@@ -344,6 +377,21 @@ void Node::update()
         ImGui::TextUnformatted("<no renderer provided>");
     }
 
+    // Dynamic inputs stale check can only be done after the call to
+    // m_impl->draw() and before any call to DynamicPin::update()
+    m_dynamicIns.erase(
+        std::remove_if(
+            m_dynamicIns.begin(),
+            m_dynamicIns.end(),
+            [](const auto& elem) -> bool { return elem.isStale(); }),
+        m_dynamicIns.end());
+    m_dynamicOuts.erase(
+        std::remove_if(
+            m_dynamicOuts.begin(),
+            m_dynamicOuts.end(),
+            [](const auto& elem) -> bool { return elem.isStale(); }),
+        m_dynamicOuts.end());
+
     ImGui::Dummy(ImVec2(0.f, 0.f));
     ImGui::EndGroup();
     ImGui::SameLine();
@@ -355,8 +403,8 @@ void Node::update()
         if (w > maxW)
             maxW = w;
     }
-    for (auto& p : m_dynamicOuts) {
-        float w = p.second->calcWidth();
+    for (auto& dyn_pin : m_dynamicOuts) {
+        float w = dyn_pin.pin().calcWidth();
         if (w > maxW)
             maxW = w;
     }
@@ -373,18 +421,17 @@ void Node::update()
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         p->update();
     }
-    for (auto& p : m_dynamicOuts) {
+    for (auto& dyn_pin : m_dynamicOuts) {
         // FIXME: This looks horrible
         if ((m_pos + ImVec2(titleW, 0) + m_inf->getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
-            p.second->setPos(
-                ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - p.second->calcWidth(), 0.f));
+            dyn_pin.pin().setPos(
+                ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - dyn_pin.pin().calcWidth(), 0.f));
         else
-            p.second->setPos(ImVec2(
-                (m_pos + ImVec2(titleW - p.second->calcWidth(), 0) + m_inf->getGrid().scroll())
+            dyn_pin.pin().setPos(ImVec2(
+                (m_pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + m_inf->getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
-        p.second->update();
-        p.first -= 1;
+        dyn_pin.update();
     }
 
     ImGui::EndGroup();
@@ -465,24 +512,6 @@ void Node::update()
         }
     }
     ImGui::PopID();
-
-    // Deleting dead pins
-    m_dynamicIns.erase(
-        std::remove_if(
-            m_dynamicIns.begin(),
-            m_dynamicIns.end(),
-            [](const std::pair<int, std::shared_ptr<Pin>>& p) {
-                return p.first == 0;
-            }),
-        m_dynamicIns.end());
-    m_dynamicOuts.erase(
-        std::remove_if(
-            m_dynamicOuts.begin(),
-            m_dynamicOuts.end(),
-            [](const std::pair<int, std::shared_ptr<Pin>>& p) {
-                return p.first == 0;
-            }),
-        m_dynamicOuts.end());
 }
 
 // -----------------------------------------------------------------------------------------------------------------

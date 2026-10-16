@@ -33,24 +33,60 @@ public:
     {
         node.setTitle("Collapsing node");
         node.setStyle(ImFlow::NodeStyles::red);
-        node.addIN<int>({ .name = "A", .default_value = 0 });
-        node.addIN<int>({ .name = "B", .default_value = 0 });
+
+        // Addind inputs without a designated initializer list also
+        // works, but linters will scream at you.
+        //
+        // NOLINTBEGIN (modernize-use-designated-initializers)
+        node.addIN<int>({ "A", 0 });
+        node.addIN<int>({ "B", 0 });
+        // NOLINTEND
+
         node.addOUT<int>({
             .name = "Out",
             .behaviour = [this](ImFlow::Node& node) -> int {
                 return node.getInVal<int>("A") + node.getInVal<int>("B");
+            },
+            .renderer = [](auto* pin) -> void {
+                ImGui::TextUnformatted("<OUTPIN>");
             },
         });
     }
 
     void draw(ImFlow::Node& node) override
     {
+        ImGui::TextUnformatted("Select me to see more");
+
         if (node.isSelected()) {
-            ImGui::SetNextItemWidth(100.f);
+            ImGui::SetNextItemWidth(100.F);
             ImGui::Text(
                 "You can only see me when the node is selected!");
+
+            const char* multiplier_label = m_multiplier ? "On" : "Off";
+            ImGui::SetNextItemWidth(100.F);
+            if (ImGui::BeginCombo("Multiplier", multiplier_label)) {
+                if (ImGui::Selectable("Off", !m_multiplier)) {
+                    m_multiplier = false;
+                }
+                if (ImGui::Selectable("On", m_multiplier)) {
+                    m_multiplier = true;
+                }
+                ImGui::EndCombo();
+            }
+        }
+
+        if (m_multiplier) {
+            node.showOUT<int>({
+                .name = "Multiplier",
+                .behaviour = [](ImFlow::Node& node) -> int {
+                    return node.getInVal<int>("A") * node.getInVal<int>("B");
+                },
+            });
         }
     }
+
+private:
+    bool m_multiplier = false;
 };
 
 class ResultNode : public ImFlow::INodeBehaviour {

@@ -117,41 +117,36 @@ template <typename T>
 const T&
 Node::showIN(InPinInfo<T> pin_info)
 {
-    for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
-        if (p.second->getName() == pin_info.name) {
-            p.first = 1;
-            return p.second->toIn<T>().val();
+    for (auto& dyn_pin : m_dynamicIns) {
+        if (dyn_pin.pin().getName() == pin_info.name) {
+            dyn_pin.refresh();
+            // TODO: Update pin with new styles from pin_info
+            return dyn_pin.pin().toIn<T>().val();
         }
     }
 
     m_dynamicIns.emplace_back(
-        std::make_pair(
-            1,
-            std::make_shared<InPin<T>>(
-                PinUID::generate(),
-                this,
-                &m_inf,
-                std::move(pin_info))));
-    return m_dynamicIns.back().second->toIn<T>().val();
+        std::make_unique<InPin<T>>(
+            PinUID::generate(), this, &m_inf, std::move(pin_info)));
+    return m_dynamicIns.back().pin().toIn<T>().val();
 }
 
 template <typename T>
 const T&
 Node::showIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
-    for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
-        if (p.second->getUid() == uid) {
-            p.first = 1;
-            return p.second->toIn<T>().val();
+    for (auto& dyn_pin : m_dynamicIns) {
+        if (dyn_pin.pin().getUid() == uid) {
+            dyn_pin.refresh();
+            // TODO: Update pin with new styles from pin_info
+            return dyn_pin.pin().toIn<T>().val();
         }
     }
 
     m_dynamicIns.emplace_back(
-        std::make_pair(
-            1,
-            std::make_shared<InPin<T>>(
-                uid, this, &m_inf, std::move(pin_info))));
-    return m_dynamicIns.back().second->toIn<T>().val();
+        std::make_unique<InPin<T>>(
+            uid, this, &m_inf, std::move(pin_info)));
+    return m_dynamicIns.back().pin().toIn<T>().val();
 }
 
 template <typename T>
@@ -174,27 +169,38 @@ Node::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 template <typename T>
 void Node::showOUT(OutPinInfo<T> pin_info)
 {
-    showOUT<T>(PinUID::generate(), std::move(pin_info));
-}
-
-template <typename T>
-void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
-{
-    for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicOuts) {
-        if (p.second->getUid() == uid) {
-            p.first = 2;
-            m_dynamicOuts.back().second->toOut<T>().behaviour(
+    for (auto& dyn_pin : m_dynamicOuts) {
+        if (dyn_pin.pin().getName() == pin_info.name) {
+            dyn_pin.refresh();
+            // TODO: Update pin with new styles from pin_info
+            dyn_pin.pin().toOut<T>().behaviour(
                 std::move(pin_info.behaviour));
             return;
         }
     }
 
     m_dynamicOuts.emplace_back(
-        std::make_pair(
-            2,
-            std::make_shared<OutPin<T>>(
-                uid, this, &m_inf, std::move(pin_info))));
-    m_dynamicOuts.back().second->toOut<T>().behaviour(
+        std::make_unique<OutPin<T>>(
+            PinUID::generate(), this, &m_inf, std::move(pin_info)));
+}
+
+template <typename T>
+void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
+{
+    for (auto& dyn_pin : m_dynamicOuts) {
+        if (dyn_pin.pin().getUid() == uid) {
+            dyn_pin.refresh();
+            // TODO: Update pin with new styles from pin_info
+            dyn_pin.pin().toOut<T>().behaviour(
+                std::move(pin_info.behaviour));
+            return;
+        }
+    }
+
+    m_dynamicOuts.emplace_back(
+        std::make_unique<OutPin<T>>(
+            uid, this, &m_inf, std::move(pin_info)));
+    m_dynamicOuts.back().pin().toOut<T>().behaviour(
         std::move(pin_info.behaviour));
 }
 
