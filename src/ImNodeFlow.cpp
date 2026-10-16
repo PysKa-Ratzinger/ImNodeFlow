@@ -56,18 +56,14 @@ auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
 // -----------------------------------------------------------------------------------------------------------------
 // PIN
 
-void Pin::linkTo(Pin* other)
+void Pin::linkTo(Pin& other)
 {
-    if (other == nullptr) {
-        return;
-    }
-
-    if ((*m_inf) != (*other->m_inf)) {
+    if ((*m_inf) != (*other.m_inf)) {
         // Cannot link pins across different contexts
         return;
     }
 
-    (*m_inf)->createLink(this, other);
+    (*m_inf)->createLink(*this, other);
 }
 
 void Pin::deleteAllLinks()
@@ -147,9 +143,9 @@ bool DynamicPin::isStale() const
 // -----------------------------------------------------------------------------------------------------------------
 // LINK
 
-Link::Link(Pin* out_pin, Pin* in_pin) noexcept
-    : m_out_pin(out_pin)
-    , m_in_pin(in_pin)
+Link::Link(Pin& out_pin, Pin& in_pin) noexcept
+    : m_out_pin(&out_pin)
+    , m_in_pin(&in_pin)
 {
     assert(m_out_pin != m_in_pin && "Links cannot be created starting and ending in the same node");
 
@@ -631,27 +627,28 @@ ImNodeFlow::grid2screen(const ImVec2& p)
     return (p + m_context.scroll()) * m_context.scale() + m_context.origin();
 }
 
-void ImNodeFlow::createLink(Pin* source_pin, Pin* target_pin)
+void ImNodeFlow::createLink(Pin& source_pin, Pin& target_pin)
 {
-    if (source_pin->getType() == PinType_Input && target_pin->getType() == PinType_Output) {
-        std::swap(source_pin, target_pin);
+    if (source_pin.getType() == PinType_Input && target_pin.getType() == PinType_Output) {
+        createLink(target_pin, source_pin);
+        return;
     }
 
     if (&source_pin == &target_pin) {
         return;
     }
 
-    if (source_pin->getType() != PinType_Output || target_pin->getType() != PinType_Input) {
+    if (source_pin.getType() != PinType_Output || target_pin.getType() != PinType_Input) {
         return;
     }
 
-    bool same_node_allowed = source_pin->allowsSameNodeConnections() && target_pin->allowsSameNodeConnections();
-    if (source_pin->getParent() == target_pin->getParent() && !same_node_allowed) {
+    bool same_node_allowed = source_pin.allowsSameNodeConnections() && target_pin.allowsSameNodeConnections();
+    if (source_pin.getParent() == target_pin.getParent() && !same_node_allowed) {
         return;
     }
 
-    for (const auto& link : source_pin->getLinks()) {
-        if (link->inPin() == target_pin) {
+    for (const auto& link : source_pin.getLinks()) {
+        if (&link->inPin() == &target_pin) {
             // Connection already exists
             return;
         }
@@ -674,7 +671,7 @@ void ImNodeFlow::createLink(Pin* source_pin, Pin* target_pin)
     // Supporting connections only between same types avoids all these
     // issues, and it's not something that's prohibitibly hard to work
     // around on the client side.
-    if (source_pin->getTypeID() != target_pin->getTypeID()) {
+    if (source_pin.getTypeID() != target_pin.getTypeID()) {
         return;
     }
 
@@ -808,7 +805,7 @@ void ImNodeFlow::update()
         // Links drop-off
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             if (m_hovering) {
-                m_dragOut->linkTo(m_hovering);
+                m_dragOut->linkTo(*m_hovering);
             } else if (
                 mouse_on_free_space() && m_droppedLinkPopUp && (m_droppedLinkPupUpComboKey == ImGuiKey_None || ImGui::IsKeyDown(m_droppedLinkPupUpComboKey))) {
                 m_droppedLinkLeft = m_dragOut;

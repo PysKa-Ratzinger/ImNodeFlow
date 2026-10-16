@@ -380,7 +380,7 @@ public:
      * @param out_pin Pointer to the output Pin of the Link
      * @param in_pin Pointer to the input Pin of the Link
      */
-    explicit Link(Pin* out_pin, Pin* in_pin) noexcept;
+    explicit Link(Pin& out_pin, Pin& in_pin) noexcept;
 
     /**
      * @brief Destruction of a link
@@ -397,15 +397,15 @@ public:
 
     /**
      * @brief Get output pin of the link
-     * @return Pointer to the Pin
+     * @return Reference to the Pin
      */
-    [[nodiscard]] Pin* outPin() const { return m_out_pin; }
+    [[nodiscard]] Pin& outPin() const { return *m_out_pin; }
 
     /**
      * @brief Get input pin of the link
-     * @return Pointer to the Pin
+     * @return Reference to the Pin
      */
-    [[nodiscard]] Pin* inPin() const { return m_in_pin; }
+    [[nodiscard]] Pin& inPin() const { return *m_in_pin; }
 
     /**
      * @brief Get hovering status
@@ -620,7 +620,7 @@ public:
      * @param source_pin Reference to the input pin
      * @param target_pint Reference to the output pin
      */
-    void createLink(Pin* source_pin, Pin* target_pin);
+    void createLink(Pin& source_pin, Pin& target_pin);
 
     /**
      * @brief Pop-up when link is "dropped"
@@ -975,52 +975,68 @@ public:
     void showOUT(const PinUID& uid, OutPinInfo<T> pin_info);
 
     /**
-     * @brief Get Input value from an InPin
-     * @details Get a reference to the value of an input pin, the value is stored in the output pin at the other end of the link.
-     * @tparam T Data type
-     * @param uid Unique identifier of the pin
-     * @return Const reference to the value
-     */
-    template <typename T>
-    const T& getInVal(const PinUID& uid);
-
-    /**
-     * @brief Get Input value from the first InPin with the specified name
-     * @details Get a reference to the value of an input pin, the value is stored in the output pin at the other end of the link.
-     * @tparam T Data type
-     * @param name Name of the pin
-     * @return Const reference to the value
-     */
-    template <typename T>
-    const T& getInVal(const char* name);
-
-    /**
      * @brief Get generic reference to input pin
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
     Pin* inPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to input pin with the specified name
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
     Pin* inPin(const char* name);
 
     /**
      * @brief Get generic reference to output pin
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
     Pin* outPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to output pin of the same name
      * @param name Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
     Pin* outPin(const char* name);
+
+    /**
+     * @brief Get generic reference to input pin
+     * @tparam T Type of the data the pin will handle
+     * @param uid Unique identifier of the pin
+     * @return Pointer to the pin, if it exists
+     */
+    template <typename T>
+    InPin<T>* inPin(const PinUID& uid);
+
+    /**
+     * @brief Get generic reference to input pin with the specified name
+     * @tparam T Type of the data the pin will handle
+     * @param uid Unique identifier of the pin
+     * @return Pointer to the pin, if it exists
+     */
+    template <typename T>
+    InPin<T>* inPin(const char* name);
+
+    /**
+     * @brief Get generic reference to output pin
+     * @tparam T Type of the data the pin will handle
+     * @param uid Unique identifier of the pin
+     * @return Pointer to the pin, if it exists
+     */
+    template <typename T>
+    OutPin<T>* outPin(const PinUID& uid);
+
+    /**
+     * @brief Get generic reference to output pin of the same name
+     * @tparam T Type of the data the pin will handle
+     * @param name Unique identifier of the pin
+     * @return Pointer to the pin, if it exists
+     */
+    template <typename T>
+    OutPin<T>* outPin(const char* name);
 
     /**
      * @brief Get internal input pins list
@@ -1293,8 +1309,9 @@ public:
 
     /**
      * @brief Creates a new link between this pin and another pin
+     * @param other Reference of the pin we want to connect with
      */
-    void linkTo(Pin* other);
+    void linkTo(Pin& other);
 
     /**
      * @brief Delete all link reference
@@ -1423,6 +1440,7 @@ public:
      * their next value, but not apply it. This allows every pin, during
      * the calculation step, to query what every other pin's output value
      * was in the closing iteration step.
+     * @internal This function is for internal use only
      */
     virtual void calculate() = 0;
 
@@ -1432,6 +1450,7 @@ public:
      *
      * During this step, pin's are no longer allowed to query any other
      * part of the flow graph, since their state is undefined.
+     * @internal This function is for internal use only
      */
     virtual void prime() = 0;
 
@@ -1536,7 +1555,7 @@ public:
      * @brief Get value carried by the connected link
      * @return Reference to the value of the connected OutPin. Or the default value if not connected
      */
-    const T& val();
+    const T& value();
 
 private:
     T m_emptyVal;
@@ -1600,7 +1619,7 @@ public:
      * @brief Get output value
      * @return Const reference to the internal value of the pin
      */
-    const T& val();
+    const T& value();
 
     /**
      * @brief Set logic to calculate output value

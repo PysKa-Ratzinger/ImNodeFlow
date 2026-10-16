@@ -12,7 +12,7 @@ public:
         node.addOUT<int>({
             .name = "Out",
             .behaviour = [this](ImFlow::Node& node) -> int {
-                return node.getInVal<int>("In") + m_valB;
+                return node.inPin<int>("In")->value() + m_valB;
             },
         });
     }
@@ -45,7 +45,7 @@ public:
         node.addOUT<int>({
             .name = "Out",
             .behaviour = [](ImFlow::Node& node) -> int {
-                return node.getInVal<int>("In");
+                return node.inPin<int>("In")->value();
             },
         });
     };
@@ -53,7 +53,7 @@ public:
     void draw(ImFlow::Node& node) override
     {
         ImGui::SetNextItemWidth(100.F);
-        ImGui::Text("Result: %d", node.getInVal<int>("In"));
+        ImGui::Text("Result: %d", node.inPin<int>("In")->value());
     }
 
     std::unique_ptr<ImFlow::INodeBehaviour> clone() override
@@ -80,7 +80,7 @@ public:
         node.addOUT<int>({
             .name = "Out",
             .behaviour = [this](ImFlow::Node& node) -> int {
-                return node.getInVal<int>("A") + node.getInVal<int>("B");
+                return node.inPin<int>("A")->value() + node.inPin<int>("B")->value();
             },
             .renderer = [](auto* pin) -> void {
                 ImGui::TextUnformatted("<OUTPIN>");
@@ -114,7 +114,7 @@ public:
             node.showOUT<int>({
                 .name = "Multiplier",
                 .behaviour = [](ImFlow::Node& node) -> int {
-                    return node.getInVal<int>("A") * node.getInVal<int>("B");
+                    return node.inPin<int>("A")->value() * node.inPin<int>("B")->value();
                 },
             });
         }
@@ -138,7 +138,7 @@ public:
     {
         ImGui::Text(
             "Result: %d",
-            node.getInVal<int>("A") + node.getInVal<int>("B"));
+            node.inPin<int>("A")->value() + node.inPin<int>("B")->value());
     }
 };
 
@@ -156,11 +156,11 @@ struct NodeEditor {
         auto& multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 320, 140 });
 
         // Add links between nodes
-        n1.outPin("Out")->linkTo(result.inPin("A"));
-        n2.outPin("Out")->linkTo(result.inPin("B"));
+        n1.outPin("Out")->linkTo(*result.inPin("A"));
+        n2.outPin("Out")->linkTo(*result.inPin("B"));
 
-        n1.outPin("Out")->linkTo(multi_adder.inPin("In"));
-        n2.outPin("Out")->linkTo(multi_adder.inPin("In"));
+        n1.outPin("Out")->linkTo(*multi_adder.inPin("In"));
+        n2.outPin("Out")->linkTo(*multi_adder.inPin("In"));
 
         // Add a collapsing node
         auto& collapsingNode = mINF.emplaceNode<CollapsingNode>({ 300, 300 });

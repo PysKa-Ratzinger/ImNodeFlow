@@ -205,21 +205,35 @@ void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 }
 
 template <typename T>
-const T&
-Node::getInVal(const PinUID& uid)
+InPin<T>*
+Node::inPin(const PinUID& uid)
 {
-    auto* pin = inPin(uid);
-    assert(pin != nullptr && "Pin UID not found!");
-    return pin->toIn<T>().val();
+    auto* pin = this->inPin(uid);
+    return pin ? &pin->toIn<T>() : nullptr;
 }
 
 template <typename T>
-const T&
-Node::getInVal(const char* name)
+InPin<T>*
+Node::inPin(const char* name)
 {
-    auto* pin = inPin(name);
-    assert(pin != nullptr && "Pin UID not found!");
-    return pin->toIn<T>().val();
+    auto* pin = this->inPin(name);
+    return pin ? &pin->toIn<T>() : nullptr;
+}
+
+template <typename T>
+OutPin<T>*
+Node::outPin(const PinUID& uid)
+{
+    auto* pin = this->outPin(uid);
+    return pin ? &pin->toOut<T>() : nullptr;
+}
+
+template <typename T>
+OutPin<T>*
+Node::outPin(const char* name)
+{
+    auto* pin = this->outPin(name);
+    return pin ? &pin->toOut<T>() : nullptr;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -361,7 +375,7 @@ void InPin<T>::calculate()
         m_valNext = m_accumulatorOp(
             first,
             m_valNext,
-            link->outPin()->template toOut<T>().val());
+            link->outPin().template toOut<T>().value());
         first = false;
     }
 }
@@ -374,7 +388,7 @@ void InPin<T>::prime()
 
 template <class T>
 const T&
-InPin<T>::val()
+InPin<T>::value()
 {
     return m_val;
 }
@@ -396,7 +410,7 @@ void OutPin<T>::prime()
 
 template <class T>
 const T&
-OutPin<T>::val()
+OutPin<T>::value()
 {
     return m_val;
 }
