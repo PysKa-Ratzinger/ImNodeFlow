@@ -33,7 +33,7 @@ void Link::update()
 {
     ImVec2 start = m_out_pin->pinPoint();
     ImVec2 end = m_in_pin->pinPoint();
-    float thickness = m_out_pin->getStyle()->extra.link_thickness;
+    float thickness = m_out_pin->getStyle().extra.link_thickness;
     bool mouseClickState = m_inf->getSingleUseClick();
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
@@ -42,7 +42,7 @@ void Link::update()
     if (detail::smart_bezier_collider(
             ImGui::GetMousePos(), start, end, 2.5)) {
         m_hovered = true;
-        thickness = m_out_pin->getStyle()->extra.link_hovered_thickness;
+        thickness = m_out_pin->getStyle().extra.link_hovered_thickness;
         if (mouseClickState) {
             m_inf->consumeSingleUseClick();
             m_selected = true;
@@ -55,10 +55,9 @@ void Link::update()
         detail::smart_bezier(
             start,
             end,
-            m_out_pin->getStyle()->extra.outline_color,
-            thickness + m_out_pin->getStyle()->extra.link_selected_outline_thickness);
-    detail::smart_bezier(
-        start, end, m_out_pin->getStyle()->color, thickness);
+            m_out_pin->getStyle().extra.outline_color,
+            thickness + m_out_pin->getStyle().extra.link_selected_outline_thickness);
+    detail::smart_bezier(start, end, m_out_pin->getStyle().color, thickness);
 
     if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
         m_in_pin->deleteLink();
@@ -600,16 +599,14 @@ void ImNodeFlow::update()
             detail::smart_bezier(
                 m_dragOut->pinPoint(),
                 ImGui::GetMousePos(),
-                m_dragOut->getStyle()->color,
-                m_dragOut->getStyle()
-                    ->extra.link_dragged_thickness);
+                m_dragOut->getStyle().color,
+                m_dragOut->getStyle().extra.link_dragged_thickness);
         else
             detail::smart_bezier(
                 ImGui::GetMousePos(),
                 m_dragOut->pinPoint(),
-                m_dragOut->getStyle()->color,
-                m_dragOut->getStyle()
-                    ->extra.link_dragged_thickness);
+                m_dragOut->getStyle().color,
+                m_dragOut->getStyle().extra.link_dragged_thickness);
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             m_dragOut = nullptr;

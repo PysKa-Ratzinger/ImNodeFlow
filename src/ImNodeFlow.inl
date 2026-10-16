@@ -219,30 +219,30 @@ inline void
 Pin::drawSocket()
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    ImVec2 tl = pinPoint() - ImVec2(m_style->socket_radius, m_style->socket_radius);
-    ImVec2 br = pinPoint() + ImVec2(m_style->socket_radius, m_style->socket_radius);
+    ImVec2 tl = pinPoint() - ImVec2(m_style.socket_radius, m_style.socket_radius);
+    ImVec2 br = pinPoint() + ImVec2(m_style.socket_radius, m_style.socket_radius);
 
     if (isConnected())
         draw_list->AddCircleFilled(
             pinPoint(),
-            m_style->socket_connected_radius,
-            m_style->color,
-            m_style->socket_shape);
+            m_style.socket_connected_radius,
+            m_style.color,
+            m_style.socket_shape);
     else {
         if (ImGui::IsItemHovered() || ImGui::IsMouseHoveringRect(tl, br))
             draw_list->AddCircle(
                 pinPoint(),
-                m_style->socket_hovered_radius,
-                m_style->color,
-                m_style->socket_shape,
-                m_style->socket_thickness);
+                m_style.socket_hovered_radius,
+                m_style.color,
+                m_style.socket_shape,
+                m_style.socket_thickness);
         else
             draw_list->AddCircle(
                 pinPoint(),
-                m_style->socket_radius,
-                m_style->color,
-                m_style->socket_shape,
-                m_style->socket_thickness);
+                m_style.socket_radius,
+                m_style.color,
+                m_style.socket_shape,
+                m_style.socket_thickness);
     }
 
     if (ImGui::IsMouseHoveringRect(tl, br))
@@ -256,23 +256,23 @@ Pin::drawDecoration()
 
     if (ImGui::IsItemHovered())
         draw_list->AddRectFilled(
-            m_pos - m_style->extra.padding,
-            m_pos + m_size + m_style->extra.padding,
-            m_style->extra.bg_hover_color,
-            m_style->extra.bg_radius);
+            m_pos - m_style.extra.padding,
+            m_pos + m_size + m_style.extra.padding,
+            m_style.extra.bg_hover_color,
+            m_style.extra.bg_radius);
     else
         draw_list->AddRectFilled(
-            m_pos - m_style->extra.padding,
-            m_pos + m_size + m_style->extra.padding,
-            m_style->extra.bg_color,
-            m_style->extra.bg_radius);
+            m_pos - m_style.extra.padding,
+            m_pos + m_size + m_style.extra.padding,
+            m_style.extra.bg_color,
+            m_style.extra.bg_radius);
     draw_list->AddRect(
-        m_pos - m_style->extra.padding,
-        m_pos + m_size + m_style->extra.padding,
-        m_style->extra.border_color,
-        m_style->extra.bg_radius,
+        m_pos - m_style.extra.padding,
+        m_pos + m_size + m_style.extra.padding,
+        m_style.extra.border_color,
+        m_style.extra.bg_radius,
         0,
-        m_style->extra.border_thickness);
+        m_style.extra.border_thickness);
 }
 
 inline void

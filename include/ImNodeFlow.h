@@ -121,13 +121,13 @@ struct PinStyleExtras {
  */
 class PinStyle {
 public:
-    PinStyle(
+    constexpr PinStyle(
         ImU32 color,
         int socket_shape,
         float socket_radius,
         float socket_hovered_radius,
         float socket_connected_radius,
-        float socket_thickness)
+        float socket_thickness) noexcept
         : color(color)
         , socket_shape(socket_shape)
         , socket_radius(socket_radius)
@@ -151,45 +151,24 @@ public:
     float socket_thickness;
     /// @brief List of less common properties
     PinStyleExtras extra;
-
-public:
-    /// @brief Default cyan style
-    static std::shared_ptr<PinStyle> cyan()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
-    }
-    /// @brief Default green style
-    static std::shared_ptr<PinStyle> green()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f));
-    }
-    /// @brief Default blue style
-    static std::shared_ptr<PinStyle> blue()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
-    }
-    /// @brief Default brown style
-    static std::shared_ptr<PinStyle> brown()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
-    }
-    /// @brief Default red style
-    static std::shared_ptr<PinStyle> red()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
-    }
-    /// @brief Default white style
-    static std::shared_ptr<PinStyle> white()
-    {
-        return std::make_shared<PinStyle>(PinStyle(
-            IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f));
-    }
 };
+
+namespace PinStyles {
+
+    /// @brief Default cyan style
+    static constexpr PinStyle cyan = { IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    /// @brief Default green style
+    static constexpr PinStyle green = { IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f };
+    /// @brief Default blue style
+    static constexpr PinStyle blue = { IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    /// @brief Default brown style
+    static constexpr PinStyle brown = { IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    /// @brief Default red style
+    static constexpr PinStyle red = { IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    /// @brief Default white style
+    static constexpr PinStyle white = { IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f };
+
+}
 
 /**
  * @brief Pins type identifier
@@ -209,7 +188,7 @@ struct BasePinInfo {
     /// Whether it's an input pin or an output pin
     PinType kind;
     /// Style to apply to the pin
-    std::shared_ptr<PinStyle> style = PinStyle::cyan();
+    PinStyle style = PinStyles::cyan;
     /// Custom render function
     std::function<void(Pin* p)> renderer;
 };
@@ -225,7 +204,7 @@ struct InPinInfo {
     /// to any output pin
     T default_value;
     /// Style to apply to the pin
-    std::shared_ptr<PinStyle> style = PinStyle::cyan();
+    PinStyle style = PinStyles::cyan;
     /// Custom render function
     std::function<void(Pin* p)> renderer;
 };
@@ -242,7 +221,7 @@ struct OutPinInfo {
     /// Custom render function
     std::function<void(Pin* p)> renderer;
     /// Style to apply to the pin
-    std::shared_ptr<PinStyle> style = PinStyle::cyan();
+    PinStyle style = PinStyles::cyan;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -1266,7 +1245,7 @@ public:
      * @brief Get pin's style
      * @return Smart pointer to pin's style
      */
-    std::shared_ptr<PinStyle>& getStyle() { return m_style; }
+    PinStyle& getStyle() { return m_style; }
 
     /**
      * @brief Get pin's link attachment point (socket)
@@ -1311,7 +1290,7 @@ protected:
     PinType m_type;
     Node* m_parent = nullptr;
     ImNodeFlow** m_inf;
-    std::shared_ptr<PinStyle> m_style;
+    PinStyle m_style;
     std::function<void(Pin* p)> m_renderer;
 };
 
@@ -1397,7 +1376,7 @@ public:
      */
     ImVec2 pinPoint() override
     {
-        return m_pos + ImVec2(-m_style->extra.socket_padding, m_size.y / 2);
+        return m_pos + ImVec2(-m_style.extra.socket_padding, m_size.y / 2);
     }
 
     void calculate() override;
@@ -1491,7 +1470,7 @@ public:
      */
     ImVec2 pinPoint() override
     {
-        return m_pos + ImVec2(m_size.x + m_style->extra.socket_padding, m_size.y / 2);
+        return m_pos + ImVec2(m_size.x + m_style.extra.socket_padding, m_size.y / 2);
     }
 
     void calculate() override;
