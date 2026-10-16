@@ -1149,11 +1149,6 @@ public:
     void drawDecoration();
 
     /**
-     * @brief Used by output pins to calculate their values
-     */
-    virtual void resolve() { }
-
-    /**
      * @brief Custom render function to override Pin appearance
      * @param r Function or lambda expression with new ImGui rendering
      */
