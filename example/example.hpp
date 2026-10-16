@@ -27,6 +27,41 @@ private:
     int m_valB = 0;
 };
 
+class MultipleInputAdder : public ImFlow::INodeBehaviour {
+public:
+    void setup(ImFlow::Node& node) override
+    {
+        node.setTitle("Multiple input adder");
+        node.setStyle(ImFlow::NodeStyles::cyan);
+        node.addIN<int>({
+            .name = "In",
+            .default_value = 0,
+            .strat = ImFlow::PinConnStrat_AllowMultiplePreferOldest,
+            .accumulate_op =
+                [](bool first, int init, int new_input) -> int {
+                return first ? new_input : init + new_input;
+            },
+        });
+        node.addOUT<int>({
+            .name = "Out",
+            .behaviour = [](ImFlow::Node& node) -> int {
+                return node.getInVal<int>("In");
+            },
+        });
+    };
+
+    void draw(ImFlow::Node& node) override
+    {
+        ImGui::SetNextItemWidth(100.F);
+        ImGui::Text("Result: %d", node.getInVal<int>("In"));
+    }
+
+    std::unique_ptr<ImFlow::INodeBehaviour> clone() override
+    {
+        return std::make_unique<MultipleInputAdder>();
+    }
+};
+
 class CollapsingNode : public ImFlow::INodeBehaviour {
 public:
     void setup(ImFlow::Node& node) override
@@ -117,11 +152,15 @@ struct NodeEditor {
 
         auto& n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
         auto& n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
-        auto& result = mINF.emplaceNode<ResultNode>({ 250, 80 });
+        auto& result = mINF.emplaceNode<ResultNode>({ 270, 50 });
+        auto& multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 320, 140 });
 
         // Add links between nodes
         n1.outPin("Out")->linkTo(result.inPin("A"));
         n2.outPin("Out")->linkTo(result.inPin("B"));
+
+        n1.outPin("Out")->linkTo(multi_adder.inPin("In"));
+        n2.outPin("Out")->linkTo(multi_adder.inPin("In"));
 
         // Add a collapsing node
         auto& collapsingNode = mINF.emplaceNode<CollapsingNode>({ 300, 300 });

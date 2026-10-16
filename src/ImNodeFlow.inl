@@ -353,22 +353,13 @@ void InPin<T>::calculate()
 {
     m_valNext = m_emptyVal;
 
-    if (m_links.empty()) {
-        return;
-    }
-
-    switch (this->m_strat) {
-    case PinConnStrat_AllowOnlySingleConnection:
-    case PinConnStrat_AllowMultiplePreferOldest:
-        m_valNext = m_links.front()->outPin()->template toOut<T>().val();
-        break;
-
-    case PinConnStrat_AllowMultiplePreferNewest:
-        m_valNext = m_links.back()->outPin()->template toOut<T>().val();
-        break;
-
-    default:
-        break;
+    bool first = true;
+    for (auto& link : m_links) {
+        m_valNext = m_accumulatorOp(
+            first,
+            m_valNext,
+            link->outPin()->template toOut<T>().val());
+        first = false;
     }
 }
 

@@ -186,8 +186,9 @@ enum PinConnStrat {
 
     /// Multiple links are allowed.
     ///
-    /// When applied to an input pin, it will default to fetch the value
-    /// from the oldest connected link.
+    /// When applied to an input pin, if an accumulate operation is not
+    /// provided, it will default to fetch the value from the oldest
+    /// connected link.
     ///
     /// The behaviour for an output pin does not change besides allowing
     /// the creation of multiple links.
@@ -195,8 +196,9 @@ enum PinConnStrat {
 
     /// Multiple links are allowed.
     ///
-    /// When applied to an input pin, it will be set to fetch the value
-    /// from the newest connected link.
+    /// When applied to an input pin, if an accumulate operation is not
+    /// provided, it will be set to fetch the value from the newest
+    /// connected link.
     ///
     /// The behaviour for an output pin does not change besides allowing
     /// the creation of multiple links.
@@ -242,6 +244,12 @@ struct InPinInfo {
     PinConnStrat strat = PinConnStrat_AllowOnlySingleConnection;
     /// Custom render function
     std::function<void(Pin* p)> renderer;
+    /// When an input pin supports multiple inputs, the pin's value will
+    /// be calculated by first initializing it to the default value, and
+    /// then calling this accumulator function for every connected pin
+    /// (from oldest to newest).
+    std::function<T(bool first_pin, T init, T const& incoming_value)>
+        accumulate_op;
 };
 
 /**
@@ -1469,6 +1477,29 @@ public:
         , m_emptyVal(info.default_value)
         , m_val(info.default_value)
     {
+        if (info.accumulate_op) {
+            m_accumulatorOp = std::move(info.accumulate_op);
+        } else {
+            switch (info.strat) {
+            case PinConnStrat::PinConnStrat_AllowOnlySingleConnection:
+            case PinConnStrat::PinConnStrat_AllowMultiplePreferOldest:
+                m_accumulatorOp =
+                    [](bool first_pin,
+                        T init,
+                        T const& incoming_value) -> T {
+                    return incoming_value;
+                };
+                break;
+
+            case PinConnStrat::PinConnStrat_AllowMultiplePreferNewest:
+                m_accumulatorOp =
+                    [](bool first_pin,
+                        T init,
+                        T const& incoming_value) -> T {
+                    return first_pin ? incoming_value : init;
+                };
+            }
+        }
     }
 
     /**
@@ -1503,6 +1534,8 @@ private:
     T m_emptyVal;
     T m_val;
     T m_valNext;
+    std::function<T(bool first_pin, T init, T const& incoming_value)>
+        m_accumulatorOp;
 };
 
 /**
