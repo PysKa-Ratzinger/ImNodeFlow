@@ -544,21 +544,21 @@ public:
 
     /**
      * @brief Add a node to the grid
-     * @param pos Position of the Node in grid coordinates
+     * @param grid_coords Position of the Node in grid coordinates
      * @param node_info Node behaviour customization options
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node& addNode(const ImVec2& pos, NodeInfo node_info = { });
+    Node& addNode(const ImVec2& grid_coords, NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid
-     * @param pos Position of the Node in screen coordinates
+     * @param screen_coords Position of the Node in screen coordinates
      * @param node_info Node behaviour customization options
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node& placeNodeAt(const ImVec2& pos, NodeInfo node_info = { });
+    Node& placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid using mouse position
@@ -572,37 +572,38 @@ public:
     /**
      * @brief Add a node whos operation can be defined within a lambda.
      * @tparam L the type of the lambda
-     * @param pos the position at which to place the node
+     * @param grid_coords the position at which to place the node
      * @param draw_func the draw_func that defines the nodes operation
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node&
-    addNodeLambda(const ImVec2& pos, std::function<void(Node&)> draw_func);
+    Node& addNodeLambda(
+        const ImVec2& grid_coords,
+        std::function<void(Node&)> draw_func);
 
     /**
      * @brief Add a node to the grid
      * @tparam T Derived class of <INodeBehaviour> to be added
      * @tparam Params types of optional args to forward to derived class ctor
-     * @param pos Position of the Node in grid coordinates
+     * @param grid_coords Position of the Node in grid coordinates
      * @param args Arguments to be forwarded to derived class ctor
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
     template <typename T, typename... Params>
-    Node& emplaceNode(const ImVec2& pos, Params&&... args);
+    Node& emplaceNode(const ImVec2& grid_coords, Params&&... args);
 
     /**
      * @brief Add a node to the grid
      * @tparam T Derived class of <INodeBehaviour> to be added
      * @tparam Params types of optional args to forward to derived class ctor
-     * @param pos Position of the Node in screen coordinates
+     * @param screen_coords Position of the Node in screen coordinates
      * @param args Arguments to be forwarded to derived class ctor
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
     template <typename T, typename... Params>
-    Node& emplaceNodeAt(const ImVec2& pos, Params&&... args);
+    Node& emplaceNodeAt(const ImVec2& screen_coords, Params&&... args);
 
     /**
      * @brief Add a node to the grid using mouse position

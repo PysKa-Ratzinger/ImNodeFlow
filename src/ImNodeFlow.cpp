@@ -227,20 +227,21 @@ namespace {
 
 } // anonymous namespace
 
-Node& ImNodeFlow::addNode(const ImVec2& pos, NodeInfo node_info)
+Node& ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
     auto uid = NodeUID::generate();
     auto res = m_nodes.emplace(
         uid,
-        std::make_unique<Node>(*this, pos, uid, std::move(node_info)));
+        std::make_unique<Node>(
+            *this, grid_coords, uid, std::move(node_info)));
 
     assert(res.second && "Failed to create new Node");
     return *res.first->second;
 }
 
-Node& ImNodeFlow::placeNodeAt(const ImVec2& pos, NodeInfo node_info)
+Node& ImNodeFlow::placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info)
 {
-    return addNode(screen2grid(pos), std::move(node_info));
+    return addNode(screen2grid(screen_coords), std::move(node_info));
 }
 
 Node& ImNodeFlow::placeNode(NodeInfo node_info)
@@ -249,11 +250,11 @@ Node& ImNodeFlow::placeNode(NodeInfo node_info)
 }
 
 Node& ImNodeFlow::addNodeLambda(
-    const ImVec2& pos,
+    const ImVec2& grid_coords,
     std::function<void(Node&)> draw_func)
 {
     return addNode(
-        pos,
+        grid_coords,
         NodeInfo {
             .behaviour = std::make_unique<NodeWrapper>(std::move(draw_func)),
         });

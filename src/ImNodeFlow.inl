@@ -71,20 +71,21 @@ namespace detail {
 // FLOW CONTEXT
 
 template <typename T, typename... Params>
-Node& ImNodeFlow::emplaceNode(const ImVec2& pos, Params&&... args)
+Node& ImNodeFlow::emplaceNode(const ImVec2& grid_coords, Params&&... args)
 {
     return addNode(
-        pos,
+        grid_coords,
         NodeInfo {
             .behaviour = std::make_unique<T>(std::forward<Params>(args)...),
         });
 }
 
 template <typename T, typename... Params>
-Node& ImNodeFlow::emplaceNodeAt(const ImVec2& pos, Params&&... args)
+Node& ImNodeFlow::emplaceNodeAt(const ImVec2& screen_coords, Params&&... args)
 {
     return placeNodeAt(
-        pos, std::make_unique<T>(std::forward<Params>(args)...));
+        screen_coords,
+        std::make_unique<T>(std::forward<Params>(args)...));
 }
 
 template <typename T, typename... Params>
