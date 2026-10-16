@@ -1,5 +1,6 @@
 #include "ImNodeFlow.h"
 
+#include <algorithm>
 #include <cassert>
 #include <memory>
 #include <utility>
@@ -53,6 +54,61 @@ auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
 }
 
 // -----------------------------------------------------------------------------------------------------------------
+// PIN
+
+void Pin::linkTo(Pin* other)
+{
+    if (other == nullptr) {
+        return;
+    }
+
+    if ((*m_inf) != (*other->m_inf)) {
+        // Cannot link pins across different contexts
+        return;
+    }
+
+    (*m_inf)->createLink(this, other);
+}
+
+void Pin::deleteAllLinks()
+{
+    auto links = std::move(m_links);
+
+    for (auto* link : links) {
+        link->destroy();
+    }
+}
+
+void Pin::addLink(Link* link)
+{
+    auto iter = std::find(m_links.begin(), m_links.end(), link);
+
+    if (iter != m_links.end()) {
+        return;
+    }
+
+    if (m_strat == PinConnStrat_AllowOnlySingleConnection) {
+        this->deleteAllLinks();
+    }
+
+    m_links.emplace_back(link);
+}
+
+void Pin::removeLink(Link* link)
+{
+    auto iter = std::find_if(
+        m_links.begin(),
+        m_links.end(),
+        [link](const auto* internal_link) -> bool {
+            return internal_link == link;
+        });
+
+    if (iter != m_links.end()) {
+        m_links.erase(iter);
+    }
+}
+
+// -----------------------------------------------------------------------------------------------------------------
 // DYNAMIC PIN
 
 DynamicPin::DynamicPin(std::unique_ptr<Pin> pin)
@@ -91,6 +147,35 @@ bool DynamicPin::isStale() const
 // -----------------------------------------------------------------------------------------------------------------
 // LINK
 
+Link::Link(Pin* out_pin, Pin* in_pin, ImNodeFlow* inf) noexcept
+    : m_out_pin(out_pin)
+    , m_in_pin(in_pin)
+    , m_inf(inf)
+{
+    assert(m_out_pin != m_in_pin && "Links cannot be created starting and ending in the same node");
+
+    m_out_pin->addLink(this);
+    m_in_pin->addLink(this);
+}
+
+Link::~Link() noexcept
+{
+    this->destroy();
+}
+
+void Link::destroy() noexcept
+{
+    if (m_out_pin != nullptr) {
+        m_out_pin->removeLink(this);
+        m_out_pin = nullptr;
+    }
+    if (m_in_pin != nullptr) {
+        m_in_pin->removeLink(this);
+        m_in_pin = nullptr;
+    }
+    m_marked_for_deletion = true;
+}
+
 void Link::update()
 {
     ImVec2 start = m_out_pin->pinPoint();
@@ -121,15 +206,9 @@ void Link::update()
             thickness + m_out_pin->getStyle().extra.link_selected_outline_thickness);
     detail::smart_bezier(start, end, m_out_pin->getStyle().color, thickness);
 
-    if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
-        m_in_pin->deleteLink();
-}
-
-Link::~Link()
-{
-    if (!m_out_pin)
-        return;
-    m_out_pin->deleteLink();
+    if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+        this->destroy();
+    }
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -533,7 +612,7 @@ bool ImNodeFlow::mouse_on_free_space()
                m_nodes.end(),
                [](const auto& n) { return !n.second->isHovered(); })
         && std::all_of(m_links.begin(), m_links.end(), [](const auto& l) {
-               return !l.lock()->isHovered();
+               return !l->isHovered();
            });
 }
 
@@ -553,9 +632,55 @@ ImNodeFlow::grid2screen(const ImVec2& p)
     return (p + m_context.scroll()) * m_context.scale() + m_context.origin();
 }
 
-void ImNodeFlow::addLink(std::shared_ptr<Link>& link)
+void ImNodeFlow::createLink(Pin* source_pin, Pin* target_pin)
 {
-    m_links.push_back(link);
+    if (source_pin->getType() == PinType_Input && target_pin->getType() == PinType_Output) {
+        std::swap(source_pin, target_pin);
+    }
+
+    if (&source_pin == &target_pin) {
+        return;
+    }
+
+    if (source_pin->getType() != PinType_Output || target_pin->getType() != PinType_Input) {
+        return;
+    }
+
+    bool same_node_allowed = source_pin->allowsSameNodeConnections() && target_pin->allowsSameNodeConnections();
+    if (source_pin->getParent() == target_pin->getParent() && !same_node_allowed) {
+        return;
+    }
+
+    for (const auto& link : source_pin->getLinks()) {
+        if (link->inPin() == target_pin) {
+            // Connection already exists
+            return;
+        }
+    }
+
+    // Only pins with the same type can be linked. Casts between
+    // compatible types like (float and double), or (short, int, and long)
+    // should be handled explicitly by user types.
+    //
+    // On a technical note, supporting these casts is not necessarily hard,
+    // but introduces a layer of complexity which either requires RTTI (so
+    // we know how to type-cast), or manual RTTI (using a compile-time
+    // type_id<T>, which is possible, but we are now responsible for
+    // maintaining a list of which type conversions should be possible and
+    // which aren't), or it might introduce subtle programming errors
+    // given the nature that different types might naturally have different
+    // sizes in memory, and getting a cast wrong may result in writing
+    // into out-of-bounds memory.
+    //
+    // Supporting connections only between same types avoids all these
+    // issues, and it's not something that's prohibitibly hard to work
+    // around on the client side.
+    if (source_pin->getTypeID() != target_pin->getTypeID()) {
+        return;
+    }
+
+    m_links.emplace_back(
+        std::make_unique<Link>(source_pin, target_pin, this));
 }
 
 void ImNodeFlow::update()
@@ -633,9 +758,15 @@ void ImNodeFlow::update()
     }
 
     // Update and draw links
-    for (auto& l : m_links) {
-        if (!l.expired())
-            l.lock()->update();
+    for (auto iter = m_links.begin(); iter != m_links.end();) {
+        // Clean up deleted links along the way
+        if ((*iter)->isMarkedForDeletion()) {
+            iter = m_links.erase(iter);
+            continue;
+        }
+
+        (*iter)->update();
+        ++iter;
     }
 
     // Links drop-off
@@ -647,8 +778,9 @@ void ImNodeFlow::update()
                     ImGui::OpenPopup("DroppedLinkPopUp");
                 }
             }
-        } else
-            m_dragOut->createLink(m_hovering);
+        } else {
+            m_dragOut->linkTo(m_hovering);
+        }
     }
 
     // Links drag-out
@@ -687,14 +819,6 @@ void ImNodeFlow::update()
         m_droppedLinkPopUp(m_droppedLinkLeft);
         ImGui::EndPopup();
     }
-
-    // Removing dead Links
-    m_links.erase(
-        std::remove_if(
-            m_links.begin(),
-            m_links.end(),
-            [](const std::weak_ptr<Link>& l) { return l.expired(); }),
-        m_links.end());
 
     m_context.end();
 }

@@ -351,10 +351,24 @@ Pin::toOut() const
 template <class T>
 void InPin<T>::calculate()
 {
-    if (!m_link) {
-        m_valNext = m_emptyVal;
-    } else {
-        m_valNext = m_link->outPin()->toOut<T>().val();
+    m_valNext = m_emptyVal;
+
+    if (m_links.empty()) {
+        return;
+    }
+
+    switch (this->m_strat) {
+    case PinConnStrat_AllowOnlySingleConnection:
+    case PinConnStrat_AllowMultiplePreferOldest:
+        m_valNext = m_links.front()->outPin()->template toOut<T>().val();
+        break;
+
+    case PinConnStrat_AllowMultiplePreferNewest:
+        m_valNext = m_links.back()->outPin()->template toOut<T>().val();
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -369,46 +383,6 @@ const T&
 InPin<T>::val()
 {
     return m_val;
-}
-
-template <class T>
-void InPin<T>::createLink(Pin* other)
-{
-    if (other == this || other->getType() == PinType_Input)
-        return;
-
-    if (m_parent == other->getParent() && !m_allowSelfConnection)
-        return;
-
-    if (m_link && m_link->outPin() == other) {
-        m_link.reset();
-        return;
-    }
-
-    // Only pins with the same type can be linked. Casts between
-    // compatible types like (float and double), or (short, int, and long)
-    // should be handled explicitly by user types.
-    //
-    // On a technical note, supporting these casts is not necessarily hard,
-    // but introduces a layer of complexity which either requires RTTI (so
-    // we know how to type-cast), or manual RTTI (using a compile-time
-    // type_id<T>, which is possible, but we are now responsible for
-    // maintaining a list of which type conversions should be possible and
-    // which aren't), or it might introduce subtle programming errors
-    // given the nature that different types might naturally have different
-    // sizes in memory, and getting a cast wrong may result in writing
-    // into out-of-bounds memory.
-    //
-    // Supporting connections only between same types avoids all these
-    // issues, and it's not something that's prohibitibly hard to work
-    // around on the client side.
-    if (this->getTypeID() != other->getTypeID()) {
-        return;
-    }
-
-    m_link = std::make_shared<Link>(other, this, (*m_inf));
-    other->setLink(m_link);
-    (*m_inf)->addLink(m_link);
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -431,32 +405,6 @@ const T&
 OutPin<T>::val()
 {
     return m_val;
-}
-
-template <class T>
-void OutPin<T>::createLink(ImFlow::Pin* other)
-{
-    if (other == this || other->getType() == PinType_Output)
-        return;
-
-    other->createLink(this);
-}
-
-template <class T>
-void OutPin<T>::setLink(std::shared_ptr<Link>& link)
-{
-    m_links.emplace_back(link);
-}
-
-template <class T>
-void OutPin<T>::deleteLink()
-{
-    m_links.erase(
-        std::remove_if(
-            m_links.begin(),
-            m_links.end(),
-            [](const std::weak_ptr<Link>& l) { return l.expired(); }),
-        m_links.end());
 }
 
 } // namespace ImFlow

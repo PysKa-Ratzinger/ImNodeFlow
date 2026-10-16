@@ -176,6 +176,33 @@ namespace PinStyles {
 enum PinType { PinType_Input,
     PinType_Output };
 
+/**
+ * @brief Strategy to use for input pins regarding multiple connections
+ */
+enum PinConnStrat {
+    /// When a new link is created, all other links connecting to this pin
+    /// are deleted.
+    PinConnStrat_AllowOnlySingleConnection,
+
+    /// Multiple links are allowed.
+    ///
+    /// When applied to an input pin, it will default to fetch the value
+    /// from the oldest connected link.
+    ///
+    /// The behaviour for an output pin does not change besides allowing
+    /// the creation of multiple links.
+    PinConnStrat_AllowMultiplePreferOldest,
+
+    /// Multiple links are allowed.
+    ///
+    /// When applied to an input pin, it will be set to fetch the value
+    /// from the newest connected link.
+    ///
+    /// The behaviour for an output pin does not change besides allowing
+    /// the creation of multiple links.
+    PinConnStrat_AllowMultiplePreferNewest,
+};
+
 // -----------------------------------------------------------------------------------------------------------------
 // PIN INFO STRUCTURES
 
@@ -187,8 +214,12 @@ struct BasePinInfo {
     std::string name;
     /// Whether it's an input pin or an output pin
     PinType kind;
+    /// Whether links coming from the same node are allowed
+    bool allow_same_node_connections;
     /// Style to apply to the pin
-    PinStyle style = PinStyles::cyan;
+    PinStyle style;
+    /// Strategy to use regarding multiple link connections
+    PinConnStrat strat;
     /// Custom render function
     std::function<void(Pin* p)> renderer;
 };
@@ -203,8 +234,12 @@ struct InPinInfo {
     /// Default value the input pin will return when not connected
     /// to any output pin
     T default_value;
+    /// Whether links coming from the same node are allowed
+    bool allow_same_node_connections = false;
     /// Style to apply to the pin
     PinStyle style = PinStyles::cyan;
+    /// Strategy to use regarding multiple link connections
+    PinConnStrat strat = PinConnStrat_AllowOnlySingleConnection;
     /// Custom render function
     std::function<void(Pin* p)> renderer;
 };
@@ -220,8 +255,12 @@ struct OutPinInfo {
     std::function<T(Node&)> behaviour;
     /// Custom render function
     std::function<void(Pin* p)> renderer;
+    /// Whether links coming from the same node are allowed
+    bool allow_same_node_connections = true;
     /// Style to apply to the pin
     PinStyle style = PinStyles::cyan;
+    /// Strategy to use regarding multiple link connections
+    PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -334,18 +373,13 @@ public:
      * @param in_pin Pointer to the input Pin of the Link
      * @param inf Pointer to the Handler that contains the Link
      */
-    explicit Link(Pin* out_pin, Pin* in_pin, ImNodeFlow* inf)
-        : m_out_pin(out_pin)
-        , m_in_pin(in_pin)
-        , m_inf(inf)
-    {
-    }
+    explicit Link(Pin* out_pin, Pin* in_pin, ImNodeFlow* inf) noexcept;
 
     /**
      * @brief Destruction of a link
      * @details Deletes references of this links form connected pins
      */
-    ~Link();
+    ~Link() noexcept;
 
     /**
      * @brief Looping function to update the Link
@@ -377,7 +411,21 @@ public:
      */
     [[nodiscard]] bool isSelected() const { return m_selected; }
 
+    /**
+     * @brief Destroys this link
+     */
+    void destroy() noexcept;
+
+    /**
+     * @brief Returns whether or not this link was marked for deletion
+     */
+    [[nodiscard]] bool isMarkedForDeletion() const
+    {
+        return m_marked_for_deletion;
+    }
+
 private:
+    bool m_marked_for_deletion = false;
     Pin* m_out_pin;
     Pin* m_in_pin;
     ImNodeFlow* m_inf;
@@ -561,10 +609,11 @@ public:
     Node& emplaceNodeOnMouse(Params&&... args);
 
     /**
-     * @brief Add link to the handler internal list
-     * @param link Reference to the link
+     * @brief Creates a link between two pins
+     * @param source_pin Reference to the input pin
+     * @param target_pint Reference to the output pin
      */
-    void addLink(std::shared_ptr<Link>& link);
+    void createLink(Pin* source_pin, Pin* target_pin);
 
     /**
      * @brief Pop-up when link is "dropped"
@@ -651,7 +700,7 @@ public:
      * @brief Get editor's list of links
      * @return Const reference to editor's internal links list
      */
-    const std::vector<std::weak_ptr<Link>>& getLinks() { return m_links; }
+    const std::vector<std::unique_ptr<Link>>& getLinks() { return m_links; }
 
     /**
      * @brief Get zooming viewport
@@ -731,7 +780,7 @@ private:
 
     std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>
         m_nodes;
-    std::vector<std::weak_ptr<Link>> m_links;
+    std::vector<std::unique_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
     ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
@@ -1147,11 +1196,18 @@ public:
         , m_parent(parent)
         , m_inf(inf)
         , m_style(std::move(info.style))
+        , m_strat(info.strat)
+        , m_allowSelfConnection(info.allow_same_node_connections)
         , m_renderer(std::move(info.renderer))
     {
     }
 
-    virtual ~Pin() = default;
+    virtual ~Pin()
+    {
+        // Make sure we disconnect from every connected link and mark
+        // them for disconnection
+        this->deleteAllLinks();
+    }
 
     /**
      * @brief Safely casts a base Pin into the underlying InPin, if
@@ -1220,33 +1276,47 @@ public:
     }
 
     /**
-     * @brief Create link between pins
-     * @param other Pointer to the other pin
+     * @brief Creates a new link between this pin and another pin
      */
-    virtual void createLink(Pin* other) = 0;
+    void linkTo(Pin* other);
 
     /**
-     * @brief Set the reference to a link
-     * @param link Smart pointer to the link
+     * @brief Delete all link reference
      */
-    virtual void setLink(std::shared_ptr<Link>& link) { }
+    void deleteAllLinks();
 
     /**
-     * @brief Delete link reference
+     * @brief Handles the request for when a link is trying to connect
+     * @param link Pointer to the link making the request
+     *
+     * @internal This function is for internal use only. Do not call this
+     * function as an API user.
      */
-    virtual void deleteLink() = 0;
+    void addLink(Link* link);
+
+    /**
+     * @brief Delete a single link reference
+     *
+     * @internal This function is for internal use only. Do not call this
+     * function as an API user.
+     */
+    void removeLink(Link* link);
 
     /**
      * @brief Get connected status
      * @return [TRUE] if the pin is connected
      */
-    virtual bool isConnected() = 0;
+    bool isConnected() const { return !m_links.empty(); }
 
     /**
-     * @brief Get pin's link
-     * @return Weak_ptr reference to pin's link
+     * @brief Get all the links connected to this pin
+     * @return A copy of the vector with pointers to the connected links
      */
-    virtual std::weak_ptr<Link> getLink() { return std::weak_ptr<Link> { }; }
+    std::vector<const Link*> getLinks() const
+    {
+        // Return by copy
+        return std::vector<const Link*> { m_links.begin(), m_links.end() };
+    }
 
     /**
      * @brief Get pin's UID
@@ -1297,6 +1367,24 @@ public:
     PinStyle& getStyle() { return m_style; }
 
     /**
+     * @brief Specify if connections from an output on the same node are allowed
+     * @param state New state of the flag
+     */
+    void allowSameNodeConnections(bool state)
+    {
+        m_allowSelfConnection = state;
+    }
+
+    /**
+     * @brief Specify if connections from an output on the same node are allowed
+     * @param state New state of the flag
+     */
+    [[nodiscard]] bool allowsSameNodeConnections() const
+    {
+        return m_allowSelfConnection;
+    }
+
+    /**
      * @brief Get pin's link attachment point (socket)
      * @return Grid coordinates to the attachment point between the link and the pin's socket
      */
@@ -1340,7 +1428,10 @@ protected:
     Node* m_parent = nullptr;
     ImNodeFlow** m_inf;
     PinStyle m_style;
+    PinConnStrat m_strat;
+    bool m_allowSelfConnection = false;
     std::function<void(Pin* p)> m_renderer;
+    std::vector<Link*> m_links { };
 };
 
 /**
@@ -1370,45 +1461,15 @@ public:
               BasePinInfo {
                   .name = std::move(info.name),
                   .kind = PinType::PinType_Input,
+                  .allow_same_node_connections = info.allow_same_node_connections,
                   .style = std::move(info.style),
+                  .strat = info.strat,
                   .renderer = std::move(info.renderer),
               })
         , m_emptyVal(info.default_value)
         , m_val(info.default_value)
     {
     }
-
-    /**
-     * @brief Create link between pins
-     * @param other Pointer to the other pin
-     */
-    void createLink(Pin* other) override;
-
-    /**
-     * @brief Delete the link connected to the pin
-     */
-    void deleteLink() override { m_link.reset(); }
-
-    /**
-     * @brief Specify if connections from an output on the same node are allowed
-     * @param state New state of the flag
-     */
-    void allowSameNodeConnections(bool state)
-    {
-        m_allowSelfConnection = state;
-    }
-
-    /**
-     * @brief Get connected status
-     * @return [TRUE] is pin is connected to a link
-     */
-    bool isConnected() override { return m_link != nullptr; }
-
-    /**
-     * @brief Get pin's link
-     * @return Weak_ptr reference to the link connected to the pin
-     */
-    std::weak_ptr<Link> getLink() override { return m_link; }
 
     /**
      * @brief Get pin's data type (aka: \<T>)
@@ -1439,11 +1500,9 @@ public:
     const T& val();
 
 private:
-    std::shared_ptr<Link> m_link;
     T m_emptyVal;
     T m_val;
     T m_valNext;
-    bool m_allowSelfConnection = false;
 };
 
 /**
@@ -1472,46 +1531,16 @@ public:
               BasePinInfo {
                   .name = std::move(info.name),
                   .kind = PinType::PinType_Output,
+                  .allow_same_node_connections = info.allow_same_node_connections,
                   .style = std::move(info.style),
+                  .strat = info.strat,
                   .renderer = std::move(info.renderer),
               })
         , m_behaviour(std::move(info.behaviour))
     {
     }
 
-    /**
-     * @brief When parent gets deleted, remove the links
-     */
-    ~OutPin() override
-    {
-        std::vector<std::weak_ptr<Link>> links = std::move(m_links);
-        for (auto& l : links)
-            if (!l.expired())
-                l.lock()->inPin()->deleteLink();
-    }
-
-    /**
-     * @brief Create link between pins
-     * @param other Pointer to the other pin
-     */
-    void createLink(Pin* other) override;
-
-    /**
-     * @brief Add a connected link to the internal list
-     * @param link Pointer to the link
-     */
-    void setLink(std::shared_ptr<Link>& link) override;
-
-    /**
-     * @brief Delete any expired weak pointers to a (now deleted) link
-     */
-    void deleteLink() override;
-
-    /**
-     * @brief Get connected status
-     * @return [TRUE] is pin is connected to one or more links
-     */
-    bool isConnected() override { return !m_links.empty(); }
+    ~OutPin() override = default;
 
     /**
      * @brief Get pin's link attachment point (socket)
@@ -1553,7 +1582,6 @@ public:
     };
 
 private:
-    std::vector<std::weak_ptr<Link>> m_links;
     std::function<T(Node&)> m_behaviour;
     T m_val;
     T m_valNext;
