@@ -91,11 +91,10 @@ namespace {
 
 } // anonymous namespace
 
-Node& ImNodeFlow::addNode(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::addNode(const ImVec2& pos, NodeInfo node_info)
 {
-    auto node = std::make_unique<Node>(std::move(impl));
+    auto node = std::make_unique<Node>(this, NodeUID { 0 }, std::move(node_info));
     node->setPos(pos);
-    node->setHandler(this);
     auto* node_ptr = node.get();
     auto uid = reinterpret_cast<uintptr_t>(node_ptr);
     node->setUID(uid);
@@ -103,28 +102,35 @@ Node& ImNodeFlow::addNode(const ImVec2& pos, std::unique_ptr<INodeBehaviour> imp
     return *node_ptr;
 }
 
-Node& ImNodeFlow::placeNodeAt(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::placeNodeAt(const ImVec2& pos, NodeInfo node_info)
 {
-    return addNode(screen2grid(pos), std::move(impl));
+    return addNode(screen2grid(pos), std::move(node_info));
 }
 
-Node& ImNodeFlow::placeNode(std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::placeNode(NodeInfo node_info)
 {
-    return placeNodeAt(ImGui::GetMousePos(), std::move(impl));
+    return placeNodeAt(ImGui::GetMousePos(), std::move(node_info));
 }
 
 Node& ImNodeFlow::addNodeLambda(
     const ImVec2& pos,
     std::function<void(Node&)> draw_func)
 {
-    return addNode(pos, std::make_unique<NodeWrapper>(std::move(draw_func)));
+    return addNode(
+        pos,
+        NodeInfo {
+            .behaviour = std::make_unique<NodeWrapper>(std::move(draw_func)),
+        });
 }
 
 // -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
-Node::Node(std::unique_ptr<INodeBehaviour> behaviour)
-    : m_impl(std::move(behaviour))
+Node::Node(ImNodeFlow* inf, NodeUID uid, NodeInfo node_info)
+    : m_uid(uid)
+    , m_inf(inf)
+    , m_style(std::move(node_info.style))
+    , m_impl(std::move(node_info.behaviour))
 {
     if (m_impl) {
         m_impl->setup(*this);

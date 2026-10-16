@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace ImFlow {
 
@@ -72,7 +73,11 @@ namespace detail {
 template <typename T, typename... Params>
 Node& ImNodeFlow::emplaceNode(const ImVec2& pos, Params&&... args)
 {
-    return addNode(pos, std::make_unique<T>(std::forward<Params>(args)...));
+    return addNode(
+        pos,
+        NodeInfo {
+            .behaviour = std::make_unique<T>(std::forward<Params>(args)...),
+        });
 }
 
 template <typename T, typename... Params>

@@ -278,6 +278,16 @@ namespace NodeStyles {
 
 }
 
+/**
+ * @brief User customizable options when creating a new Node
+ */
+struct NodeInfo {
+    /// Node strategy for initialization and rendering
+    std::unique_ptr<INodeBehaviour> behaviour;
+    /// Style to apply to the node
+    NodeStyle style = NodeStyles::cyan;
+};
+
 // -----------------------------------------------------------------------------------------------------------------
 // LINK
 
@@ -448,36 +458,29 @@ public:
     /**
      * @brief Add a node to the grid
      * @param pos Position of the Node in grid coordinates
-     * @param impl Unique pointer to an object implementing the
-     * INodeBehaviour interface
+     * @param node_info Node behaviour customization options
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node&
-    addNode(const ImVec2& pos,
-        std::unique_ptr<INodeBehaviour> impl = nullptr);
+    Node& addNode(const ImVec2& pos, NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid
      * @param pos Position of the Node in screen coordinates
-     * @param impl Unique pointer to an object implementing the
-     * INodeBehaviour interface
+     * @param node_info Node behaviour customization options
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node& placeNodeAt(
-        const ImVec2& pos,
-        std::unique_ptr<INodeBehaviour> impl = nullptr);
+    Node& placeNodeAt(const ImVec2& pos, NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid using mouse position
      * @param args Optional arguments to be forwarded to derived class ctor
-     * @param impl Unique pointer to an object implementing the
-     * INodeBehaviour interface
+     * @param node_info Node behaviour customization options
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node& placeNode(std::unique_ptr<INodeBehaviour> impl = nullptr);
+    Node& placeNode(NodeInfo node_info = { });
 
     /**
      * @brief Add a node whos operation can be defined within a lambda.
@@ -721,7 +724,13 @@ class Node {
 public:
     virtual ~Node() = default;
 
-    explicit Node(std::unique_ptr<INodeBehaviour> behaviour = nullptr);
+    /**
+     * @brief Node's ctor
+     * @param inf Pointer to the ImFlow context
+     * @param uid The UID of this node
+     * @param node_info User provided customization options
+     */
+    explicit Node(ImNodeFlow* inf, NodeUID uid, NodeInfo node_info);
 
     /**
      * @brief Main loop of the node
@@ -1078,7 +1087,7 @@ private:
     ImVec2 m_size;
     ImVec2 m_fullSize;
     ImNodeFlow* m_inf = nullptr;
-    NodeStyle m_style = NodeStyles::cyan;
+    NodeStyle m_style;
     bool m_selected = false;
     bool m_selectedNext = false;
     bool m_dragged = false;
