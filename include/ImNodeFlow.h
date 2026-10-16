@@ -379,9 +379,8 @@ public:
      * @brief Construct a link
      * @param out_pin Pointer to the output Pin of the Link
      * @param in_pin Pointer to the input Pin of the Link
-     * @param inf Pointer to the Handler that contains the Link
      */
-    explicit Link(Pin* out_pin, Pin* in_pin, ImNodeFlow* inf) noexcept;
+    explicit Link(Pin* out_pin, Pin* in_pin) noexcept;
 
     /**
      * @brief Destruction of a link
@@ -391,9 +390,10 @@ public:
 
     /**
      * @brief Looping function to update the Link
+     * @param ctx The ImNodeFlow context containing this link
      * @details Draws the Link and updates Hovering and Selected status.
      */
-    void update();
+    void update(ImNodeFlow& ctx);
 
     /**
      * @brief Get output pin of the link
@@ -436,7 +436,6 @@ private:
     bool m_marked_for_deletion = false;
     Pin* m_out_pin;
     Pin* m_in_pin;
-    ImNodeFlow* m_inf;
     bool m_hovered = false;
     bool m_selected = false;
 };

@@ -147,10 +147,9 @@ bool DynamicPin::isStale() const
 // -----------------------------------------------------------------------------------------------------------------
 // LINK
 
-Link::Link(Pin* out_pin, Pin* in_pin, ImNodeFlow* inf) noexcept
+Link::Link(Pin* out_pin, Pin* in_pin) noexcept
     : m_out_pin(out_pin)
     , m_in_pin(in_pin)
-    , m_inf(inf)
 {
     assert(m_out_pin != m_in_pin && "Links cannot be created starting and ending in the same node");
 
@@ -176,12 +175,12 @@ void Link::destroy() noexcept
     m_marked_for_deletion = true;
 }
 
-void Link::update()
+void Link::update(ImNodeFlow& ctx)
 {
     ImVec2 start = m_out_pin->pinPoint();
     ImVec2 end = m_in_pin->pinPoint();
     float thickness = m_out_pin->getStyle().extra.link_thickness;
-    bool mouseClickState = m_inf->getSingleUseClick();
+    bool mouseClickState = ctx.getSingleUseClick();
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         m_selected = false;
@@ -191,7 +190,7 @@ void Link::update()
         m_hovered = true;
         thickness = m_out_pin->getStyle().extra.link_hovered_thickness;
         if (mouseClickState) {
-            m_inf->consumeSingleUseClick();
+            ctx.consumeSingleUseClick();
             m_selected = true;
         }
     } else {
@@ -679,8 +678,7 @@ void ImNodeFlow::createLink(Pin* source_pin, Pin* target_pin)
         return;
     }
 
-    m_links.emplace_back(
-        std::make_unique<Link>(source_pin, target_pin, this));
+    m_links.emplace_back(std::make_unique<Link>(source_pin, target_pin));
 }
 
 void ImNodeFlow::update()
@@ -765,7 +763,7 @@ void ImNodeFlow::update()
             continue;
         }
 
-        (*iter)->update();
+        (*iter)->update(*this);
         ++iter;
     }
 
