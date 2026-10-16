@@ -227,7 +227,18 @@ struct OutPinInfo {
 // -----------------------------------------------------------------------------------------------------------------
 // NODE'S PROPERTIES
 
-typedef uintptr_t NodeUID;
+struct NodeUID {
+    NodeUID(uint64_t value) noexcept;
+
+    static NodeUID generate() noexcept;
+    bool operator==(NodeUID const& other) const noexcept;
+
+    uint64_t id;
+
+    struct Hash {
+        auto operator()(const NodeUID& uid) const -> std::size_t;
+    };
+};
 
 /**
  * @brief Defines the visual appearance of a node
@@ -603,7 +614,8 @@ public:
      * @brief Get editor's list of nodes
      * @return Const reference to editor's internal nodes list
      */
-    std::unordered_map<NodeUID, std::unique_ptr<Node>>& getNodes()
+    std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>&
+    getNodes()
     {
         return m_nodes;
     }
@@ -696,7 +708,8 @@ private:
 
     bool m_singleUseClick = false;
 
-    std::unordered_map<NodeUID, std::unique_ptr<Node>> m_nodes;
+    std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>
+        m_nodes;
     std::vector<std::weak_ptr<Link>> m_links;
 
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;

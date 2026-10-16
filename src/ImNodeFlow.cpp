@@ -1,5 +1,6 @@
 #include "ImNodeFlow.h"
 
+#include <cassert>
 #include <memory>
 #include <utility>
 
@@ -24,6 +25,31 @@ PinUID::generate() noexcept
 bool PinUID::operator==(PinUID const& other) const noexcept
 {
     return this->id == other.id;
+}
+
+// -----------------------------------------------------------------------------------------------------------------
+// NodeUID
+
+NodeUID::NodeUID(uint64_t value) noexcept
+    : id(value)
+{
+}
+
+NodeUID
+NodeUID::generate() noexcept
+{
+    static uint64_t id = 0;
+    return NodeUID { id++ };
+}
+
+bool NodeUID::operator==(NodeUID const& other) const noexcept
+{
+    return this->id == other.id;
+}
+
+auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
+{
+    return std::hash<uint64_t> { }(uid.id);
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -93,13 +119,13 @@ namespace {
 
 Node& ImNodeFlow::addNode(const ImVec2& pos, NodeInfo node_info)
 {
-    auto node = std::make_unique<Node>(
-        pos, this, NodeUID { 0 }, std::move(node_info));
-    auto* node_ptr = node.get();
-    auto uid = reinterpret_cast<uintptr_t>(node_ptr);
-    node->setUID(uid);
-    m_nodes[uid] = std::move(node);
-    return *node_ptr;
+    auto uid = NodeUID::generate();
+    auto res = m_nodes.emplace(
+        uid,
+        std::make_unique<Node>(pos, this, uid, std::move(node_info)));
+
+    assert(res.second && "Failed to create new Node");
+    return *res.first->second;
 }
 
 Node& ImNodeFlow::placeNodeAt(const ImVec2& pos, NodeInfo node_info)
