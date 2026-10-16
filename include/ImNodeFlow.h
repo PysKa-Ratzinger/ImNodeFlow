@@ -359,6 +359,16 @@ namespace NodeStyles {
 
 }
 
+/**
+ * @brief User customizable options when creating a new Node
+ */
+struct NodeInfo {
+    /// Node strategy for initialization and rendering
+    std::unique_ptr<INodeBehaviour> behaviour;
+    /// Style to apply to the node
+    NodeStyle style = NodeStyles::cyan;
+};
+
 // -----------------------------------------------------------------------------------------------------------------
 // DYNAMIC PIN
 
@@ -566,30 +576,29 @@ public:
     /**
      * @brief Add a node to the grid
      * @param pos Position of the Node in grid coordinates
-     * @param impl Unique pointer with a behaviour strategy
-     * @return Shared pointer of the newly added node
+     * @param node_info Node behaviour customization options
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
-    Node& emplaceNode(
-        const ImVec2& grid_coords,
-        std::unique_ptr<INodeBehaviour> impl = nullptr);
+    Node& addNode(const ImVec2& grid_coords, NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid
      * @param pos Position of the Node in screen coordinates
-     * @param impl Unique pointer with a behaviour strategy
-     * @return Shared pointer of the newly added node
+     * @param node_info Node behaviour customization options
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
-    Node& emplaceNodeAt(
-        const ImVec2& screen_coords,
-        std::unique_ptr<INodeBehaviour> impl = nullptr);
+    Node& placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid using mouse position
-     * @param impl Unique pointer with a behaviour strategy
-     * @return Shared pointer to the newly added node
+     * @param args Optional arguments to be forwarded to derived class ctor
+     * @param node_info Node behaviour customization options
+     * @return Reference to the newly added node. Do not save this
+     * reference.
      */
-    Node&
-    emplaceNodeOnMouse(std::unique_ptr<INodeBehaviour> impl = nullptr);
+    Node& placeNode(NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid
@@ -875,13 +884,11 @@ private:
  */
 class Node {
 public:
-    explicit Node(
-        ImNodeFlow& flow,
-        NodeUID uid,
-        std::unique_ptr<INodeBehaviour> impl = nullptr)
+    explicit Node(ImNodeFlow& flow, NodeUID uid, NodeInfo node_info = { })
         : m_flow(flow)
+        , m_impl(std::move(node_info.behaviour))
         , m_uid(uid)
-        , m_impl(std::move(impl))
+        , m_style(std::move(node_info.style))
     {
         if (m_impl) {
             m_impl->setup(*this);

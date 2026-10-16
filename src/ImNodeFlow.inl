@@ -120,24 +120,25 @@ namespace detail {
 template <typename T, typename... Params>
 Node& ImNodeFlow::emplaceNode(const ImVec2& grid_coords, Params&&... params)
 {
-    return this->emplaceNode(
+    return this->addNode(
         grid_coords,
-        std::make_unique<T>(std::forward<Params>(params)...));
+        NodeInfo {
+            .behaviour = std::make_unique<T>(std::forward<Params>(params)...),
+        });
 }
 
 template <typename T, typename... Params>
 Node& ImNodeFlow::emplaceNodeAt(const ImVec2& screen_coords, Params&&... params)
 {
-    return this->emplaceNodeAt(
-        screen_coords,
-        std::make_unique<T>(std::forward<Params>(params)...));
+    return this->emplaceNode(
+        screen2grid(screen_coords), std::forward<Params>(params)...);
 }
 
 template <typename T, typename... Params>
 Node& ImNodeFlow::emplaceNodeOnMouse(Params&&... params)
 {
-    return this->emplaceNodeOnMouse(
-        std::make_unique<T>(std::forward<Params>(params)...));
+    return this->emplaceNode(
+        ImGui::GetMousePos(), std::forward<Params>(params)...);
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -346,7 +347,9 @@ void InPin<T>::calculate([[maybe_unused]] Node& node)
     bool first = true;
     for (auto& link : m_links) {
         m_valNext = m_accumulatorOp(
-            first, m_valNext, link->outPin().template toOut<T>().val());
+            first,
+            m_valNext,
+            link->outPin().template toOut<T>().val());
         first = false;
     }
 }

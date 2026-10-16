@@ -649,29 +649,27 @@ void Node::draw(ImNodeFlow& ctx)
 
 int ImNodeFlow::m_instances = 0;
 
-Node& ImNodeFlow::emplaceNode(const ImVec2& pos, std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
     auto uid = NodeUID::generate();
 
     auto res = m_nodes.emplace(
-        uid, std::make_unique<Node>(*this, uid, std::move(impl)));
+        uid, std::make_unique<Node>(*this, uid, std::move(node_info)));
     assert(res.second);
 
     auto& new_node = *res.first->second;
-    new_node.setPos(pos);
+    new_node.setPos(grid_coords);
     return new_node;
 }
 
-Node& ImNodeFlow::emplaceNodeAt(
-    const ImVec2& pos,
-    std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info)
 {
-    return emplaceNode(screen2grid(pos), std::move(impl));
+    return addNode(screen2grid(screen_coords), std::move(node_info));
 }
 
-Node& ImNodeFlow::emplaceNodeOnMouse(std::unique_ptr<INodeBehaviour> impl)
+Node& ImNodeFlow::placeNode(NodeInfo node_info)
 {
-    return emplaceNodeAt(ImGui::GetMousePos(), std::move(impl));
+    return placeNodeAt(ImGui::GetMousePos(), std::move(node_info));
 }
 
 bool ImNodeFlow::mouse_on_selected_node()
