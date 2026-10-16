@@ -649,17 +649,16 @@ public:
 
     /**
      * @brief Get mouse clicking status
+     * @param The mouse button to query
      * @return [TRUE] if mouse is clicked and click hasn't been consumed
      */
-    [[nodiscard]] bool getSingleUseClick() const
-    {
-        return m_singleUseClick;
-    }
+    [[nodiscard]] bool getSingleUseClick(ImGuiMouseButton button) const;
 
     /**
      * @brief Consume the click for the given frame
+     * @param button The mouse button to query
      */
-    void consumeSingleUseClick() { m_singleUseClick = false; }
+    void consumeSingleUseClick(ImGuiMouseButton button);
 
     /**
      * @brief Get editor's name
@@ -783,7 +782,11 @@ private:
     std::string m_name;
     ContainedContext m_context;
 
-    bool m_singleUseClick = false;
+    struct {
+        bool left = false;
+        bool right = false;
+        bool middle = false;
+    } m_singleUseClicks;
 
     std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>
         m_nodes;

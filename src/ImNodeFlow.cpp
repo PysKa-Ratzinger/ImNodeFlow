@@ -180,7 +180,7 @@ void Link::update(ImNodeFlow& ctx)
     ImVec2 start = m_out_pin->pinPoint();
     ImVec2 end = m_in_pin->pinPoint();
     float thickness = m_out_pin->getStyle().extra.link_thickness;
-    bool mouseClickState = ctx.getSingleUseClick();
+    bool mouseClickState = ctx.getSingleUseClick(ImGuiMouseButton_Left);
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         m_selected = false;
@@ -190,7 +190,7 @@ void Link::update(ImNodeFlow& ctx)
         m_hovered = true;
         thickness = m_out_pin->getStyle().extra.link_hovered_thickness;
         if (mouseClickState) {
-            ctx.consumeSingleUseClick();
+            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
             m_selected = true;
         }
     } else {
@@ -413,7 +413,7 @@ void Node::update()
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
-    bool mouseClickState = m_inf->getSingleUseClick();
+    bool mouseClickState = m_inf->getSingleUseClick(ImGuiMouseButton_Left);
     ImVec2 offset = m_inf->grid2screen({ 0.f, 0.f });
     ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
     ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
@@ -562,7 +562,7 @@ void Node::update()
         m_inf->hoveredNode(this);
         if (mouseClickState) {
             selected(true);
-            m_inf->consumeSingleUseClick();
+            m_inf->consumeSingleUseClick(ImGuiMouseButton_Left);
         }
     }
 
@@ -572,7 +572,7 @@ void Node::update()
     bool onHeader = ImGui::IsMouseHoveringRect(
         offset + m_pos - paddingTL, offset + m_pos + headerSize);
     if (onHeader && mouseClickState) {
-        m_inf->consumeSingleUseClick();
+        m_inf->consumeSingleUseClick(ImGuiMouseButton_Left);
         m_dragged = true;
         m_inf->draggingNode(true);
     }
@@ -681,13 +681,50 @@ void ImNodeFlow::createLink(Pin* source_pin, Pin* target_pin)
     m_links.emplace_back(std::make_unique<Link>(source_pin, target_pin));
 }
 
+bool ImNodeFlow::getSingleUseClick(ImGuiMouseButton button) const
+{
+    switch (button) {
+    case ImGuiMouseButton_Left:
+        return m_singleUseClicks.left;
+    case ImGuiMouseButton_Right:
+        return m_singleUseClicks.right;
+    case ImGuiMouseButton_Middle:
+        return m_singleUseClicks.middle;
+    default:
+        return false;
+    }
+}
+
+void ImNodeFlow::consumeSingleUseClick(ImGuiMouseButton button)
+{
+    switch (button) {
+    case ImGuiMouseButton_Left:
+        m_singleUseClicks.left = false;
+        return;
+
+    case ImGuiMouseButton_Right:
+        m_singleUseClicks.right = false;
+        return;
+
+    case ImGuiMouseButton_Middle:
+        m_singleUseClicks.middle = false;
+        return;
+
+    default:
+        return;
+    }
+}
+
 void ImNodeFlow::update()
 {
     // Updating looping stuff
     m_hovering = nullptr;
     m_hoveredNode = nullptr;
     m_draggingNode = m_draggingNodeNext;
-    m_singleUseClick = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+
+    m_singleUseClicks.left = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    m_singleUseClicks.right = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    m_singleUseClicks.middle = ImGui::IsMouseClicked(ImGuiMouseButton_Middle);
 
     // Create child canvas
     m_context.begin();
