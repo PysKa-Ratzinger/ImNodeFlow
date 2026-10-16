@@ -96,9 +96,6 @@ Node& ImNodeFlow::addNode(const ImVec2& pos, std::unique_ptr<INodeBehaviour> imp
     auto node = std::make_unique<Node>(std::move(impl));
     node->setPos(pos);
     node->setHandler(this);
-    if (!node->getStyle()) {
-        node->setStyle(NodeStyle::cyan());
-    }
     auto* node_ptr = node.get();
     auto uid = reinterpret_cast<uintptr_t>(node_ptr);
     node->setUID(uid);
@@ -144,8 +141,8 @@ void Node::destroy()
 
 bool Node::isHovered()
 {
-    ImVec2 paddingTL = { m_style->padding.x, m_style->padding.y };
-    ImVec2 paddingBR = { m_style->padding.z, m_style->padding.w };
+    ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
+    ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
     return ImGui::IsMouseHoveringRect(
         m_inf->grid2screen(m_pos - paddingTL),
         m_inf->grid2screen(m_pos + m_size + paddingBR));
@@ -270,8 +267,8 @@ void Node::update()
     ImGui::PushID(this);
     bool mouseClickState = m_inf->getSingleUseClick();
     ImVec2 offset = m_inf->grid2screen({ 0.f, 0.f });
-    ImVec2 paddingTL = { m_style->padding.x, m_style->padding.y };
-    ImVec2 paddingBR = { m_style->padding.z, m_style->padding.w };
+    ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
+    ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
 
     draw_list->ChannelsSetCurrent(1); // Foreground
     ImGui::SetCursorScreenPos(offset + m_pos);
@@ -280,7 +277,7 @@ void Node::update()
 
     // Header
     ImGui::BeginGroup();
-    ImGui::TextColored(m_style->header_title_color, "%s", m_title.c_str());
+    ImGui::TextColored(m_style.header_title_color, "%s", m_title.c_str());
     ImGui::Spacing();
     ImGui::EndGroup();
     float headerH = ImGui::GetItemRectSize().y;
@@ -367,22 +364,22 @@ void Node::update()
     draw_list->AddRectFilled(
         offset + m_pos - paddingTL,
         offset + m_pos + m_size + paddingBR,
-        m_style->bg,
-        m_style->radius);
+        m_style.bg,
+        m_style.radius);
     draw_list->AddRectFilled(
         offset + m_pos - paddingTL,
         offset + m_pos + headerSize,
-        m_style->header_bg,
-        m_style->radius,
+        m_style.header_bg,
+        m_style.radius,
         ImDrawFlags_RoundCornersTop);
     m_fullSize = m_size + paddingTL + paddingBR;
-    ImU32 col = m_style->border_color;
-    float thickness = m_style->border_thickness;
+    ImU32 col = m_style.border_color;
+    float thickness = m_style.border_thickness;
     ImVec2 ptl = paddingTL;
     ImVec2 pbr = paddingBR;
     if (m_selected) {
-        col = m_style->border_selected_color;
-        thickness = m_style->border_selected_thickness;
+        col = m_style.border_selected_color;
+        thickness = m_style.border_selected_thickness;
     }
     if (thickness < 0.f) {
         ptl.x -= thickness / 2;
@@ -395,7 +392,7 @@ void Node::update()
         offset + m_pos - ptl,
         offset + m_pos + m_size + pbr,
         col,
-        m_style->radius,
+        m_style.radius,
         0,
         thickness);
 

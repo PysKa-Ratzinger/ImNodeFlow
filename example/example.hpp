@@ -7,7 +7,7 @@ public:
     void setup(ImFlow::Node& node) override
     {
         node.setTitle("Simple sum");
-        node.setStyle(ImFlow::NodeStyle::green());
+        node.setStyle(ImFlow::NodeStyles::green);
         node.addIN<int>({ .name = "In", .default_value = 0 });
         node.addOUT<int>({
             .name = "Out",
@@ -32,7 +32,7 @@ public:
     void setup(ImFlow::Node& node) override
     {
         node.setTitle("Collapsing node");
-        node.setStyle(ImFlow::NodeStyle::red());
+        node.setStyle(ImFlow::NodeStyles::red);
         node.addIN<int>({ .name = "A", .default_value = 0 });
         node.addIN<int>({ .name = "B", .default_value = 0 });
         node.addOUT<int>({
@@ -58,7 +58,7 @@ public:
     void setup(ImFlow::Node& node) override
     {
         node.setTitle("Result node");
-        node.setStyle(ImFlow::NodeStyle::brown());
+        node.setStyle(ImFlow::NodeStyles::brown);
         node.addIN<int>({ .name = "A", .default_value = 0 });
         node.addIN<int>({ .name = "B", .default_value = 0 });
     }
