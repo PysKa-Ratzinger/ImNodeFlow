@@ -995,12 +995,6 @@ public:
     const ImVec2& getPos() { return m_pos; }
 
     /**
-     * @brief Get grid handler bound to node
-     * @return Pointer to the handler
-     */
-    ImNodeFlow* getHandler() { return m_inf; }
-
-    /**
      * @brief Get node's style
      * @return Shared pointer to the node's style
      */
@@ -1046,16 +1040,6 @@ public:
     {
         m_pos = pos;
         m_posTarget = pos;
-        return this;
-    }
-
-    /**
-     * @brief Set ImNodeFlow handler
-     * @param inf Grid handler for the node
-     */
-    Node* setHandler(ImNodeFlow* inf)
-    {
-        m_inf = inf;
         return this;
     }
 
