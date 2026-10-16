@@ -191,6 +191,60 @@ public:
     }
 };
 
+/**
+ * @brief Pins type identifier
+ */
+enum PinType { PinType_Input,
+    PinType_Output };
+
+// -----------------------------------------------------------------------------------------------------------------
+// PIN INFO STRUCTURES
+
+/**
+ * @brief Description of parameters customizable during pin creation
+ */
+struct BasePinInfo {
+    /// Name of the pin
+    std::string name;
+    /// Whether it's an input pin or an output pin
+    PinType kind;
+    /// Style to apply to the pin
+    std::shared_ptr<PinStyle> style = PinStyle::cyan();
+    /// Custom render function
+    std::function<void(Pin* p)> renderer;
+};
+
+/**
+ * @brief Description of parameters customizable during pin creation
+ */
+template <typename T>
+struct InPinInfo {
+    /// Name of the pin
+    std::string name;
+    /// Default value the input pin will return when not connected
+    /// to any output pin
+    T default_value;
+    /// Style to apply to the pin
+    std::shared_ptr<PinStyle> style = PinStyle::cyan();
+    /// Custom render function
+    std::function<void(Pin* p)> renderer;
+};
+
+/**
+ * @brief Description of parameters customizable during pin creation
+ */
+template <typename T>
+struct OutPinInfo {
+    /// Name of the pin
+    std::string name;
+    /// Behaviour of the pin when a value update is requested
+    std::function<T(Node&)> behaviour;
+    /// Custom render function
+    std::function<void(Pin* p)> renderer;
+    /// Style to apply to the pin
+    std::shared_ptr<PinStyle> style = PinStyle::cyan();
+};
+
 // -----------------------------------------------------------------------------------------------------------------
 // NODE'S PROPERTIES
 
@@ -721,16 +775,11 @@ public:
      *The UID must be unique only in the context of the current node's inputs.
 
      * @tparam T Type of the data the pin will handle
-     * @param name Name of the pin
-     * @param defReturn Default return value when the pin is not connected
-     * @param style Style of the pin
+     * @param pin_info User given options to the InPin during construction
      * @return Shared pointer to the newly added pin
      */
     template <typename T>
-    std::shared_ptr<InPin<T>>
-    addIN(const std::string& name,
-        T defReturn,
-        std::shared_ptr<PinStyle> style = nullptr);
+    std::shared_ptr<InPin<T>> addIN(InPinInfo<T> pin_info);
 
     /**
      * @brief Add an Input to the node
@@ -739,17 +788,12 @@ public:
      *
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
-     * @param name Name of the pin
-     * @param defReturn Default return value when the pin is not connected
-     * @param style Style of the pin
+     * @param pin_info User given options to the InPin during construction
      * @return Shared pointer to the newly added pin
      */
     template <typename T>
-    std::shared_ptr<InPin<T>> addIN_uid(
-        const PinUID& uid,
-        const std::string& name,
-        T defReturn,
-        std::shared_ptr<PinStyle> style = nullptr);
+    std::shared_ptr<InPin<T>>
+    addIN(const PinUID& uid, InPinInfo<T> pin_info);
 
     /**
      * @brief Remove input pin
@@ -771,16 +815,11 @@ public:
      * The UID must be unique only in the context of the current node's inputs.
      *
      * @tparam T Type of the data the pin will handle
-     * @param name Name of the pin
-     * @param defReturn Default return value when the pin is not connected
-     * @param style Style of the pin
+     * @param pin_info User given options to the InPin during construction
      * @return Const reference to the value of the connected link for the current frame of defReturn
      */
     template <typename T>
-    const T&
-    showIN(const std::string& name,
-        T defReturn,
-        std::shared_ptr<PinStyle> style = nullptr);
+    const T& showIN(InPinInfo<T> pin_info);
 
     /**
      * @brief Show a temporary input pin
@@ -790,17 +829,11 @@ public:
      *
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
-     * @param name Name of the pin
-     * @param defReturn Default return value when the pin is not connected
-     * @param style Style of the pin
+     * @param pin_info User given options to the InPin during construction
      * @return Const reference to the value of the connected link for the current frame of defReturn
      */
     template <typename T>
-    const T& showIN_uid(
-        const PinUID& uid,
-        const std::string& name,
-        T defReturn,
-        std::shared_ptr<PinStyle> style = nullptr);
+    const T& showIN(const PinUID& uid, InPinInfo<T> pin_info);
 
     /**
      * @brief Add an Output to the node
@@ -809,14 +842,11 @@ public:
      * The UID must be unique only in the context of the current node's outputs.
      *
      * @tparam T Type of the data the pin will handle
-     * @param name Name of the pin
-     * @param style Style of the pin
+     * @param pin_info User given options to the InPin during construction
      * @return Shared pointer to the newly added pin. Must be used to set the behaviour
      */
     template <typename T>
-    [[nodiscard]] std::shared_ptr<OutPin<T>>
-    addOUT(const std::string& name,
-        std::shared_ptr<PinStyle> style = nullptr);
+    std::shared_ptr<OutPin<T>> addOUT(OutPinInfo<T> pin_info);
 
     /**
      * @brief Add an Output to the node
@@ -825,15 +855,12 @@ public:
      *
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
-     * @param name Name of the pin
-     * @param style Style of the pin
+     * @param pin_info User given options to the InPin during construction
      * @return Shared pointer to the newly added pin. Must be used to set the behaviour
      */
     template <typename T>
-    [[nodiscard]] std::shared_ptr<OutPin<T>> addOUT_uid(
-        const PinUID& uid,
-        const std::string& name,
-        std::shared_ptr<PinStyle> style = nullptr);
+    std::shared_ptr<OutPin<T>>
+    addOUT(const PinUID& uid, OutPinInfo<T> pin_info);
 
     /**
      * @brief Remove output pin
@@ -855,15 +882,10 @@ public:
      * The UID must be unique only in the context of the current node's outputs.
      *
      * @tparam T Type of the data the pin will handle
-     * @param name Name of the pin
-     * @param behaviour Function or lambda expression used to calculate output value
-     * @param style Style of the pin
+     * @param pin_info User given options to the InPin during construction
      */
     template <typename T>
-    void
-    showOUT(const std::string& name,
-        std::function<T()> behaviour,
-        std::shared_ptr<PinStyle> style = nullptr);
+    void showOUT(OutPinInfo<T> pin_info);
 
     /**
      * @brief Show a temporary output pin
@@ -873,16 +895,10 @@ public:
      *
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
-     * @param name Name of the pin
-     * @param behaviour Function or lambda expression used to calculate output value
-     * @param style Style of the pin
+     * @param pin_info User given options to the InPin during construction
      */
     template <typename T>
-    void showOUT_uid(
-        const PinUID& uid,
-        const std::string& name,
-        std::function<T()> behaviour,
-        std::shared_ptr<PinStyle> style = nullptr);
+    void showOUT(const PinUID& uid, OutPinInfo<T> pin_info);
 
     /**
      * @brief Get Input value from an InPin
@@ -1119,12 +1135,6 @@ private:
 // PINS
 
 /**
- * @brief Pins type identifier
- */
-enum PinType { PinType_Input,
-    PinType_Output };
-
-/**
  * @brief Generic base class for pins
  */
 class Pin {
@@ -1137,22 +1147,15 @@ public:
      * @param inf Pointer to the Grid Handler the pin is in (same as parent)
      * @param style Style of the pin
      */
-    explicit Pin(
-        PinUID uid,
-        std::string name,
-        std::shared_ptr<PinStyle> style,
-        PinType kind,
-        Node* parent,
-        ImNodeFlow** inf)
+    explicit Pin(PinUID uid, Node* parent, ImNodeFlow** inf, BasePinInfo info)
         : m_uid(uid)
-        , m_name(std::move(name))
-        , m_type(kind)
+        , m_name(std::move(info.name))
+        , m_type(info.kind)
         , m_parent(parent)
         , m_inf(inf)
-        , m_style(std::move(style))
+        , m_style(std::move(info.style))
+        , m_renderer(std::move(info.renderer))
     {
-        if (!m_style)
-            m_style = PinStyle::cyan();
     }
 
     virtual ~Pin() = default;
@@ -1330,14 +1333,20 @@ public:
      */
     explicit InPin(
         PinUID uid,
-        const std::string& name,
-        T defReturn,
-        std::shared_ptr<PinStyle> style,
         Node* parent,
-        ImNodeFlow** inf)
-        : Pin(uid, name, style, PinType_Input, parent, inf)
-        , m_emptyVal(defReturn)
-        , m_val(defReturn)
+        ImNodeFlow** inf,
+        InPinInfo<T> info)
+        : Pin(uid,
+              parent,
+              inf,
+              BasePinInfo {
+                  .name = std::move(info.name),
+                  .kind = PinType::PinType_Input,
+                  .style = std::move(info.style),
+                  .renderer = std::move(info.renderer),
+              })
+        , m_emptyVal(info.default_value)
+        , m_val(info.default_value)
     {
     }
 
@@ -1419,18 +1428,26 @@ class OutPin : public Pin {
 public:
     /**
      * @brief Output pin constructor
-     * @param name Name of the pin
+     * @param uid UID for the current pin
      * @param parent Pointer to the Node containing the pin
      * @param inf Pointer to the Grid Handler the pin is in (same as parent)
-     * @param style Style of the pin
+     * @param info user-provided customization options
      */
     explicit OutPin(
         PinUID uid,
-        const std::string& name,
-        std::shared_ptr<PinStyle> style,
         Node* parent,
-        ImNodeFlow** inf)
-        : Pin(uid, name, style, PinType_Output, parent, inf)
+        ImNodeFlow** inf,
+        OutPinInfo<T> info)
+        : Pin(uid,
+              parent,
+              inf,
+              BasePinInfo {
+                  .name = std::move(info.name),
+                  .kind = PinType::PinType_Output,
+                  .style = std::move(info.style),
+                  .renderer = std::move(info.renderer),
+              })
+        , m_behaviour(std::move(info.behaviour))
     {
     }
 

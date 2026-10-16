@@ -8,11 +8,13 @@ public:
     {
         node.setTitle("Simple sum");
         node.setStyle(ImFlow::NodeStyle::green());
-        node.addIN<int>("In", 0);
-        node.addOUT<int>("Out", nullptr)
-            ->behaviour([this](ImFlow::Node& node) -> int {
+        node.addIN<int>({ .name = "In", .default_value = 0 });
+        node.addOUT<int>({
+            .name = "Out",
+            .behaviour = [this](ImFlow::Node& node) -> int {
                 return node.getInVal<int>("In") + m_valB;
-            });
+            },
+        });
     }
 
     void draw(ImFlow::Node& node) override
@@ -31,12 +33,14 @@ public:
     {
         node.setTitle("Collapsing node");
         node.setStyle(ImFlow::NodeStyle::red());
-        node.addIN<int>("A", 0);
-        node.addIN<int>("B", 0);
-        node.addOUT<int>("Out", nullptr)
-            ->behaviour([this](ImFlow::Node& node) {
+        node.addIN<int>({ .name = "A", .default_value = 0 });
+        node.addIN<int>({ .name = "B", .default_value = 0 });
+        node.addOUT<int>({
+            .name = "Out",
+            .behaviour = [this](ImFlow::Node& node) -> int {
                 return node.getInVal<int>("A") + node.getInVal<int>("B");
-            });
+            },
+        });
     }
 
     void draw(ImFlow::Node& node) override
@@ -55,8 +59,8 @@ public:
     {
         node.setTitle("Result node");
         node.setStyle(ImFlow::NodeStyle::brown());
-        node.addIN<int>("A", 0);
-        node.addIN<int>("B", 0);
+        node.addIN<int>({ .name = "A", .default_value = 0 });
+        node.addIN<int>({ .name = "B", .default_value = 0 });
     }
 
     void draw(ImFlow::Node& node) override
