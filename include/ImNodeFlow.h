@@ -24,7 +24,7 @@ namespace ImFlow {
 // HELPERS
 
 /**
- * @brief <BR>Draw a sensible bezier between two points
+ * @brief Draw a sensible bezier between two points
  * @param p1 Starting point
  * @param p2 Ending point
  * @param color Color of the curve
@@ -34,7 +34,7 @@ inline static void
 smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness);
 
 /**
- * @brief <BR>Collider checker for smart_bezier
+ * @brief Collider checker for smart_bezier
  * @details Projects the point "p" orthogonally onto the bezier curve and
  *	    checks if the distance is less than the given radius.
  * @param p Point to be tested
@@ -137,37 +137,37 @@ public:
     PinStyleExtras extra;
 
 public:
-    /// @brief <BR>Default cyan style
+    /// @brief Default cyan style
     static std::shared_ptr<PinStyle> cyan()
     {
         return std::make_shared<PinStyle>(PinStyle(
             IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
     }
-    /// @brief <BR>Default green style
+    /// @brief Default green style
     static std::shared_ptr<PinStyle> green()
     {
         return std::make_shared<PinStyle>(PinStyle(
             IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f));
     }
-    /// @brief <BR>Default blue style
+    /// @brief Default blue style
     static std::shared_ptr<PinStyle> blue()
     {
         return std::make_shared<PinStyle>(PinStyle(
             IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
     }
-    /// @brief <BR>Default brown style
+    /// @brief Default brown style
     static std::shared_ptr<PinStyle> brown()
     {
         return std::make_shared<PinStyle>(PinStyle(
             IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
     }
-    /// @brief <BR>Default red style
+    /// @brief Default red style
     static std::shared_ptr<PinStyle> red()
     {
         return std::make_shared<PinStyle>(PinStyle(
             IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f));
     }
-    /// @brief <BR>Default white style
+    /// @brief Default white style
     static std::shared_ptr<PinStyle> white()
     {
         return std::make_shared<PinStyle>(PinStyle(
@@ -213,7 +213,7 @@ public:
     float border_selected_thickness = 2.f;
 
 public:
-    /// @brief <BR>Default cyan style
+    /// @brief Default cyan style
     static std::shared_ptr<NodeStyle> cyan()
     {
         return std::make_shared<NodeStyle>(
@@ -221,7 +221,7 @@ public:
             ImColor(233, 241, 244, 255),
             6.5f);
     }
-    /// @brief <BR>Default green style
+    /// @brief Default green style
     static std::shared_ptr<NodeStyle> green()
     {
         return std::make_shared<NodeStyle>(
@@ -229,7 +229,7 @@ public:
             ImColor(233, 241, 244, 255),
             3.5f);
     }
-    /// @brief <BR>Default red style
+    /// @brief Default red style
     static std::shared_ptr<NodeStyle> red()
     {
         return std::make_shared<NodeStyle>(
@@ -237,7 +237,7 @@ public:
             ImColor(233, 241, 244, 255),
             11.f);
     }
-    /// @brief <BR>Default brown style
+    /// @brief Default brown style
     static std::shared_ptr<NodeStyle> brown()
     {
         return std::make_shared<NodeStyle>(
@@ -256,7 +256,7 @@ public:
 class Link {
 public:
     /**
-     * @brief <BR>Construct a link
+     * @brief Construct a link
      * @param left Pointer to the output Pin of the Link
      * @param right Pointer to the input Pin of the Link
      * @param inf Pointer to the Handler that contains the Link
@@ -269,37 +269,37 @@ public:
     }
 
     /**
-     * @brief <BR>Destruction of a link
+     * @brief Destruction of a link
      * @details Deletes references of this links form connected pins
      */
     ~Link();
 
     /**
-     * @brief <BR>Looping function to update the Link
+     * @brief Looping function to update the Link
      * @details Draws the Link and updates Hovering and Selected status.
      */
     void update();
 
     /**
-     * @brief <BR>Get Left pin of the link
+     * @brief Get Left pin of the link
      * @return Pointer to the Pin
      */
     [[nodiscard]] Pin* left() const { return m_left; }
 
     /**
-     * @brief <BR>Get Right pin of the link
+     * @brief Get Right pin of the link
      * @return Pointer to the Pin
      */
     [[nodiscard]] Pin* right() const { return m_right; }
 
     /**
-     * @brief <BR>Get hovering status
+     * @brief Get hovering status
      * @return [TRUE] If the link is hovered in the current frame
      */
     [[nodiscard]] bool isHovered() const { return m_hovered; }
 
     /**
-     * @brief <BR>Get selected status
+     * @brief Get selected status
      * @return [TRUE] If the link is selected in the current frame
      */
     [[nodiscard]] bool isSelected() const { return m_selected; }
@@ -349,8 +349,8 @@ private:
 
 public:
     /**
-     * @brief <BR>Instantiate a new editor with default name.
-     * <BR> Editor name will be "FlowGrid + the number of editors"
+     * @brief Instantiate a new editor with default name.
+     * Editor name will be "FlowGrid + the number of editors"
      */
     ImNodeFlow()
         : ImNodeFlow("FlowGrid" + std::to_string(m_instances))
@@ -358,7 +358,7 @@ public:
     }
 
     /**
-     * @brief <BR>Instantiate a new editor with given name
+     * @brief Instantiate a new editor with given name
      * @details Creates a new Node Editor with the given name.
      * @param name Name of the editor
      */
@@ -371,13 +371,13 @@ public:
     }
 
     /**
-     * @brief <BR>Handler loop
+     * @brief Handler loop
      * @details Main update function. Refreshes all the logic and draws everything. Must be called every frame.
      */
     void update();
 
     /**
-     * @brief <BR>Add a node to the grid
+     * @brief Add a node to the grid
      * @tparam T Derived class of <BaseNode> to be added
      * @tparam Params types of optional args to forward to derived class ctor
      * @param pos Position of the Node in grid coordinates
@@ -391,7 +391,7 @@ public:
 
 private:
     /**
-     * @brief <BR>Helper struct for creating a node struct from a lambda
+     * @brief Helper struct for creating a node struct from a lambda
      * @sa addLambdaNode which wraps creating one of these
      * @tparam L the type of the lambda
      * @tparam B always BaseNode, tparam because BaseNode is incomplete here
@@ -409,7 +409,7 @@ private:
 
 public:
     /**
-     * @brief <BR>Add a node whos operation can be defined within a lambda.
+     * @brief Add a node whos operation can be defined within a lambda.
      * @tparam L the type of the lambda
      * @param lambda the lambda that defines the nodes operation
      * @param pos the position at which to place the node
@@ -422,7 +422,7 @@ public:
     }
 
     /**
-     * @brief <BR>Add a node to the grid
+     * @brief Add a node to the grid
      * @tparam T Derived class of <BaseNode> to be added
      * @tparam Params types of optional args to forward to derived class ctor
      * @param pos Position of the Node in screen coordinates
@@ -435,7 +435,7 @@ public:
     std::shared_ptr<T> placeNodeAt(const ImVec2& pos, Params&&... args);
 
     /**
-     * @brief <BR>Add a node to the grid using mouse position
+     * @brief Add a node to the grid using mouse position
      * @tparam T Derived class of <BaseNode> to be added
      * @tparam Params types of optional args to forward to derived class ctor
      * @param args Optional arguments to be forwarded to derived class ctor
@@ -447,13 +447,13 @@ public:
     std::shared_ptr<T> placeNode(Params&&... args);
 
     /**
-     * @brief <BR>Add link to the handler internal list
+     * @brief Add link to the handler internal list
      * @param link Reference to the link
      */
     void addLink(std::shared_ptr<Link>& link);
 
     /**
-     * @brief <BR>Pop-up when link is "dropped"
+     * @brief Pop-up when link is "dropped"
      * @details Sets the content of a pop-up that can be displayed when dragging a link in the open instead of onto another pin.
      * @details If "key = ImGuiKey_None" the pop-up will always open when a link is dropped.
      * @param content Function or Lambda containing only the contents of the pop-up and the subsequent logic
@@ -468,7 +468,7 @@ public:
     }
 
     /**
-     * @brief <BR>Pop-up when right-clicking
+     * @brief Pop-up when right-clicking
      * @details Sets the content of a pop-up that can be displayed when right-clicking on the grid.
      * @param content Function or Lambda containing only the contents of the pop-up and the subsequent logic
      */
@@ -478,7 +478,7 @@ public:
     }
 
     /**
-     * @brief <BR>Get mouse clicking status
+     * @brief Get mouse clicking status
      * @return [TRUE] if mouse is clicked and click hasn't been consumed
      */
     [[nodiscard]] bool getSingleUseClick() const
@@ -487,38 +487,38 @@ public:
     }
 
     /**
-     * @brief <BR>Consume the click for the given frame
+     * @brief Consume the click for the given frame
      */
     void consumeSingleUseClick() { m_singleUseClick = false; }
 
     /**
-     * @brief <BR>Get editor's name
+     * @brief Get editor's name
      * @return Const reference to editor's name
      */
     const std::string& getName() { return m_name; }
 
     /**
-     * @brief <BR>Get editor's position
+     * @brief Get editor's position
      * @return Const reference to editor's position in screen coordinates
      */
     const ImVec2& getPos() { return m_context.origin(); }
 
     /**
-     * @brief <BR>Get editor's grid scroll
+     * @brief Get editor's grid scroll
      * @details Scroll is the offset from the origin of the grid, changes while navigating the grid.
      * @return Const reference to editor's grid scroll
      */
     const ImVec2& getScroll() { return m_context.scroll(); }
 
     /**
-     * @brief <BR>Get the scale adjusted screen space mouse delta, needed for dragging
+     * @brief Get the scale adjusted screen space mouse delta, needed for dragging
      *
      * @return scale adjusted mouse delta.
      */
     ImVec2 getScreenSpaceDelta() { return m_context.getScreenDelta(); }
 
     /**
-     * @brief <BR>Get editor's list of nodes
+     * @brief Get editor's list of nodes
      * @return Const reference to editor's internal nodes list
      */
     std::unordered_map<NodeUID, std::shared_ptr<BaseNode>>& getNodes()
@@ -527,43 +527,43 @@ public:
     }
 
     /**
-     * @brief <BR>Get nodes count
+     * @brief Get nodes count
      * @return Number of nodes present in the editor
      */
     uint32_t getNodesCount() { return (uint32_t)m_nodes.size(); }
 
     /**
-     * @brief <BR>Get editor's list of links
+     * @brief Get editor's list of links
      * @return Const reference to editor's internal links list
      */
     const std::vector<std::weak_ptr<Link>>& getLinks() { return m_links; }
 
     /**
-     * @brief <BR>Get zooming viewport
+     * @brief Get zooming viewport
      * @return Const reference to editor's internal viewport for zoom support
      */
     ContainedContext& getGrid() { return m_context; }
 
     /**
-     * @brief <BR>Get dragging status
+     * @brief Get dragging status
      * @return [TRUE] if a Node is being dragged around the grid
      */
     [[nodiscard]] bool isNodeDragged() const { return m_draggingNode; }
 
     /**
-     * @brief <BR>Get current style
+     * @brief Get current style
      * @return Reference to style variables
      */
     InfStyler& getStyle() { return m_style; }
 
     /**
-     * @brief <BR>Set editor's size
+     * @brief Set editor's size
      * @param size Editor's size. Set to (0, 0) to auto-fit.
      */
     void setSize(const ImVec2& size) { m_context.config().size = size; }
 
     /**
-     * @brief <BR>Set dragging status
+     * @brief Set dragging status
      * @param state New dragging state
      *
      * The new state will only be updated one at the start of each frame.
@@ -571,45 +571,45 @@ public:
     void draggingNode(bool state) { m_draggingNodeNext = state; }
 
     /**
-     * @brief <BR>Set what pin is being hovered
+     * @brief Set what pin is being hovered
      * @param hovering Pointer to the hovered pin
      */
     void hovering(Pin* hovering) { m_hovering = hovering; }
 
     /**
-     * @brief <BR>Set what node is being hovered
+     * @brief Set what node is being hovered
      * @param hovering Pointer to the hovered node
      */
     void hoveredNode(BaseNode* hovering) { m_hoveredNode = hovering; }
 
     /**
-     * @brief <BR>Convert coordinates from screen to grid
+     * @brief Convert coordinates from screen to grid
      * @param p Point in screen coordinates to be converted
      * @return Point in grid's coordinates
      */
     ImVec2 screen2grid(const ImVec2& p);
 
     /**
-     * @brief <BR>Convert coordinates from grid to screen
+     * @brief Convert coordinates from grid to screen
      * @param p Point in grid's coordinates to be converted
      * @return Point in screen coordinates
      */
     ImVec2 grid2screen(const ImVec2& p);
 
     /**
-     * @brief <BR>Check if mouse is on selected node
+     * @brief Check if mouse is on selected node
      * @return [TRUE] if the mouse is hovering a selected node
      */
     bool on_selected_node();
 
     /**
-     * @brief <BR>Check if mouse is on a free point on the grid
+     * @brief Check if mouse is on a free point on the grid
      * @return [TRUE] if the mouse is not hovering a node or a link
      */
     bool on_free_space();
 
     /**
-     * @brief <BR>Get recursion blacklist for nodes
+     * @brief Get recursion blacklist for nodes
      * @return Reference to blacklist
      */
     std::vector<std::string>& get_recursion_blacklist()
@@ -654,23 +654,24 @@ public:
     BaseNode() = default;
 
     /**
-     * @brief <BR>Main loop of the node
+     * @brief Main loop of the node
      * @details Updates position, hovering and selected status, and renders the node. Must be called each frame.
      */
     void update();
 
     /**
-     * @brief <BR>Content of the node
+     * @brief Content of the node
      * @details Function to be implemented by derived custom nodes.
-     *	    Must contain the body of the node. If left empty the node will only have input and output pins.
+     * Must contain the body of the node. If left empty the node will only have input and output pins.
      */
     virtual void draw() { }
 
     /**
-     * @brief <BR>Add an Input to the node
+     * @brief Add an Input to the node
      * @details Will add an Input pin to the node with the given name and data type.
-     *	    <BR> <BR> In this case the name of the pin will also be its UID.
-     *	    <BR> <BR> The UID must be unique only in the context of the current node's inputs.
+     * In this case the name of the pin will also be its UID.
+     *The UID must be unique only in the context of the current node's inputs.
+
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
      * @param defReturn Default return value when the pin is not connected
@@ -686,9 +687,10 @@ public:
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
-     * @brief <BR>Add an Input to the node
+     * @brief Add an Input to the node
      * @details Will add an Input pin to the node with the given name and data type.
-     *	    <BR> <BR> The UID must be unique only in the context of the current node's inputs.
+     * The UID must be unique only in the context of the current node's inputs.
+     *
      * @tparam T Type of the data the pin will handle
      * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
@@ -707,7 +709,7 @@ public:
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
-     * @brief <BR>Remove input pin
+     * @brief Remove input pin
      * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      */
@@ -715,17 +717,18 @@ public:
     void dropIN(const U& uid);
 
     /**
-     * @brief <BR>Remove input pin
+     * @brief Remove input pin
      * @param uid Unique identifier of the pin
      */
     void dropIN(const char* uid);
 
     /**
-     * @brief <BR>Show a temporary input pin
+     * @brief Show a temporary input pin
      * @details Will show an input pin with the given name.
-     *	    The pin is created the first time showIN is called and kept alive as long as showIN is called each frame.
-     *	    <BR> <BR> In this case the name of the pin will also be its UID.
-     *	    <BR> <BR> The UID must be unique only in the context of the current node's inputs.
+     * The pin is created the first time showIN is called and kept alive as long as showIN is called each frame.
+     * In this case the name of the pin will also be its UID.
+     * The UID must be unique only in the context of the current node's inputs.
+     *
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
      * @param defReturn Default return value when the pin is not connected
@@ -741,10 +744,11 @@ public:
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
-     * @brief <BR>Show a temporary input pin
+     * @brief Show a temporary input pin
      * @details Will show an input pin with the given name and UID.
-     *	    The pin is created the first time showIN_uid is called and kept alive as long as showIN_uid is called each frame.
-     *	    <BR> <BR> The UID must be unique only in the context of the current node's inputs.
+     * The pin is created the first time showIN_uid is called and kept alive as long as showIN_uid is called each frame.
+     * The UID must be unique only in the context of the current node's inputs.
+     *
      * @tparam T Type of the data the pin will handle
      * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
@@ -763,10 +767,11 @@ public:
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
-     * @brief <BR>Add an Output to the node
+     * @brief Add an Output to the node
      * @details Must be called in the node constructor. WIll add an Output pin to the node with the given name and data type.
-     *	    <BR> <BR> In this case the name of the pin will also be its UID.
-     *	    <BR> <BR> The UID must be unique only in the context of the current node's outputs.
+     * In this case the name of the pin will also be its UID.
+     * The UID must be unique only in the context of the current node's outputs.
+     *
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
      * @param filter Connection filter
@@ -779,9 +784,10 @@ public:
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
-     * @brief <BR>Add an Output to the node
+     * @brief Add an Output to the node
      * @details Must be called in the node constructor. WIll add an Output pin to the node with the given name and data type.
-     *	    <BR> <BR> The UID must be unique only in the context of the current node's outputs.
+     * The UID must be unique only in the context of the current node's outputs.
+     *
      * @tparam T Type of the data the pin will handle
      * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
@@ -797,7 +803,7 @@ public:
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
-     * @brief <BR>Remove output pin
+     * @brief Remove output pin
      * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      */
@@ -805,17 +811,18 @@ public:
     void dropOUT(const U& uid);
 
     /**
-     * @brief <BR>Remove output pin
+     * @brief Remove output pin
      * @param uid Unique identifier of the pin
      */
     void dropOUT(const char* uid);
 
     /**
-     * @brief <BR>Show a temporary output pin
+     * @brief Show a temporary output pin
      * @details Will show an output pin with the given name.
-     *	    The pin is created the first time showOUT is called and kept alive as long as showOUT is called each frame.
-     *	    <BR> <BR> In this case the name of the pin will also be its UID.
-     *	    <BR> <BR> The UID must be unique only in the context of the current node's outputs.
+     * The pin is created the first time showOUT is called and kept alive as long as showOUT is called each frame.
+     * In this case the name of the pin will also be its UID.
+     * The UID must be unique only in the context of the current node's outputs.
+     *
      * @tparam T Type of the data the pin will handle
      * @param name Name of the pin
      * @param behaviour Function or lambda expression used to calculate output value
@@ -829,10 +836,11 @@ public:
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
-     * @brief <BR>Show a temporary output pin
+     * @brief Show a temporary output pin
      * @details Will show an output pin with the given name.
-     *	    The pin is created the first time showOUT_uid is called and kept alive as long as showOUT_uid is called each frame.
-     *	    <BR> <BR> The UID must be unique only in the context of the current node's outputs.
+     * The pin is created the first time showOUT_uid is called and kept alive as long as showOUT_uid is called each frame.
+     * The UID must be unique only in the context of the current node's outputs.
+     *
      * @tparam T Type of the data the pin will handle
      * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
@@ -849,7 +857,7 @@ public:
         std::shared_ptr<PinStyle> style = nullptr);
 
     /**
-     * @brief <BR>Get Input value from an InPin
+     * @brief Get Input value from an InPin
      * @details Get a reference to the value of an input pin, the value is stored in the output pin at the other end of the link.
      * @tparam T Data type
      * @tparam U Type of the UID
@@ -860,7 +868,7 @@ public:
     const T& getInVal(const U& uid);
 
     /**
-     * @brief <BR>Get Input value from an InPin
+     * @brief Get Input value from an InPin
      * @details Get a reference to the value of an input pin, the value is stored in the output pin at the other end of the link.
      * @tparam T Data type
      * @param uid Unique identifier of the pin
@@ -870,7 +878,7 @@ public:
     const T& getInVal(const char* uid);
 
     /**
-     * @brief <BR>Get generic reference to input pin
+     * @brief Get generic reference to input pin
      * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      * @return Generic pointer to the pin
@@ -879,14 +887,14 @@ public:
     Pin* inPin(const U& uid);
 
     /**
-     * @brief <BR>Get generic reference to input pin
+     * @brief Get generic reference to input pin
      * @param uid Unique identifier of the pin
      * @return Generic pointer to the pin
      */
     Pin* inPin(const char* uid);
 
     /**
-     * @brief <BR>Get generic reference to output pin
+     * @brief Get generic reference to output pin
      * @tparam U Type of the UID
      * @param uid Unique identifier of the pin
      * @return Generic pointer to the pin
@@ -895,96 +903,96 @@ public:
     Pin* outPin(const U& uid);
 
     /**
-     * @brief <BR>Get generic reference to output pin
+     * @brief Get generic reference to output pin
      * @param uid Unique identifier of the pin
      * @return Generic pointer to the pin
      */
     Pin* outPin(const char* uid);
 
     /**
-     * @brief <BR>Get internal input pins list
+     * @brief Get internal input pins list
      * @return Const reference to node's internal list
      */
     const std::vector<std::shared_ptr<Pin>>& getIns() { return m_ins; }
 
     /**
-     * @brief <BR>Get internal output pins list
+     * @brief Get internal output pins list
      * @return Const reference to node's internal list
      */
     const std::vector<std::shared_ptr<Pin>>& getOuts() { return m_outs; }
 
     /**
-     * @brief <BR>Delete itself
+     * @brief Delete itself
      */
     void destroy() { m_destroyed = true; }
 
     /*
-     * @brief <BR>Get if node must be deleted
+     * @brief Get if node must be deleted
      */
     [[nodiscard]] bool toDestroy() const { return m_destroyed; }
 
     /**
-     * @brief <BR>Get hovered status
+     * @brief Get hovered status
      * @return [TRUE] if the mouse is hovering the node
      */
     bool isHovered();
 
     /**
-     * @brief <BR>Get node's UID
+     * @brief Get node's UID
      * @return Node's unique identifier
      */
     [[nodiscard]] NodeUID getUID() const { return m_uid; }
 
     /**
-     * @brief <BR>Get node name
+     * @brief Get node name
      * @return Const reference to the node's name
      */
     const std::string& getName() { return m_title; }
 
     /**
-     * @brief <BR>Get node size
+     * @brief Get node size
      * @return Const reference to the node's size
      */
     const ImVec2& getSize() { return m_size; }
 
     /**
-     * @brief <BR>Get node size
+     * @brief Get node size
      * @return Const reference to the node's size
      */
     const ImVec2& getFullSize() { return m_fullSize; }
 
     /**
-     * @brief <BR>Get node position
+     * @brief Get node position
      * @return Const reference to the node's position
      */
     const ImVec2& getPos() { return m_pos; }
 
     /**
-     * @brief <BR>Get grid handler bound to node
+     * @brief Get grid handler bound to node
      * @return Pointer to the handler
      */
     ImNodeFlow* getHandler() { return m_inf; }
 
     /**
-     * @brief <BR>Get node's style
+     * @brief Get node's style
      * @return Shared pointer to the node's style
      */
     const std::shared_ptr<NodeStyle>& getStyle() { return m_style; }
 
     /**
-     * @brief <BR>Get selected status
+     * @brief Get selected status
      * @return [TRUE] if the node is selected
      */
     [[nodiscard]] bool isSelected() const { return m_selected; }
 
     /**
-     * @brief <BR>Get dragged status
+     * @brief Get dragged status
      * @return [TRUE] if the node is being dragged
      */
     [[nodiscard]] bool isDragged() const { return m_dragged; }
 
     /**
-     * @brief <BR>Set node's uid
+     * @brief Set node's uid
      * @param uid Node's unique identifier
      */
     BaseNode* setUID(NodeUID uid)
@@ -994,7 +1002,7 @@ public:
     }
 
     /**
-     * @brief <BR>Set node's name
+     * @brief Set node's name
      * @param name New title
      */
     BaseNode* setTitle(const std::string& title)
@@ -1004,7 +1012,7 @@ public:
     }
 
     /**
-     * @brief <BR>Set node's position
+     * @brief Set node's position
      * @param pos Position in grid coordinates
      */
     BaseNode* setPos(const ImVec2& pos)
@@ -1015,7 +1023,7 @@ public:
     }
 
     /**
-     * @brief <BR>Set ImNodeFlow handler
+     * @brief Set ImNodeFlow handler
      * @param inf Grid handler for the node
      */
     BaseNode* setHandler(ImNodeFlow* inf)
@@ -1035,7 +1043,7 @@ public:
     }
 
     /**
-     * @brief <BR>Set selected status
+     * @brief Set selected status
      * @param state New selected state
      *
      * Status only updates when updatePublicStatus() is called
@@ -1047,7 +1055,7 @@ public:
     }
 
     /**
-     * @brief <BR>Update the isSelected status of the node
+     * @brief Update the isSelected status of the node
      */
     void updatePublicStatus() { m_selected = m_selectedNext; }
 
@@ -1086,7 +1094,7 @@ enum PinType { PinType_Input,
 class Pin {
 public:
     /**
-     * @brief <BR>Generic pin constructor
+     * @brief Generic pin constructor
      * @param name Name of the pin
      * @param filter Connection filter
      * @param kind Specifies Input or Output
@@ -1115,28 +1123,28 @@ public:
     virtual ~Pin() = default;
 
     /**
-     * @brief <BR>Main loop of the pin
+     * @brief Main loop of the pin
      * @details Updates position, hovering and dragging status, and renders the pin. Must be called each frame.
      */
     void update();
 
     /**
-     * @brief <BR>Draw default pin's socket
+     * @brief Draw default pin's socket
      */
     void drawSocket();
 
     /**
-     * @brief <BR>Draw default pin's decoration (border, bg, and hover overlay)
+     * @brief Draw default pin's decoration (border, bg, and hover overlay)
      */
     void drawDecoration();
 
     /**
-     * @brief <BR>Used by output pins to calculate their values
+     * @brief Used by output pins to calculate their values
      */
     virtual void resolve() { }
 
     /**
-     * @brief <BR>Custom render function to override Pin appearance
+     * @brief Custom render function to override Pin appearance
      * @param r Function or lambda expression with new ImGui rendering
      */
     Pin* renderer(std::function<void(Pin* p)> r)
@@ -1146,96 +1154,96 @@ public:
     }
 
     /**
-     * @brief <BR>Create link between pins
+     * @brief Create link between pins
      * @param other Pointer to the other pin
      */
     virtual void createLink(Pin* other) = 0;
 
     /**
-     * @brief <BR>Set the reference to a link
+     * @brief Set the reference to a link
      * @param link Smart pointer to the link
      */
     virtual void setLink(std::shared_ptr<Link>& link) { }
 
     /**
-     * @brief <BR>Delete link reference
+     * @brief Delete link reference
      */
     virtual void deleteLink() = 0;
 
     /**
-     * @brief <BR>Get connected status
+     * @brief Get connected status
      * @return [TRUE] if the pin is connected
      */
     virtual bool isConnected() = 0;
 
     /**
-     * @brief <BR>Get pin's link
+     * @brief Get pin's link
      * @return Weak_ptr reference to pin's link
      */
     virtual std::weak_ptr<Link> getLink() { return std::weak_ptr<Link> { }; }
 
     /**
-     * @brief <BR>Get pin's UID
+     * @brief Get pin's UID
      * @return Unique identifier of the pin
      */
     [[nodiscard]] PinUID getUid() const { return m_uid; }
 
     /**
-     * @brief <BR>Get pin's name
+     * @brief Get pin's name
      * @return Const reference to pin's name
      */
     const std::string& getName() { return m_name; }
 
     /**
-     * @brief <BR>Get pin's position
+     * @brief Get pin's position
      * @return Const reference to pin's position in grid coordinates
      */
     [[nodiscard]] const ImVec2& getPos() { return m_pos; }
 
     /**
-     * @brief <BR>Get pin's hit-box size
+     * @brief Get pin's hit-box size
      * @return Const reference to pin's hit-box size
      */
     [[nodiscard]] const ImVec2& getSize() { return m_size; }
 
     /**
-     * @brief <BR>Get pin's parent node
+     * @brief Get pin's parent node
      * @return Generic type pointer to pin's parent node. (Node that contains it)
      */
     BaseNode* getParent() { return m_parent; }
 
     /**
-     * @brief <BR>Get pin's type
+     * @brief Get pin's type
      * @return The pin type. Either Input or Output
      */
     PinType getType() { return m_type; }
 
     /**
-     * @brief <BR>Get pin's data type (aka: \<T>)
+     * @brief Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
     [[nodiscard]] virtual const std::type_info& getDataType() const = 0;
 
     /**
-     * @brief <BR>Get pin's style
+     * @brief Get pin's style
      * @return Smart pointer to pin's style
      */
     std::shared_ptr<PinStyle>& getStyle() { return m_style; }
 
     /**
-     * @brief <BR>Get pin's link attachment point (socket)
+     * @brief Get pin's link attachment point (socket)
      * @return Grid coordinates to the attachment point between the link and the pin's socket
      */
     virtual ImVec2 pinPoint() = 0;
 
     /**
-     * @brief <BR>Calculate pin's width pre-rendering
+     * @brief Calculate pin's width pre-rendering
      * @return The with of the pin once it will be rendered
      */
     float calcWidth() { return ImGui::CalcTextSize(m_name.c_str()).x; }
 
     /**
-     * @brief <BR>Set pin's position
+     * @brief Set pin's position
      * @param pos Position in screen coordinates
      */
     void setPos(ImVec2 pos) { m_pos = pos; }
@@ -1284,7 +1292,7 @@ template <class T>
 class InPin : public Pin {
 public:
     /**
-     * @brief <BR>Input pin constructor
+     * @brief Input pin constructor
      * @param name Name of the pin
      * @param filter Connection filter
      * @param parent Pointer to the Node containing the pin
@@ -1307,13 +1315,13 @@ public:
     }
 
     /**
-     * @brief <BR>Create link between pins
+     * @brief Create link between pins
      * @param other Pointer to the other pin
      */
     void createLink(Pin* other) override;
 
     /**
-     * @brief <BR>Delete the link connected to the pin
+     * @brief Delete the link connected to the pin
      */
     void deleteLink() override { m_link.reset(); }
 
@@ -1327,19 +1335,19 @@ public:
     }
 
     /**
-     * @brief <BR>Get connected status
+     * @brief Get connected status
      * @return [TRUE] is pin is connected to a link
      */
     bool isConnected() override { return m_link != nullptr; }
 
     /**
-     * @brief <BR>Get pin's link
+     * @brief Get pin's link
      * @return Weak_ptr reference to the link connected to the pin
      */
     std::weak_ptr<Link> getLink() override { return m_link; }
 
     /**
-     * @brief <BR>Get InPin's connection filter
+     * @brief Get InPin's connection filter
      * @return InPin's connection filter configuration
      */
     [[nodiscard]] const std::function<bool(Pin*, Pin*)>& getFilter() const
@@ -1348,7 +1356,7 @@ public:
     }
 
     /**
-     * @brief <BR>Get pin's data type (aka: \<T>)
+     * @brief Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
     [[nodiscard]] const std::type_info& getDataType() const override
@@ -1357,7 +1365,7 @@ public:
     };
 
     /**
-     * @brief <BR>Get pin's link attachment point (socket)
+     * @brief Get pin's link attachment point (socket)
      * @return Grid coordinates to the attachment point between the link and the pin's socket
      */
     ImVec2 pinPoint() override
@@ -1366,7 +1374,7 @@ public:
     }
 
     /**
-     * @brief <BR>Get value carried by the connected link
+     * @brief Get value carried by the connected link
      * @return Reference to the value of the connected OutPin. Or the default value if not connected
      */
     const T& val();
@@ -1387,7 +1395,7 @@ template <class T>
 class OutPin : public Pin {
 public:
     /**
-     * @brief <BR>Output pin constructor
+     * @brief Output pin constructor
      * @param name Name of the pin
      * @param filter Connection filter
      * @param parent Pointer to the Node containing the pin
@@ -1405,7 +1413,7 @@ public:
     }
 
     /**
-     * @brief <BR>When parent gets deleted, remove the links
+     * @brief When parent gets deleted, remove the links
      */
     ~OutPin() override
     {
@@ -1416,30 +1424,30 @@ public:
     }
 
     /**
-     * @brief <BR>Create link between pins
+     * @brief Create link between pins
      * @param other Pointer to the other pin
      */
     void createLink(Pin* other) override;
 
     /**
-     * @brief <BR>Add a connected link to the internal list
+     * @brief Add a connected link to the internal list
      * @param link Pointer to the link
      */
     void setLink(std::shared_ptr<Link>& link) override;
 
     /**
-     * @brief <BR>Delete any expired weak pointers to a (now deleted) link
+     * @brief Delete any expired weak pointers to a (now deleted) link
      */
     void deleteLink() override;
 
     /**
-     * @brief <BR>Get connected status
+     * @brief Get connected status
      * @return [TRUE] is pin is connected to one or more links
      */
     bool isConnected() override { return !m_links.empty(); }
 
     /**
-     * @brief <BR>Get pin's link attachment point (socket)
+     * @brief Get pin's link attachment point (socket)
      * @return Grid coordinates to the attachment point between the link and the pin's socket
      */
     ImVec2 pinPoint() override
@@ -1448,13 +1456,13 @@ public:
     }
 
     /**
-     * @brief <BR>Get output value
+     * @brief Get output value
      * @return Const reference to the internal value of the pin
      */
     const T& val();
 
     /**
-     * @brief <BR>Set logic to calculate output value
+     * @brief Set logic to calculate output value
      * @details Used to define the pin behaviour. This is what gets the data from the parent's inputs, and applies the needed logic.
      * @param func Function or lambda expression used to calculate output value
      */
@@ -1465,7 +1473,7 @@ public:
     }
 
     /**
-     * @brief <BR>Get pin's data type (aka: \<T>)
+     * @brief Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
     [[nodiscard]] const std::type_info& getDataType() const override
