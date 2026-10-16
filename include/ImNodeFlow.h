@@ -146,7 +146,7 @@ public:
         float socket_radius,
         float socket_hovered_radius,
         float socket_connected_radius,
-        float socket_thickness)
+        float socket_thickness) noexcept
         : color(color)
         , socket_shape(socket_shape)
         , socket_radius(socket_radius)
@@ -174,11 +174,17 @@ public:
 
 namespace PinStyles {
 
+    /// @brief Default cyan style
     static constexpr PinStyle cyan = { IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    /// @brief Default green style
     static constexpr PinStyle green = { IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f };
+    /// @brief Default blue style
     static constexpr PinStyle blue = { IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    /// @brief Default brown style
     static constexpr PinStyle brown = { IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    /// @brief Default red style
     static constexpr PinStyle red = { IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    /// @brief Default white style
     static constexpr PinStyle white = { IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f };
 
     static inline constexpr PinStyle default_style = cyan;
@@ -220,6 +226,9 @@ enum PinConnStrat {
     PinConnStrat_AllowMultiplePreferNewest,
 };
 
+// -----------------------------------------------------------------------------------------------------------------
+// PIN INFO STRUCTURES
+
 /**
  * @brief Description of parameters customizable during pin creation
  */
@@ -229,11 +238,11 @@ struct BasePinInfo {
     /// Whether it's an input pin or an output pin
     PinType kind;
     /// Whether links coming from the same node are allowed
-    bool allow_same_node_connections = false;
+    bool allow_same_node_connections;
     /// Style to apply to the pin
-    PinStyle style = PinStyles::cyan;
+    PinStyle style;
     /// Strategy to use regarding multiple link connections
-    PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest;
+    PinConnStrat strat;
     /// Custom render function
     std::function<void(Pin* p)> renderer;
 };
@@ -254,6 +263,8 @@ struct InPinInfo {
     PinStyle style = PinStyles::cyan;
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat_AllowOnlySingleConnection;
+    /// Custom render function
+    std::function<void(Pin* p)> renderer;
     /// When an input pin supports multiple inputs, the pin's value will
     /// be calculated by first initializing it to the default value, and
     /// then calling this accumulator function for every connected pin
@@ -305,7 +316,7 @@ public:
     constexpr NodeStyle(
         ImU32 header_bg,
         ImColor header_title_color,
-        float radius)
+        float radius) noexcept
         : header_bg(header_bg)
         , header_title_color(header_title_color)
         , radius(radius)
@@ -335,9 +346,13 @@ public:
 
 namespace NodeStyles {
 
+    /// @brief Default cyan style
     static constexpr NodeStyle cyan = { IM_COL32(71, 142, 173, 255), ImColor(233, 241, 244, 255), 6.5f };
+    /// @brief Default green style
     static constexpr NodeStyle green = { IM_COL32(90, 191, 93, 255), ImColor(233, 241, 244, 255), 3.5f };
+    /// @brief Default red style
     static constexpr NodeStyle red = { IM_COL32(191, 90, 90, 255), ImColor(233, 241, 244, 255), 11.f };
+    /// @brief Default brown style
     static constexpr NodeStyle brown = { IM_COL32(191, 134, 90, 255), ImColor(233, 241, 244, 255), 6.5f };
 
     static inline constexpr NodeStyle default_style = cyan;
@@ -1652,7 +1667,7 @@ public:
                   .allow_same_node_connections = info.allow_same_node_connections,
                   .style = info.style,
                   .strat = info.strat,
-              })
+                  .renderer = std::move(info.renderer) })
         , m_emptyVal(info.default_value)
         , m_val(info.default_value)
     {

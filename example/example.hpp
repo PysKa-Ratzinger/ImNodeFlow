@@ -107,6 +107,14 @@ public:
         node.addIN<int>({ "B", 0 });
         // NOLINTEND
 
+        node.addIN<int>({
+            .name = "Carry",
+            .default_value = 0,
+            .renderer = [](auto* pin) -> void {
+                ImGui::TextUnformatted("<CARRY>");
+            },
+        });
+
         node.addOUT<int>({
             .name = "Out",
             .behaviour = [this](ImFlow::Node& node) -> int {
