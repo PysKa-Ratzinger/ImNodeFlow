@@ -120,7 +120,7 @@ Node::showIN(InPinInfo<T> pin_info)
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
         if (p.second->getName() == pin_info.name) {
             p.first = 1;
-            return static_cast<InPin<T>*>(p.second.get())->val();
+            return p.second->toIn<T>().val();
         }
     }
 
@@ -132,7 +132,7 @@ Node::showIN(InPinInfo<T> pin_info)
                 this,
                 &m_inf,
                 std::move(pin_info))));
-    return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
+    return m_dynamicIns.back().second->toIn<T>().val();
 }
 
 template <typename T>
@@ -142,7 +142,7 @@ Node::showIN(const PinUID& uid, InPinInfo<T> pin_info)
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicIns) {
         if (p.second->getUid() == uid) {
             p.first = 1;
-            return static_cast<InPin<T>*>(p.second.get())->val();
+            return p.second->toIn<T>().val();
         }
     }
 
@@ -151,7 +151,7 @@ Node::showIN(const PinUID& uid, InPinInfo<T> pin_info)
             1,
             std::make_shared<InPin<T>>(
                 uid, this, &m_inf, std::move(pin_info))));
-    return static_cast<InPin<T>*>(m_dynamicIns.back().second.get())->val();
+    return m_dynamicIns.back().second->toIn<T>().val();
 }
 
 template <typename T>
@@ -183,9 +183,8 @@ void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
     for (std::pair<int, std::shared_ptr<Pin>>& p : m_dynamicOuts) {
         if (p.second->getUid() == uid) {
             p.first = 2;
-            static_cast<OutPin<T>*>(
-                m_dynamicOuts.back().second.get())
-                ->behaviour(std::move(pin_info.behaviour));
+            m_dynamicOuts.back().second->toOut<T>().behaviour(
+                std::move(pin_info.behaviour));
             return;
         }
     }
@@ -195,8 +194,8 @@ void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
             2,
             std::make_shared<OutPin<T>>(
                 uid, this, &m_inf, std::move(pin_info))));
-    static_cast<OutPin<T>*>(m_dynamicOuts.back().second.get())
-        ->behaviour(std::move(pin_info.behaviour));
+    m_dynamicOuts.back().second->toOut<T>().behaviour(
+        std::move(pin_info.behaviour));
 }
 
 template <typename T>
@@ -205,7 +204,7 @@ Node::getInVal(const PinUID& uid)
 {
     auto* pin = inPin(uid);
     assert(pin != nullptr && "Pin UID not found!");
-    return static_cast<InPin<T>*>(pin)->val();
+    return pin->toIn<T>().val();
 }
 
 template <typename T>
@@ -214,7 +213,7 @@ Node::getInVal(const char* name)
 {
     auto* pin = inPin(name);
     assert(pin != nullptr && "Pin UID not found!");
-    return static_cast<InPin<T>*>(pin)->val();
+    return pin->toIn<T>().val();
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -306,6 +305,41 @@ Pin::update()
 }
 
 // -----------------------------------------------------------------------------------------------------------------
+// PIN
+
+template <typename T>
+InPin<T>&
+Pin::toIn()
+{
+    assert(this->m_type == PinType::PinType_Input && this->getTypeID() == detail::type_id<T> && "Invalid cast attempted");
+    return static_cast<InPin<T>&>(*this);
+}
+
+template <typename T>
+InPin<T> const&
+Pin::toIn() const
+{
+    assert(this->m_type == PinType::PinType_Input && this->getTypeID() == detail::type_id<T> && "Invalid cast attempted");
+    return static_cast<InPin<T>&>(*this);
+}
+
+template <typename T>
+OutPin<T>&
+Pin::toOut()
+{
+    assert(this->m_type == PinType::PinType_Output && this->getTypeID() == detail::type_id<T> && "Invalid cast attempted");
+    return static_cast<OutPin<T>&>(*this);
+}
+
+template <typename T>
+OutPin<T> const&
+Pin::toOut() const
+{
+    assert(this->m_type == PinType::PinType_Output && this->getTypeID() == detail::type_id<T> && "Invalid cast attempted");
+    return static_cast<OutPin<T>&>(*this);
+}
+
+// -----------------------------------------------------------------------------------------------------------------
 // IN PIN
 
 template <class T>
@@ -314,7 +348,7 @@ void InPin<T>::calculate()
     if (!m_link) {
         m_valNext = m_emptyVal;
     } else {
-        m_valNext = reinterpret_cast<OutPin<T>*>(m_link->outPin())->val();
+        m_valNext = m_link->outPin()->toOut<T>().val();
     }
 }
 

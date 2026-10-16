@@ -1133,6 +1133,46 @@ public:
     virtual ~Pin() = default;
 
     /**
+     * @brief Safely casts a base Pin into the underlying InPin, if
+     * possible. Crashes the program otherwise.
+     *
+     * @return Reference to the underlying InPin<T> if possible. Crash
+     * otherwise.
+     */
+    template <typename T>
+    InPin<T>& toIn();
+
+    /**
+     * @brief Safely casts a base Pin into the underlying InPin, if
+     * possible. Crashes the program otherwise.
+     *
+     * @return Reference to the underlying InPin<T> if possible. Crash
+     * otherwise.
+     */
+    template <typename T>
+    InPin<T> const& toIn() const;
+
+    /**
+     * @brief Safely casts a base Pin into the underlying OutPin, if
+     * possible. Crashes the program otherwise.
+     *
+     * @return Reference to the underlying OutPin<T> if possible. Crash
+     * otherwise.
+     */
+    template <typename T>
+    OutPin<T>& toOut();
+
+    /**
+     * @brief Safely casts a base Pin into the underlying OutPin, if
+     * possible. Crashes the program otherwise.
+     *
+     * @return Reference to the underlying OutPin<T> if possible. Crash
+     * otherwise.
+     */
+    template <typename T>
+    OutPin<T> const& toOut() const;
+
+    /**
      * @brief Main loop of the pin
      * @details Updates position, hovering and dragging status, and renders the pin. Must be called each frame.
      */
