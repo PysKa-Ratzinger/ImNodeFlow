@@ -726,11 +726,16 @@ public:
 
     /**
      * @brief Node's ctor
+     * @param pos Position for the new node
      * @param inf Pointer to the ImFlow context
      * @param uid The UID of this node
      * @param node_info User provided customization options
      */
-    explicit Node(ImNodeFlow* inf, NodeUID uid, NodeInfo node_info);
+    explicit Node(
+        ImVec2 pos,
+        ImNodeFlow* inf,
+        NodeUID uid,
+        NodeInfo node_info);
 
     /**
      * @brief Main loop of the node

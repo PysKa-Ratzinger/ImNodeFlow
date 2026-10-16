@@ -93,8 +93,8 @@ namespace {
 
 Node& ImNodeFlow::addNode(const ImVec2& pos, NodeInfo node_info)
 {
-    auto node = std::make_unique<Node>(this, NodeUID { 0 }, std::move(node_info));
-    node->setPos(pos);
+    auto node = std::make_unique<Node>(
+        pos, this, NodeUID { 0 }, std::move(node_info));
     auto* node_ptr = node.get();
     auto uid = reinterpret_cast<uintptr_t>(node_ptr);
     node->setUID(uid);
@@ -126,8 +126,10 @@ Node& ImNodeFlow::addNodeLambda(
 // -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
-Node::Node(ImNodeFlow* inf, NodeUID uid, NodeInfo node_info)
+Node::Node(ImVec2 pos, ImNodeFlow* inf, NodeUID uid, NodeInfo node_info)
     : m_uid(uid)
+    , m_pos(pos)
+    , m_posTarget(pos)
     , m_inf(inf)
     , m_style(std::move(node_info.style))
     , m_impl(std::move(node_info.behaviour))
