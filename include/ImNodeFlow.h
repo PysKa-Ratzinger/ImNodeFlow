@@ -168,6 +168,8 @@ namespace PinStyles {
     /// @brief Default white style
     static constexpr PinStyle white = { IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f };
 
+    static inline constexpr PinStyle default_style = cyan;
+
 }
 
 /**
@@ -239,7 +241,7 @@ struct InPinInfo {
     /// Whether links coming from the same node are allowed
     bool allow_same_node_connections = false;
     /// Style to apply to the pin
-    PinStyle style = PinStyles::cyan;
+    PinStyle style = PinStyles::default_style;
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat_AllowOnlySingleConnection;
     /// Custom render function
@@ -266,7 +268,7 @@ struct OutPinInfo {
     /// Whether links coming from the same node are allowed
     bool allow_same_node_connections = true;
     /// Style to apply to the pin
-    PinStyle style = PinStyles::cyan;
+    PinStyle style = PinStyles::default_style;
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest;
 };
@@ -334,6 +336,8 @@ namespace NodeStyles {
     /// @brief Default brown style
     static constexpr NodeStyle brown = { IM_COL32(191, 134, 90, 255), ImColor(233, 241, 244, 255), 6.5f };
 
+    static inline constexpr NodeStyle default_style = cyan;
+
 }
 
 /**
@@ -343,7 +347,7 @@ struct NodeInfo {
     /// Node strategy for initialization and rendering
     std::unique_ptr<INodeBehaviour> behaviour;
     /// Style to apply to the node
-    NodeStyle style = NodeStyles::cyan;
+    NodeStyle style = NodeStyles::default_style;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
