@@ -851,10 +851,12 @@ public:
 
      * @tparam T Type of the data the pin will handle
      * @param pin_info User given options to the InPin during construction
-     * @return Shared pointer to the newly added pin
+     * @return Reference to the newly added pin. Do not save this
+     * reference. Use the reference to query the pin's UID and save that
+     * instead.
      */
     template <typename T>
-    std::shared_ptr<InPin<T>> addIN(InPinInfo<T> pin_info);
+    InPin<T>& addIN(InPinInfo<T> pin_info);
 
     /**
      * @brief Add an Input to the node
@@ -864,11 +866,12 @@ public:
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
      * @param pin_info User given options to the InPin during construction
-     * @return Shared pointer to the newly added pin
+     * @return Reference to the newly added pin. Do not save this
+     * reference. Use the reference to query the pin's UID and save that
+     * instead.
      */
     template <typename T>
-    std::shared_ptr<InPin<T>>
-    addIN(const PinUID& uid, InPinInfo<T> pin_info);
+    InPin<T>& addIN(const PinUID& uid, InPinInfo<T> pin_info);
 
     /**
      * @brief Remove input pin
@@ -918,10 +921,12 @@ public:
      *
      * @tparam T Type of the data the pin will handle
      * @param pin_info User given options to the InPin during construction
-     * @return Shared pointer to the newly added pin. Must be used to set the behaviour
+     * @return Reference to the newly added pin. Do not save this
+     * reference. Use the reference to query the pin's UID and save that
+     * instead.
      */
     template <typename T>
-    std::shared_ptr<OutPin<T>> addOUT(OutPinInfo<T> pin_info);
+    OutPin<T>& addOUT(OutPinInfo<T> pin_info);
 
     /**
      * @brief Add an Output to the node
@@ -931,11 +936,12 @@ public:
      * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
      * @param pin_info User given options to the InPin during construction
-     * @return Shared pointer to the newly added pin. Must be used to set the behaviour
+     * @return Reference to the newly added pin. Do not save this
+     * reference. Use the reference to query the pin's UID and save that
+     * instead.
      */
     template <typename T>
-    std::shared_ptr<OutPin<T>>
-    addOUT(const PinUID& uid, OutPinInfo<T> pin_info);
+    OutPin<T>& addOUT(const PinUID& uid, OutPinInfo<T> pin_info);
 
     /**
      * @brief Remove output pin
@@ -1043,13 +1049,13 @@ public:
      * @brief Get internal input pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::shared_ptr<Pin>>& getIns() { return m_ins; }
+    const std::vector<std::unique_ptr<Pin>>& getIns() { return m_ins; }
 
     /**
      * @brief Get internal output pins list
      * @return Const reference to node's internal list
      */
-    const std::vector<std::shared_ptr<Pin>>& getOuts() { return m_outs; }
+    const std::vector<std::unique_ptr<Pin>>& getOuts() { return m_outs; }
 
     /**
      * @brief Delete itself
@@ -1201,9 +1207,9 @@ private:
 
     std::unique_ptr<INodeBehaviour> m_impl;
 
-    std::vector<std::shared_ptr<Pin>> m_ins;
+    std::vector<std::unique_ptr<Pin>> m_ins;
     std::vector<DynamicPin> m_dynamicIns;
-    std::vector<std::shared_ptr<Pin>> m_outs;
+    std::vector<std::unique_ptr<Pin>> m_outs;
     std::vector<DynamicPin> m_dynamicOuts;
 };
 

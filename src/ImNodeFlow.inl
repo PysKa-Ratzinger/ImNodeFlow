@@ -98,20 +98,19 @@ Node& ImNodeFlow::emplaceNodeOnMouse(Params&&... args)
 // BASE NODE
 
 template <typename T>
-std::shared_ptr<InPin<T>>
+InPin<T>&
 Node::addIN(InPinInfo<T> pin_info)
 {
     return addIN(PinUID::generate(), std::move(pin_info));
 }
 
 template <typename T>
-std::shared_ptr<InPin<T>>
+InPin<T>&
 Node::addIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
-    auto p = std::make_shared<InPin<T>>(
-        m_ctx, uid, this, std::move(pin_info));
-    m_ins.emplace_back(p);
-    return p;
+    m_ins.emplace_back(
+        std::make_unique<InPin<T>>(m_ctx, uid, this, std::move(pin_info)));
+    return m_ins.back()->toIn<T>();
 }
 
 template <typename T>
@@ -150,20 +149,20 @@ Node::showIN(const PinUID& uid, InPinInfo<T> pin_info)
 }
 
 template <typename T>
-std::shared_ptr<OutPin<T>>
+OutPin<T>&
 Node::addOUT(OutPinInfo<T> pin_info)
 {
     return addOUT<T>(PinUID::generate(), std::move(pin_info));
 }
 
 template <typename T>
-std::shared_ptr<OutPin<T>>
+OutPin<T>&
 Node::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 {
-    auto p = std::make_shared<OutPin<T>>(
-        m_ctx, uid, this, std::move(pin_info));
-    m_outs.emplace_back(p);
-    return p;
+    m_outs.emplace_back(
+        std::make_unique<OutPin<T>>(
+            m_ctx, uid, this, std::move(pin_info)));
+    return m_outs.back()->toOut<T>();
 }
 
 template <typename T>

@@ -295,9 +295,10 @@ bool Node::isHovered()
 
 void Node::dropIN(const PinUID& uid)
 {
-    auto iter = std::find_if(m_ins.begin(), m_ins.end(), [&](auto pin) -> bool {
-        return pin->getUid() == uid;
-    });
+    auto iter = std::find_if(
+        m_ins.begin(), m_ins.end(), [&](auto const& pin) -> bool {
+            return pin->getUid() == uid;
+        });
 
     if (iter != m_ins.end()) {
         m_ins.erase(iter);
@@ -310,7 +311,9 @@ void Node::dropIN(const char* name)
         std::remove_if(
             m_ins.begin(),
             m_ins.end(),
-            [&](auto pin) -> bool { return pin->getName() == name; }),
+            [&](auto const& pin) -> bool {
+                return pin->getName() == name;
+            }),
         m_ins.end());
 }
 
