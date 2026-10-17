@@ -8,6 +8,7 @@ public:
     {
         node.setTitle("Simple sum");
         node.setStyle(ImFlow::NodeStyles::green);
+
         node.addIN<int>({ .name = "In", .default_value = 0 });
         node.addOUT<int>({
             .name = "Out",
@@ -69,13 +70,16 @@ public:
         node.setTitle("Collapsing node");
         node.setStyle(ImFlow::NodeStyles::red);
 
-        // Addind inputs without a designated initializer list also
-        // works, but linters will scream at you.
-        //
-        // NOLINTBEGIN (modernize-use-designated-initializers)
-        node.addIN<int>({ "A", 0 });
-        node.addIN<int>({ "B", 0 });
-        // NOLINTEND
+        node.addIN<int>({
+            .name = "A",
+            .default_value = 0,
+            .style = ImFlow::PinStyles::red,
+        });
+        node.addIN<int>({
+            .name = "B",
+            .default_value = 0,
+            .style = ImFlow::PinStyles::red,
+        });
 
         node.addOUT<int>({
             .name = "Out",
@@ -85,6 +89,7 @@ public:
             .renderer = [](auto* pin) -> void {
                 ImGui::TextUnformatted("<OUTPIN>");
             },
+            .style = ImFlow::PinStyles::red,
         });
     }
 
@@ -116,6 +121,7 @@ public:
                 .behaviour = [](ImFlow::Node& node) -> int {
                     return node.inPin<int>("A")->value() * node.inPin<int>("B")->value();
                 },
+                .style = ImFlow::PinStyles::red,
             });
         }
     }
@@ -152,8 +158,8 @@ struct NodeEditor {
 
         auto& n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
         auto& n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
-        auto& result = mINF.emplaceNode<ResultNode>({ 270, 50 });
-        auto& multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 320, 140 });
+        auto& result = mINF.emplaceNode<ResultNode>({ 340, 20 });
+        auto& multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
 
         // Add links between nodes
         n1.outPin("Out")->linkTo(*result.inPin("A"));
@@ -163,7 +169,10 @@ struct NodeEditor {
         n2.outPin("Out")->linkTo(*multi_adder.inPin("In"));
 
         // Add a collapsing node
-        auto& collapsingNode = mINF.emplaceNode<CollapsingNode>({ 300, 300 });
+        auto& collapsingNode = mINF.emplaceNode<CollapsingNode>({ 330, 230 });
+
+        n1.outPin("Out")->linkTo(*collapsingNode.inPin("A"));
+        n2.outPin("Out")->linkTo(*collapsingNode.inPin("B"));
     }
 
     void set_size(ImVec2 d) { mINF.setSize(d); }
