@@ -74,24 +74,6 @@ public:
     }
 };
 
-class ResultNode : public ImFlow::INodeBehaviour {
-public:
-    void setup(ImFlow::Node& node) override
-    {
-        node.setTitle("Result node");
-        node.setStyle(ImFlow::NodeStyles::brown);
-        node.addIN<int>({ .name = "A", .default_value = 0 });
-        node.addIN<int>({ .name = "B", .default_value = 0 });
-    }
-
-    void draw(ImFlow::Node& node) override
-    {
-        ImGui::Text(
-            "Result: %d",
-            node.getInVal<int>("A") + node.getInVal<int>("B"));
-    }
-};
-
 class CollapsingNode : public ImFlow::INodeBehaviour {
 public:
     void setup(ImFlow::Node& node) override
@@ -160,6 +142,24 @@ public:
 
 private:
     bool m_multiplier = false;
+};
+
+class ResultNode : public ImFlow::INodeBehaviour {
+public:
+    void setup(ImFlow::Node& node) override
+    {
+        node.setTitle("Result node");
+        node.setStyle(ImFlow::NodeStyles::brown);
+        node.addIN<int>({ .name = "A", .default_value = 0 });
+        node.addIN<int>({ .name = "B", .default_value = 0 });
+    }
+
+    void draw(ImFlow::Node& node) override
+    {
+        ImGui::Text(
+            "Result: %d",
+            node.getInVal<int>("A") + node.getInVal<int>("B"));
+    }
 };
 
 /* Node editor that sets up the grid to place nodes */
