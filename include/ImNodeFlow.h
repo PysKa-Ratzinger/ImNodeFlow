@@ -747,6 +747,12 @@ public:
     void hovering(Pin* hovering) { m_hovering = hovering; }
 
     /**
+     * @brief Set what pin is being dragged
+     * @param dragged Pointer to the dragged pin
+     */
+    void dragging(Pin* dragged) { m_dragOut = dragged; }
+
+    /**
      * @brief Set what node is being hovered
      * @param hovering Pointer to the hovered node
      */

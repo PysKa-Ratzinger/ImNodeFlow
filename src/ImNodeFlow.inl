@@ -288,26 +288,29 @@ Pin::drawDecoration()
 inline void
 Pin::update()
 {
-    // Custom rendering
-    if (m_renderer) {
+    if (!m_renderer) {
+        ImGui::SetCursorPos(m_pos);
+        ImGui::Text("%s", m_name.c_str());
+    } else {
         ImGui::BeginGroup();
         m_renderer(this);
         ImGui::EndGroup();
-        m_size = ImGui::GetItemRectSize();
-        if (ImGui::IsItemHovered())
-            (*m_inf)->hovering(this);
-        return;
     }
 
-    ImGui::SetCursorPos(m_pos);
-    ImGui::Text("%s", m_name.c_str());
     m_size = ImGui::GetItemRectSize();
 
-    drawDecoration();
-    drawSocket();
+    if (!m_renderer) {
+        drawDecoration();
+        drawSocket();
+    }
 
-    if (ImGui::IsItemHovered())
+    if (ImGui::IsItemHovered()) {
         (*m_inf)->hovering(this);
+        if ((*m_inf)->getSingleUseClick(ImGuiMouseButton_Left)) {
+            (*m_inf)->consumeSingleUseClick(ImGuiMouseButton_Left);
+            (*m_inf)->dragging(this);
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------------------------------------------

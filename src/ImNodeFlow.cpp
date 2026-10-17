@@ -804,24 +804,19 @@ void ImNodeFlow::update()
         ++iter;
     }
 
-    // Links drop-off
-    if (m_dragOut && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-        if (!m_hovering) {
-            if (mouse_on_free_space() && m_droppedLinkPopUp) {
-                if (m_droppedLinkPupUpComboKey == ImGuiKey_None || ImGui::IsKeyDown(m_droppedLinkPupUpComboKey)) {
-                    m_droppedLinkLeft = m_dragOut;
-                    ImGui::OpenPopup("DroppedLinkPopUp");
-                }
-            }
-        } else {
-            m_dragOut->linkTo(m_hovering);
-        }
-    }
-
-    // Links drag-out
-    if (!m_draggingNode && m_hovering && !m_dragOut && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-        m_dragOut = m_hovering;
     if (m_dragOut) {
+        // Links drop-off
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+            if (m_hovering) {
+                m_dragOut->linkTo(m_hovering);
+            } else if (
+                mouse_on_free_space() && m_droppedLinkPopUp && (m_droppedLinkPupUpComboKey == ImGuiKey_None || ImGui::IsKeyDown(m_droppedLinkPupUpComboKey))) {
+                m_droppedLinkLeft = m_dragOut;
+                ImGui::OpenPopup("DroppedLinkPopUp");
+            }
+        }
+
+        // Links drag-out
         if (m_dragOut->getType() == PinType_Output)
             detail::smart_bezier(
                 m_dragOut->pinPoint(),
