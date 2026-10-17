@@ -387,43 +387,39 @@ Node::dropOUT(const char* name)
         m_outs.end());
 }
 
-Pin& Node::inPin(const PinUID& uid)
+Pin* Node::inPin(const PinUID& uid)
 {
     auto it = std::find_if(m_ins.begin(), m_ins.end(), [&uid](const auto& p) {
         return p->getUid() == uid;
     });
-    assert(it != m_ins.end() && "Pin UID not found!");
-    return **it;
+    return it != m_ins.end() ? &**it : nullptr;
 }
 
-Pin& Node::inPin(const char* name)
+Pin* Node::inPin(const char* name)
 {
     auto it = std::find_if(
         m_ins.begin(), m_ins.end(), [&name](const auto& p) {
             return p->getName() == name;
         });
-    assert(it != m_ins.end() && "Pin with specified name not found!");
-    return **it;
+    return it != m_ins.end() ? &**it : nullptr;
 }
 
-Pin& Node::outPin(const PinUID& uid)
+Pin* Node::outPin(const PinUID& uid)
 {
     auto it = std::find_if(
         m_outs.begin(), m_outs.end(), [&uid](const auto& p) {
             return p->getUid() == uid;
         });
-    assert(it != m_outs.end() && "Pin UID not found!");
-    return **it;
+    return it != m_outs.end() ? &**it : nullptr;
 }
 
-Pin& Node::outPin(const char* name)
+Pin* Node::outPin(const char* name)
 {
     auto it = std::find_if(
         m_outs.begin(), m_outs.end(), [&name](const auto& p) {
             return p->getName() == name;
         });
-    assert(it != m_outs.end() && "Pin with specified name not found!");
-    return **it;
+    return it != m_outs.end() ? &**it : nullptr;
 }
 
 void Node::calculate()

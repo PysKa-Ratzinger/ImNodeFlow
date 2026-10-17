@@ -1034,88 +1034,68 @@ public:
     void showOUT(const PinUID& uid, OutPinInfo<T> pin_info);
 
     /**
-     * @brief Get Input value from an InPin
-     * @details Get a reference to the value of an input pin, the value is stored in the output pin at the other end of the link.
-     * @tparam T Data type
-     * @param uid Unique identifier of the pin
-     * @return Const reference to the value
-     */
-    template <typename T>
-    const T& getInVal(const PinUID& uid);
-
-    /**
-     * @brief Get Input value from the first InPin with the specified name
-     * @details Get a reference to the value of an input pin, the value is stored in the output pin at the other end of the link.
-     * @tparam T Data type
-     * @param name Name of the pin
-     * @return Const reference to the value
-     */
-    template <typename T>
-    const T& getInVal(const char* name);
-
-    /**
      * @brief Get generic reference to input pin
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
-    Pin& inPin(const PinUID& uid);
+    Pin* inPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to input pin with the specified name
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
-    Pin& inPin(const char* name);
+    Pin* inPin(const char* name);
 
     /**
      * @brief Get generic reference to output pin
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
-    Pin& outPin(const PinUID& uid);
+    Pin* outPin(const PinUID& uid);
 
     /**
-     * @brief Get generic reference to output pin
-     * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @brief Get generic reference to output pin of the same name
+     * @param name Unique identifier of the pin
+     * @return Pointer to the pin, if it exists
      */
-    Pin& outPin(const char* uid);
+    Pin* outPin(const char* name);
 
     /**
      * @brief Get reference to input pin
-     * @tparam Underlying type of the input pin
+     * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    InPin<T>& inPin(const PinUID& uid);
+    InPin<T>* inPin(const PinUID& uid);
 
     /**
      * @brief Get reference to input pin with the specified name
-     * @tparam Underlying type of the input pin
+     * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    InPin<T>& inPin(const char* name);
+    InPin<T>* inPin(const char* name);
 
     /**
      * @brief Get generic reference to output pin
-     * @tparam Underlying type of the output pin
+     * @tparam T Type of the data the pin will handle
      * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    OutPin<T>& outPin(const PinUID& uid);
+    OutPin<T>* outPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to output pin with the specified name
-     * @tparam Underlying type of the output pin
-     * @param uid Unique identifier of the pin
-     * @return Reference to the pin
+     * @tparam T Type of the data the pin will handle
+     * @param name Unique identifier of the pin
+     * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    OutPin<T>& outPin(const char* name);
+    OutPin<T>* outPin(const char* name);
 
     /**
      * @brief Get internal input pins list
@@ -1156,6 +1136,12 @@ public:
      * @brief Get if node must be deleted
      */
     [[nodiscard]] bool toDestroy() const { return m_destroyed; }
+
+    /**
+     * @brief Returns whether or not the house was hovering in the last
+     * update
+     */
+    bool isHovered() const { return m_is_hovered; }
 
     /**
      * @brief Get node's UID
@@ -1307,12 +1293,6 @@ public:
         m_provisionallySelected = m_provisionallySelectedNext;
         m_provisionallySelectedNext = false;
     }
-
-    /**
-     * @brief Returns whether or not the house was hovering in the last
-     * update
-     */
-    bool isHovered() const { return m_is_hovered; }
 
     /**
      * @brief Have every pin calculate their next output value
@@ -1739,7 +1719,7 @@ public:
      * @brief Get value carried by the connected link
      * @return Reference to the value of the connected OutPin. Or the default value if not connected
      */
-    const T& val();
+    const T& value();
 
 private:
     T m_emptyVal;
@@ -1829,7 +1809,7 @@ public:
      * @brief Get output value
      * @return Const reference to the internal value of the pin
      */
-    const T& val();
+    const T& value();
 
     /**
      * @brief Get pin's data type (aka: \<T>)

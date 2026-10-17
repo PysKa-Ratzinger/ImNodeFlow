@@ -249,45 +249,35 @@ void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 }
 
 template <typename T>
-const T&
-Node::getInVal(const PinUID& uid)
-{
-    return this->inPin<T>(uid).val();
-}
-
-template <typename T>
-const T&
-Node::getInVal(const char* name)
-{
-    return this->inPin<T>(name).val();
-}
-
-template <typename T>
-InPin<T>&
+InPin<T>*
 Node::inPin(const PinUID& uid)
 {
-    return this->inPin(uid).toIn<T>();
+    auto* pin = this->inPin(uid);
+    return pin ? &pin->toIn<T>() : nullptr;
 }
 
 template <typename T>
-InPin<T>&
+InPin<T>*
 Node::inPin(const char* name)
 {
-    return this->inPin(name).toIn<T>();
+    auto* pin = this->inPin(name);
+    return pin ? &pin->toIn<T>() : nullptr;
 }
 
 template <typename T>
-OutPin<T>&
+OutPin<T>*
 Node::outPin(const PinUID& uid)
 {
-    return this->outPin(uid).toOut<T>();
+    auto* pin = this->inPin(uid);
+    return pin ? &pin->toIn<T>() : nullptr;
 }
 
 template <typename T>
-OutPin<T>&
+OutPin<T>*
 Node::outPin(const char* name)
 {
-    return this->outPin(name).toOut<T>();
+    auto* pin = this->inPin(name);
+    return pin ? &pin->toIn<T>() : nullptr;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -349,7 +339,7 @@ void InPin<T>::calculate([[maybe_unused]] Node& node)
         m_valNext = m_accumulatorOp(
             first,
             m_valNext,
-            link->outPin().template toOut<T>().val());
+            link->outPin().template toOut<T>().value());
         first = false;
     }
 }
@@ -362,7 +352,7 @@ void InPin<T>::prime()
 
 template <class T>
 const T&
-InPin<T>::val()
+InPin<T>::value()
 {
     return m_val;
 }
@@ -411,7 +401,7 @@ void OutPin<T>::setNextValue(T next_value)
 
 template <class T>
 const T&
-OutPin<T>::val()
+OutPin<T>::value()
 {
     return m_val;
 }
