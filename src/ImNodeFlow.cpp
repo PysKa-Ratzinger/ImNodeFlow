@@ -14,7 +14,7 @@ void Link::update()
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
         m_selected = false;
 
-    if (smart_bezier_collider(ImGui::GetMousePos(), start, end, 2.5)) {
+    if (detail::smart_bezier_collider(ImGui::GetMousePos(), start, end, 2.5)) {
         m_hovered = true;
         thickness = m_left->getStyle()->extra.link_hovered_thickness;
         if (mouseClickState) {
@@ -26,12 +26,12 @@ void Link::update()
     }
 
     if (m_selected)
-        smart_bezier(
+        detail::smart_bezier(
             start,
             end,
             m_left->getStyle()->extra.outline_color,
             thickness + m_left->getStyle()->extra.link_selected_outline_thickness);
-    smart_bezier(start, end, m_left->getStyle()->color, thickness);
+    detail::smart_bezier(start, end, m_left->getStyle()->color, thickness);
 
     if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false))
         m_right->deleteLink();
@@ -374,14 +374,14 @@ void ImNodeFlow::update()
         m_dragOut = m_hovering;
     if (m_dragOut) {
         if (m_dragOut->getType() == PinType_Output)
-            smart_bezier(
+            detail::smart_bezier(
                 m_dragOut->pinPoint(),
                 ImGui::GetMousePos(),
                 m_dragOut->getStyle()->color,
                 m_dragOut->getStyle()
                     ->extra.link_dragged_thickness);
         else
-            smart_bezier(
+            detail::smart_bezier(
                 ImGui::GetMousePos(),
                 m_dragOut->pinPoint(),
                 m_dragOut->getStyle()->color,

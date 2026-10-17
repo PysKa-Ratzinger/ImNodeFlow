@@ -4,42 +4,46 @@
 
 namespace ImFlow {
 
-inline void
-smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness)
-{
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-    float distance = sqrt(pow((p2.x - p1.x), 2.f) + pow((p2.y - p1.y), 2.f));
-    float delta = distance * 0.45f;
-    if (p2.x < p1.x)
-        delta += 0.2f * (p1.x - p2.x);
-    // float vert = (p2.x < p1.x - 20.f) ? 0.062f * distance * (p2.y - p1.y) * 0.005f : 0.f;
-    float vert = 0.f;
-    ImVec2 p22 = p2 - ImVec2(delta, vert);
-    if (p2.x < p1.x - 50.f)
-        delta *= -1.f;
-    ImVec2 p11 = p1 + ImVec2(delta, vert);
-    dl->AddBezierCubic(p1, p11, p22, p2, color, thickness);
-}
+namespace detail {
 
-inline bool
-smart_bezier_collider(
-    const ImVec2& p,
-    const ImVec2& p1,
-    const ImVec2& p2,
-    float radius)
-{
-    float distance = sqrt(pow((p2.x - p1.x), 2.f) + pow((p2.y - p1.y), 2.f));
-    float delta = distance * 0.45f;
-    if (p2.x < p1.x)
-        delta += 0.2f * (p1.x - p2.x);
-    // float vert = (p2.x < p1.x - 20.f) ? 0.062f * distance * (p2.y - p1.y) * 0.005f : 0.f;
-    float vert = 0.f;
-    ImVec2 p22 = p2 - ImVec2(delta, vert);
-    if (p2.x < p1.x - 50.f)
-        delta *= -1.f;
-    ImVec2 p11 = p1 + ImVec2(delta, vert);
-    return ImProjectOnCubicBezier(p, p1, p11, p22, p2).Distance < radius;
-}
+    inline void
+    smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness)
+    {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        float distance = sqrt(pow((p2.x - p1.x), 2.f) + pow((p2.y - p1.y), 2.f));
+        float delta = distance * 0.45f;
+        if (p2.x < p1.x)
+            delta += 0.2f * (p1.x - p2.x);
+        // float vert = (p2.x < p1.x - 20.f) ? 0.062f * distance * (p2.y - p1.y) * 0.005f : 0.f;
+        float vert = 0.f;
+        ImVec2 p22 = p2 - ImVec2(delta, vert);
+        if (p2.x < p1.x - 50.f)
+            delta *= -1.f;
+        ImVec2 p11 = p1 + ImVec2(delta, vert);
+        dl->AddBezierCubic(p1, p11, p22, p2, color, thickness);
+    }
+
+    inline bool
+    smart_bezier_collider(
+        const ImVec2& p,
+        const ImVec2& p1,
+        const ImVec2& p2,
+        float radius)
+    {
+        float distance = sqrt(pow((p2.x - p1.x), 2.f) + pow((p2.y - p1.y), 2.f));
+        float delta = distance * 0.45f;
+        if (p2.x < p1.x)
+            delta += 0.2f * (p1.x - p2.x);
+        // float vert = (p2.x < p1.x - 20.f) ? 0.062f * distance * (p2.y - p1.y) * 0.005f : 0.f;
+        float vert = 0.f;
+        ImVec2 p22 = p2 - ImVec2(delta, vert);
+        if (p2.x < p1.x - 50.f)
+            delta *= -1.f;
+        ImVec2 p11 = p1 + ImVec2(delta, vert);
+        return ImProjectOnCubicBezier(p, p1, p11, p22, p2).Distance < radius;
+    }
+
+} // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
 // HANDLER
@@ -477,4 +481,4 @@ void OutPin<T>::deleteLink()
         m_links.end());
 }
 
-}
+} // namespace ImFlow

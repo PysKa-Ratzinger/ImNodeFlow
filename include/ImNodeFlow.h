@@ -20,36 +20,37 @@
 
 namespace ImFlow {
 
-// -----------------------------------------------------------------------------------------------------------------
-// HELPERS
+namespace detail {
 
-/**
- * @brief Draw a sensible bezier between two points
- * @param p1 Starting point
- * @param p2 Ending point
- * @param color Color of the curve
- * @param thickness Thickness of the curve
- */
-inline static void
-smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness);
+    /**
+     * @brief Draw a sensible bezier between two points
+     * @param p1 Starting point
+     * @param p2 Ending point
+     * @param color Color of the curve
+     * @param thickness Thickness of the curve
+     */
+    inline static void
+    smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness);
 
-/**
- * @brief Collider checker for smart_bezier
- * @details Projects the point "p" orthogonally onto the bezier curve and
- *	    checks if the distance is less than the given radius.
- * @param p Point to be tested
- * @param p1 Starting point of smart_bezier
- * @param p2 Ending point of smart_bezier
- * @param radius Lateral width of the hit box
- * @return [TRUE] if "p" is inside the collider
- *
- * Intended to be used in union with smart_bezier();
- */
-inline static bool smart_bezier_collider(
-    const ImVec2& p,
-    const ImVec2& p1,
-    const ImVec2& p2,
-    float radius);
+    /**
+     * @brief Collider checker for smart_bezier
+     * @details Projects the point "p" orthogonally onto the bezier curve and
+     *	    checks if the distance is less than the given radius.
+     * @param p Point to be tested
+     * @param p1 Starting point of smart_bezier
+     * @param p2 Ending point of smart_bezier
+     * @param radius Lateral width of the hit box
+     * @return [TRUE] if "p" is inside the collider
+     *
+     * Intended to be used in union with smart_bezier();
+     */
+    inline static bool smart_bezier_collider(
+        const ImVec2& p,
+        const ImVec2& p1,
+        const ImVec2& p2,
+        float radius);
+
+} // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
 // CLASSES PRE-DEFINITIONS
@@ -1486,7 +1487,8 @@ private:
     std::function<T()> m_behaviour;
     T m_val;
 };
-}
+
+} // namespace ImFlow
 
 #include "../src/ImNodeFlow.inl"
 
