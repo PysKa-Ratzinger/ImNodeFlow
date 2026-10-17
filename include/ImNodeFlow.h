@@ -1129,41 +1129,41 @@ public:
      * @brief Set node's uid
      * @param uid Node's unique identifier
      */
-    Node* setUID(NodeUID uid)
+    Node& setUID(NodeUID uid)
     {
         m_uid = uid;
-        return this;
+        return *this;
     }
 
     /**
      * @brief Set node's name
      * @param name New title
      */
-    Node* setTitle(const std::string& title)
+    Node& setTitle(const std::string& title)
     {
         m_title = title;
-        return this;
+        return *this;
     }
 
     /**
      * @brief Set node's position
      * @param pos Position in grid coordinates
      */
-    Node* setPos(const ImVec2& pos)
+    Node& setPos(const ImVec2& pos)
     {
         m_pos = pos;
         m_posTarget = pos;
-        return this;
+        return *this;
     }
 
     /**
      * @brief Set node's style
      * @param style New style
      */
-    Node* setStyle(NodeStyle style)
+    Node& setStyle(NodeStyle style)
     {
         m_style = std::move(style);
-        return this;
+        return *this;
     }
 
     /**
@@ -1172,10 +1172,10 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    Node* selected(bool state)
+    Node& selected(bool state)
     {
         m_selectedNext = state;
-        return this;
+        return *this;
     }
 
     /**
@@ -1313,10 +1313,10 @@ public:
      * @brief Custom render function to override Pin appearance
      * @param r Function or lambda expression with new ImGui rendering
      */
-    Pin* renderer(std::function<void(Pin* p)> r)
+    Pin& renderer(std::function<void(Pin* p)> r)
     {
         m_renderer = std::move(r);
-        return this;
+        return *this;
     }
 
     /**
@@ -1638,10 +1638,10 @@ public:
      * @details Used to define the pin behaviour. This is what gets the data from the parent's inputs, and applies the needed logic.
      * @param func Function or lambda expression used to calculate output value
      */
-    OutPin<T>* behaviour(std::function<T(Node&)> func)
+    OutPin<T>& behaviour(std::function<T(Node&)> func)
     {
         m_behaviour = std::move(func);
-        return this;
+        return *this;
     }
 
     /**
