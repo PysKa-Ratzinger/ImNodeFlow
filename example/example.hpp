@@ -270,8 +270,24 @@ struct NodeEditor {
         }
 
         for (int i = 0; i < notGateChain.size(); i++) {
-            notGateChain.at(i)->outPin("OUT")->linkTo(
-                *notGateChain.at((i + 1) % notGateChain.size())->inPin("IN"));
+            auto& curr_gate = *notGateChain.at(i);
+            auto& next_gate = *notGateChain.at((i + 1) % notGateChain.size());
+
+            curr_gate.outPin("OUT")->linkTo(*next_gate.inPin("IN"));
+
+            // This is required pre-processing to stabilize the clock. Because
+            // each gate only has influence on the next gate on each iteration,
+            // if they all start in their default state, they will all flip
+            // into an ON state, and the next iteration, they will all flip
+            // into an OFF state.
+            //
+            // So, when we create a connection between pins, we can
+            // programmatically propagate the signal just to stabilize the
+            // clock. This only needs to be done once, here.
+            curr_gate.calculate();
+            curr_gate.prime();
+            next_gate.calculate();
+            next_gate.prime();
         }
     }
 
