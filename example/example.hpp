@@ -156,14 +156,33 @@ struct NodeEditor {
     {
         mINF.setSize({ width, height });
         mINF.setSize({ width, height });
-        mINF.rightClickPopUpContent([](auto* node) -> void {
+        mINF.rightClickPopUpContent([this](ImFlow::Node* node, ImVec2 mouse_click_pos) -> void {
             if (node != nullptr) {
                 ImGui::Text(
                     "you have right-clicked on [%s]",
                     node->getName().c_str());
             } else {
-                ImGui::TextUnformatted(
-                    "you have right-clicked :)");
+                bool should_close = false;
+                if (ImGui::Button("SimpleSum")) {
+                    mINF.emplaceNode<SimpleSum>(mouse_click_pos);
+                    should_close = true;
+                }
+                if (ImGui::Button("ResultNode")) {
+                    mINF.emplaceNode<ResultNode>(mouse_click_pos);
+                    should_close = true;
+                }
+                if (ImGui::Button("MultipleInputAdder")) {
+                    mINF.emplaceNode<MultipleInputAdder>(mouse_click_pos);
+                    should_close = true;
+                }
+                if (ImGui::Button("CollapsingNode")) {
+                    mINF.emplaceNode<CollapsingNode>(mouse_click_pos);
+                    should_close = true;
+                }
+
+                if (should_close) {
+                    ImGui::CloseCurrentPopup();
+                }
             }
         });
 

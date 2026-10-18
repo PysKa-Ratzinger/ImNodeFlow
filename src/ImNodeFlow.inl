@@ -129,13 +129,18 @@ Node& ImNodeFlow::emplaceNodeAt(const ImVec2& screen_coords, Params&&... args)
 {
     return placeNodeAt(
         screen_coords,
-        std::make_unique<T>(std::forward<Params>(args)...));
+        NodeInfo {
+            .behaviour = std::make_unique<T>(std::forward<Params>(args)...),
+        });
 }
 
 template <typename T, typename... Params>
 Node& ImNodeFlow::emplaceNodeOnMouse(Params&&... args)
 {
-    return placeNode(std::make_unique<T>(std::forward<Params>(args)...));
+    return placeNode(
+        NodeInfo {
+            .behaviour = std::make_unique<T>(std::forward<Params>(args)...),
+        });
 }
 
 // -----------------------------------------------------------------------------------------------------------------

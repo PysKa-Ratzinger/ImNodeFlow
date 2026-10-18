@@ -78,7 +78,7 @@ namespace detail {
 } // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
-// CLASSES PRE-DEFINITIONS
+// FORWARD DECLARATIONS
 
 template <typename T>
 class InPin;
@@ -88,6 +88,11 @@ class Pin;
 class INodeBehaviour;
 class Node;
 class ImNodeFlow;
+
+// -----------------------------------------------------------------------------------------------------------------
+// CLASSES PRE-DEFINITIONS
+
+using right_click_popup_handler_t = std::function<void(Node* node, ImVec2 mouse_click_pos)>;
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
@@ -666,7 +671,7 @@ public:
      * @details Sets the content of a pop-up that can be displayed when right-clicking on the grid.
      * @param content Function or Lambda containing only the contents of the pop-up and the subsequent logic
      */
-    void rightClickPopUpContent(std::function<void(Node* node)> content)
+    void rightClickPopUpContent(right_click_popup_handler_t content)
     {
         m_rightClickPopUp = std::move(content);
     }
@@ -845,9 +850,10 @@ private:
     std::function<void(Pin* dragged)> m_droppedLinkPopUp;
     ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
     Pin* m_droppedLinkLeft = nullptr;
-    std::function<void(Node* node)> m_rightClickPopUp;
+    right_click_popup_handler_t m_rightClickPopUp;
     std::function<void(const ImVec2&)> m_dragdropTarget;
     Node* m_hoveredNodeAux = nullptr;
+    ImVec2 m_mouse_pos_when_popup_opened;
 
     Node* m_hoveredNode = nullptr;
     bool m_draggingNode = false, m_draggingNodeNext = false;
