@@ -1,5 +1,7 @@
 #include "ImNodeFlow.h"
 
+#include "imgui_bezier_items.h"
+
 #include <imgui_internal.h>
 
 #include <algorithm>
