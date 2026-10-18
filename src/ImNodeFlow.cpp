@@ -58,7 +58,7 @@ auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
 // -----------------------------------------------------------------------------------------------------------------
 // PIN
 
-void Pin::update()
+void Pin::update(bool* out_hovering)
 {
     if (!m_renderer) {
         ImGui::SetCursorPos(m_pos);
@@ -71,23 +71,21 @@ void Pin::update()
 
     m_size = ImGui::GetItemRectSize();
 
+    bool is_hovering = false;
+
     if (!m_renderer) {
         drawDecoration();
-        drawSocket();
+        drawSocket(&is_hovering);
     }
 
-    if (ImGui::IsItemHovered()) {
-        auto& ctx = m_ctx.get();
+    is_hovering = is_hovering || ImGui::IsItemHovered();
 
-        ctx.hovering(this);
-        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
-            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
-            ctx.dragging(this);
-        }
+    if (out_hovering != nullptr) {
+        *out_hovering = is_hovering;
     }
 }
 
-void Pin::drawSocket()
+void Pin::drawSocket(bool* out_hovering_socket)
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImVec2 tl = pinPoint() - ImVec2(m_style.socket_radius, m_style.socket_radius);
@@ -116,8 +114,8 @@ void Pin::drawSocket()
                 m_style.socket_thickness);
     }
 
-    if (ImGui::IsMouseHoveringRect(tl, br)) {
-        m_ctx.get().hovering(this);
+    if (out_hovering_socket != nullptr) {
+        *out_hovering_socket = ImGui::IsMouseHoveringRect(tl, br);
     }
 }
 
@@ -209,10 +207,10 @@ void DynamicPin::refresh()
     this->m_ttl = 1;
 }
 
-void DynamicPin::update()
+void DynamicPin::update(bool* out_hovering)
 {
     m_ttl = m_ttl > 0 ? m_ttl - 1 : m_ttl;
-    this->pin().update();
+    this->pin().update(out_hovering);
 }
 
 Pin& DynamicPin::pin()
@@ -511,7 +509,6 @@ void Node::update()
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
-    bool mouseClickState = ctx.getSingleUseClick(ImGuiMouseButton_Left);
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
     ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
     ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
@@ -529,16 +526,26 @@ void Node::update()
     float headerH = ImGui::GetItemRectSize().y;
     float titleW = ImGui::GetItemRectSize().x;
 
+    Pin* hovered_pin = nullptr;
+
     // Inputs
     if (!m_ins.empty() || !m_dynamicIns.empty()) {
         ImGui::BeginGroup();
         for (auto& p : m_ins) {
             p->setPos(ImGui::GetCursorPos());
-            p->update();
+            bool is_hovering = false;
+            p->update(&is_hovering);
+            if (is_hovering && hovered_pin == nullptr) {
+                hovered_pin = &*p;
+            }
         }
         for (auto& dyn_pin : m_dynamicIns) {
             dyn_pin.pin().setPos(ImGui::GetCursorPos());
-            dyn_pin.update();
+            bool is_hovering = false;
+            dyn_pin.update(&is_hovering);
+            if (is_hovering && hovered_pin == nullptr) {
+                hovered_pin = &dyn_pin.pin();
+            }
         }
         ImGui::EndGroup();
         ImGui::SameLine();
@@ -595,7 +602,11 @@ void Node::update()
                 (m_pos + ImVec2(titleW - p->calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
-        p->update();
+        bool is_hovering = false;
+        p->update(&is_hovering);
+        if (is_hovering && hovered_pin == nullptr) {
+            hovered_pin = &*p;
+        }
     }
     for (auto& dyn_pin : m_dynamicOuts) {
         // FIXME: This looks horrible
@@ -607,7 +618,11 @@ void Node::update()
                 (m_pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
-        dyn_pin.update();
+        bool is_hovering = false;
+        dyn_pin.update(&is_hovering);
+        if (is_hovering && hovered_pin == nullptr) {
+            hovered_pin = &dyn_pin.pin();
+        }
     }
 
     ImGui::EndGroup();
@@ -652,6 +667,14 @@ void Node::update()
         m_style.radius,
         0,
         thickness);
+
+    if (hovered_pin != nullptr) {
+        ctx.hovering(hovered_pin);
+        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
+            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
+            ctx.dragging(hovered_pin);
+        }
+    }
 
     if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {
         setSelected(false);

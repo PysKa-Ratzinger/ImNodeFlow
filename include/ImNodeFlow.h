@@ -379,7 +379,7 @@ public:
     explicit DynamicPin(std::unique_ptr<Pin> pin);
 
     void refresh();
-    void update();
+    void update(bool* out_hovering);
     Pin& pin();
     const Pin& pin() const;
     [[nodiscard]] bool isStale() const;
@@ -1357,13 +1357,17 @@ public:
     /**
      * @brief Main loop of the pin
      * @details Updates position, hovering and dragging status, and renders the pin. Must be called each frame.
+     * @param out_hovering When not null, it receives the value of whether the
+     * mouse is hovering over the pin
      */
-    void update();
+    void update(bool* out_hovering);
 
     /**
      * @brief Draw default pin's socket
+     * @param out_hovering_socket When not null, receives whether the mouse is
+     * hovering over the pin's socket
      */
-    void drawSocket();
+    void drawSocket(bool* out_hovering_socket);
 
     /**
      * @brief Draw default pin's decoration (border, bg, and hover overlay)
