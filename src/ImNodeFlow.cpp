@@ -1056,11 +1056,10 @@ void ImNodeFlow::update()
     // Right-click PopUp
     if (m_rightClickPopUp && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && ImGui::IsWindowHovered()) {
         m_hoveredNodeAux = m_hoveredNode;
-        m_mouse_pos_when_popup_opened = ImGui::GetMousePos();
         ImGui::OpenPopup("RightClickPopUp");
     }
     if (ImGui::BeginPopup("RightClickPopUp")) {
-        m_rightClickPopUp(m_hoveredNodeAux, m_mouse_pos_when_popup_opened);
+        m_rightClickPopUp(m_hoveredNodeAux);
         ImGui::EndPopup();
     }
 

@@ -92,7 +92,7 @@ class ImNodeFlow;
 // -----------------------------------------------------------------------------------------------------------------
 // CLASSES PRE-DEFINITIONS
 
-using right_click_popup_handler_t = std::function<void(Node* node, ImVec2 mouse_click_pos)>;
+using right_click_popup_handler_t = std::function<void(Node* node)>;
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
@@ -853,7 +853,6 @@ private:
     right_click_popup_handler_t m_rightClickPopUp;
     std::function<void(const ImVec2&)> m_dragdropTarget;
     Node* m_hoveredNodeAux = nullptr;
-    ImVec2 m_mouse_pos_when_popup_opened;
 
     Node* m_hoveredNode = nullptr;
     bool m_draggingNode = false, m_draggingNodeNext = false;

@@ -148,6 +148,48 @@ public:
     }
 };
 
+class NotGate : public ImFlow::INodeBehaviour {
+public:
+    void setup(ImFlow::Node& node) override
+    {
+        node.setTitle("Not");
+        node.setStyle(ImFlow::NodeStyles::red);
+        node.addIN<bool>({
+            .name = "IN",
+            .default_value = false,
+            .strat = ImFlow::PinConnStrat_AllowMultiplePreferOldest,
+            .accumulate_op =
+                [](bool first, bool init, bool new_input) -> bool {
+                return first ? new_input : init | new_input;
+            },
+        });
+        node.addOUT<bool>({
+            .name = "OUT",
+            .behaviour = [this](ImFlow::Node& node) -> int {
+                return !node.inPin<bool>("IN")->value();
+            },
+        });
+    }
+
+    void draw(ImFlow::Node& node) override
+    {
+        auto& inPin = *node.inPin<bool>("IN");
+        auto& outPin = *node.outPin<bool>("OUT");
+        if (inPin.value()) {
+            inPin.getStyle() = ImFlow::PinStyles::green;
+            outPin.getStyle() = ImFlow::PinStyles::red;
+        } else {
+            inPin.getStyle() = ImFlow::PinStyles::red;
+            outPin.getStyle() = ImFlow::PinStyles::green;
+        }
+    }
+
+    std::unique_ptr<ImFlow::INodeBehaviour> clone() override
+    {
+        return std::make_unique<NotGate>();
+    }
+};
+
 /* Node editor that sets up the grid to place nodes */
 struct NodeEditor {
     ImFlow::ImNodeFlow mINF;
@@ -156,27 +198,32 @@ struct NodeEditor {
     {
         mINF.setSize({ width, height });
         mINF.setSize({ width, height });
-        mINF.rightClickPopUpContent([this](ImFlow::Node* node, ImVec2 mouse_click_pos) -> void {
+        mINF.rightClickPopUpContent([this](ImFlow::Node* node) -> void {
             if (node != nullptr) {
                 ImGui::Text(
                     "you have right-clicked on [%s]",
                     node->getName().c_str());
             } else {
                 bool should_close = false;
+                ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
                 if (ImGui::Button("SimpleSum")) {
-                    mINF.emplaceNode<SimpleSum>(mouse_click_pos);
+                    mINF.emplaceNodeAt<SimpleSum>(mouse_screen_pos);
                     should_close = true;
                 }
                 if (ImGui::Button("ResultNode")) {
-                    mINF.emplaceNode<ResultNode>(mouse_click_pos);
+                    mINF.emplaceNodeAt<ResultNode>(mouse_screen_pos);
                     should_close = true;
                 }
                 if (ImGui::Button("MultipleInputAdder")) {
-                    mINF.emplaceNode<MultipleInputAdder>(mouse_click_pos);
+                    mINF.emplaceNodeAt<MultipleInputAdder>(mouse_screen_pos);
                     should_close = true;
                 }
                 if (ImGui::Button("CollapsingNode")) {
-                    mINF.emplaceNode<CollapsingNode>(mouse_click_pos);
+                    mINF.emplaceNodeAt<CollapsingNode>(mouse_screen_pos);
+                    should_close = true;
+                }
+                if (ImGui::Button("Not Gate")) {
+                    mINF.emplaceNodeAt<NotGate>(mouse_screen_pos);
                     should_close = true;
                 }
 
@@ -205,6 +252,27 @@ struct NodeEditor {
 
         n1.outPin("Out")->linkTo(*collapsingNode.inPin("A"));
         n2.outPin("Out")->linkTo(*collapsingNode.inPin("B"));
+
+        // An example of how to make a digital circuit for a clock using only
+        // not gates.
+        // If this flashes too fast, the frame rate may be too high. Check you
+        // have VSync enabled, or as a last resource, add more gates to slow
+        // down the clock.
+        std::vector<ImFlow::Node*> notGateChain;
+
+        for (int y = 0; y < 3; y++) {
+            for (int x = 0; x < 3; x++) {
+                notGateChain.emplace_back(&mINF.emplaceNode<NotGate>({
+                    float(50 + x * 90),
+                    float(350 + y * 50),
+                }));
+            }
+        }
+
+        for (int i = 0; i < notGateChain.size(); i++) {
+            notGateChain.at(i)->outPin("OUT")->linkTo(
+                *notGateChain.at((i + 1) % notGateChain.size())->inPin("IN"));
+        }
     }
 
     void set_size(ImVec2 d) { mINF.setSize(d); }
