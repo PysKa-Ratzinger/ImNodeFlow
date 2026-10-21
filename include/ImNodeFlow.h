@@ -996,18 +996,6 @@ public:
     OutPin<T>* outPin(const char* name);
 
     /**
-     * @brief Get internal input pins list
-     * @return Const reference to node's internal list
-     */
-    const std::vector<std::unique_ptr<Pin>>& getIns() { return m_ins; }
-
-    /**
-     * @brief Get internal output pins list
-     * @return Const reference to node's internal list
-     */
-    const std::vector<std::unique_ptr<Pin>>& getOuts() { return m_outs; }
-
-    /**
      * @brief Delete itself
      */
     void destroy();
@@ -1015,7 +1003,7 @@ public:
     /*
      * @brief Get if node must be deleted
      */
-    [[nodiscard]] bool toDestroy() const { return m_destroyed; }
+    [[nodiscard]] bool toDestroy() const;
 
     /**
      * @brief Get hovered status
@@ -1027,118 +1015,91 @@ public:
      * @brief Get node's UID
      * @return Node's unique identifier
      */
-    [[nodiscard]] NodeUID getUID() const { return m_uid; }
+    [[nodiscard]] NodeUID getUID() const;
 
     /**
      * @brief Get node name
      * @return Const reference to the node's name
      */
-    const std::string& getName() { return m_title; }
+    const std::string& getName() const;
 
     /**
      * @brief Get node size
      * @return Const reference to the node's size
      */
-    const ImVec2& getSize() { return m_size; }
+    const ImVec2& getSize() const;
 
     /**
      * @brief Get node size
      * @return Const reference to the node's size
      */
-    const ImVec2& getFullSize() { return m_fullSize; }
+    const ImVec2& getFullSize() const;
 
     /**
      * @brief Get node position
      * @return Const reference to the node's position
      */
-    const ImVec2& getPos() { return m_pos; }
+    const ImVec2& getPos() const;
 
     /**
      * @brief Get node position
      * @return Const reference to the node's position
      */
-    ImVec2 getTLPos()
-    {
-        return m_pos - ImVec2 { m_style.padding.x, m_style.padding.y };
-    }
+    ImVec2 getTLPos() const;
 
     /**
      * @brief Get node's style
      * @return Shared pointer to the node's style
      */
-    const NodeStyle& getStyle() { return m_style; }
+    const NodeStyle& getStyle() const;
 
     /**
      * @brief Get selected status
      * @return [TRUE] if the node is selected
      */
-    [[nodiscard]] bool isSelected() const
-    {
-        return m_selected || m_provisionallySelected;
-    }
+    [[nodiscard]] bool isSelected() const;
 
     /**
      * @brief Get dragged status
      * @return [TRUE] if the node is being dragged
      */
-    [[nodiscard]] bool isDragged() const { return m_dragged; }
+    [[nodiscard]] bool isDragged() const;
 
     /**
      * @brief Get Indestructable status
      * @return [TRUE] if the node is Indestructable
      */
-    [[nodiscard]] bool isIndestructable() const { return m_indestructable; }
+    [[nodiscard]] bool isIndestructable() const;
 
     /**
      * @brief Set node's uid
      * @param uid Node's unique identifier
      */
-    Node& setUID(NodeUID uid)
-    {
-        m_uid = uid;
-        return *this;
-    }
+    Node& setUID(NodeUID uid);
 
     /**
      * @brief Set node's name
      * @param name New title
      */
-    Node& setTitle(const std::string& title)
-    {
-        m_title = title;
-        return *this;
-    }
+    Node& setTitle(const std::string& title);
 
     /**
      * @brief Set node's position
      * @param pos Position in grid coordinates
      */
-    Node& setPos(const ImVec2& pos)
-    {
-        m_pos = pos;
-        m_posTarget = pos;
-        return *this;
-    }
+    Node& setPos(const ImVec2& pos);
 
     /**
      * @brief Set node's style
      * @param style New style
      */
-    Node& setStyle(NodeStyle style)
-    {
-        m_style = std::move(style);
-        return *this;
-    }
+    Node& setStyle(NodeStyle style);
 
     /**
      * @brief Set node's style
      * @param style New style
      */
-    Node& setIndestructable(bool indestruct)
-    {
-        m_indestructable = indestruct;
-        return *this;
-    }
+    Node& setIndestructable(bool indestruct);
 
     /**
      * @brief Set selected status
@@ -1146,11 +1107,7 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    Node& setSelected(bool state)
-    {
-        m_selectedNext = state;
-        return *this;
-    }
+    Node& setSelected(bool state);
 
     /**
      * @brief Set provisionally selected status
@@ -1158,21 +1115,12 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    Node& setProvisionallySelected(bool state)
-    {
-        m_provisionallySelectedNext = state;
-        return *this;
-    }
+    Node& setProvisionallySelected(bool state);
 
     /**
      * @brief Update the isSelected status of the node
      */
-    void updatePublicStatus()
-    {
-        m_selected = m_selectedNext;
-        m_provisionallySelected = m_provisionallySelectedNext;
-        m_provisionallySelectedNext = false;
-    }
+    void updatePublicStatus();
 
     /**
      * @brief Have every pin calculate their next output value
@@ -1185,30 +1133,10 @@ public:
      */
     void prime();
 
+    struct impl_t;
+
 private:
-    std::reference_wrapper<ImNodeFlow> m_ctx;
-
-    NodeUID m_uid = 0;
-    std::string m_title;
-    ImVec2 m_pos;
-    ImVec2 m_posTarget;
-    ImVec2 m_size;
-    ImVec2 m_fullSize;
-    NodeStyle m_style;
-    bool m_selected = false;
-    bool m_selectedNext = false;
-    bool m_provisionallySelected = false;
-    bool m_provisionallySelectedNext = false;
-    bool m_dragged = false;
-    bool m_destroyed = false;
-    bool m_indestructable = false;
-
-    std::unique_ptr<INodeBehaviour> m_impl;
-
-    std::vector<std::unique_ptr<Pin>> m_ins;
-    std::vector<DynamicPin> m_dynamicIns;
-    std::vector<std::unique_ptr<Pin>> m_outs;
-    std::vector<DynamicPin> m_dynamicOuts;
+    std::unique_ptr<impl_t> m_impl;
 };
 
 // -----------------------------------------------------------------------------------------------------------------

@@ -401,169 +401,287 @@ Node& ImNodeFlow::addNodeLambda(
 // BASE NODE
 
 Node::Node(ImNodeFlow& ctx, ImVec2 pos, NodeUID uid, NodeInfo node_info)
-    : m_ctx(ctx)
-    , m_uid(uid)
-    , m_pos(pos)
-    , m_posTarget(pos)
-    , m_style(std::move(node_info.style))
-    , m_impl(std::move(node_info.behaviour))
+    : m_impl(std::make_unique<Node::impl_t>(Node::impl_t {
+          .ctx { ctx },
+          .uid { uid },
+          .pos { pos },
+          .posTarget { pos },
+          .style { std::move(node_info.style) },
+          .behaviour { std::move(node_info.behaviour) },
+      }))
 {
-    if (m_impl) {
-        m_impl->setup(*this);
+    if (m_impl->behaviour) {
+        m_impl->behaviour->setup(*this);
     }
 }
 
 void Node::destroy()
 {
-    if (m_impl) {
-        m_impl.reset();
+    if (m_impl->behaviour) {
+        m_impl->behaviour.reset();
     }
-    m_destroyed = true;
+    m_impl->destroyed = true;
+}
+
+bool Node::toDestroy() const
+{
+    return m_impl->destroyed;
 }
 
 bool Node::isHovered()
 {
-    ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
-    ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
+    ImVec2 paddingTL = { m_impl->style.padding.x, m_impl->style.padding.y };
+    ImVec2 paddingBR = { m_impl->style.padding.z, m_impl->style.padding.w };
     return ImGui::IsMouseHoveringRect(
-        m_ctx.get().grid2screen(m_pos - paddingTL),
-        m_ctx.get().grid2screen(m_pos + m_size + paddingBR));
+        m_impl->ctx.get().grid2screen(m_impl->pos - paddingTL),
+        m_impl->ctx.get().grid2screen(m_impl->pos + m_impl->size + paddingBR));
+}
+
+NodeUID Node::getUID() const
+{
+    return m_impl->uid;
+}
+
+const std::string& Node::getName() const
+{
+    return m_impl->title;
+}
+
+const ImVec2& Node::getSize() const
+{
+    return m_impl->size;
+}
+
+const ImVec2& Node::getFullSize() const
+{
+    return m_impl->fullSize;
+}
+
+const ImVec2& Node::getPos() const
+{
+    return m_impl->pos;
+}
+
+ImVec2 Node::getTLPos() const
+{
+    return m_impl->pos - ImVec2 { m_impl->style.padding.x, m_impl->style.padding.y };
+}
+
+const NodeStyle& Node::getStyle() const
+{
+    return m_impl->style;
+}
+
+bool Node::isSelected() const
+{
+    return m_impl->selected || m_impl->provisionallySelected;
+}
+
+bool Node::isDragged() const
+{
+    return m_impl->dragged;
+}
+
+bool Node::isIndestructable() const
+{
+    return m_impl->indestructable;
+}
+
+Node& Node::setUID(NodeUID uid)
+{
+    m_impl->uid = uid;
+    return *this;
+}
+
+Node& Node::setTitle(const std::string& title)
+{
+    m_impl->title = title;
+    return *this;
+}
+
+Node& Node::setPos(const ImVec2& pos)
+{
+    m_impl->pos = pos;
+    m_impl->posTarget = pos;
+    return *this;
+}
+
+Node& Node::setStyle(NodeStyle style)
+{
+    m_impl->style = std::move(style);
+    return *this;
+}
+
+Node& Node::setIndestructable(bool indestruct)
+{
+    m_impl->indestructable = indestruct;
+    return *this;
+}
+
+Node& Node::setSelected(bool state)
+{
+    m_impl->selectedNext = state;
+    return *this;
+}
+
+Node& Node::setProvisionallySelected(bool state)
+{
+    m_impl->provisionallySelectedNext = state;
+    return *this;
+}
+
+void Node::updatePublicStatus()
+{
+    m_impl->selected = m_impl->selectedNext;
+    m_impl->provisionallySelected = m_impl->provisionallySelectedNext;
+    m_impl->provisionallySelectedNext = false;
 }
 
 void Node::dropIN(const PinUID& uid)
 {
     auto iter = std::find_if(
-        m_ins.begin(), m_ins.end(), [&](auto const& pin) -> bool {
+        m_impl->ins.begin(), m_impl->ins.end(), [&](auto const& pin) -> bool {
             return pin->getUid() == uid;
         });
 
-    if (iter != m_ins.end()) {
-        m_ins.erase(iter);
+    if (iter != m_impl->ins.end()) {
+        m_impl->ins.erase(iter);
     }
 }
 
 void Node::dropIN(const char* name)
 {
-    m_ins.erase(
+    m_impl->ins.erase(
         std::remove_if(
-            m_ins.begin(),
-            m_ins.end(),
+            m_impl->ins.begin(),
+            m_impl->ins.end(),
             [&](auto const& pin) -> bool {
                 return pin->getName() == name;
             }),
-        m_ins.end());
+        m_impl->ins.end());
 }
 
 void Node::dropOUT(const PinUID& uid)
 {
     auto iter = std::find_if(
-        m_outs.begin(), m_outs.end(), [&uid](auto const& pin) -> bool {
+        m_impl->outs.begin(),
+        m_impl->outs.end(),
+        [&uid](auto const& pin) -> bool {
             return pin->getUid() == uid;
         });
 
-    if (iter != m_outs.end()) {
-        m_outs.erase(iter);
+    if (iter != m_impl->outs.end()) {
+        m_impl->outs.erase(iter);
     }
 }
 
 inline void
 Node::dropOUT(const char* name)
 {
-    m_outs.erase(
+    m_impl->outs.erase(
         std::remove_if(
-            m_outs.begin(),
-            m_outs.end(),
+            m_impl->outs.begin(),
+            m_impl->outs.end(),
             [&name](auto const& pin) -> bool {
                 return pin->getName() == name;
             }),
-        m_outs.end());
+        m_impl->outs.end());
 }
 
 Pin* Node::inPin(const PinUID& uid)
 {
-    auto it = std::find_if(m_ins.begin(), m_ins.end(), [&uid](const auto& p) {
-        return p->getUid() == uid;
-    });
-    return it == m_ins.end() ? nullptr : &**it;
+    auto it = std::find_if(
+        m_impl->ins.begin(),
+        m_impl->ins.end(),
+        [&uid](const auto& p) {
+            return p->getUid() == uid;
+        });
+    return it == m_impl->ins.end() ? nullptr : &**it;
 }
 
 Pin* Node::inPin(const char* name)
 {
     auto it = std::find_if(
-        m_ins.begin(), m_ins.end(), [&name](const auto& p) {
+        m_impl->ins.begin(),
+        m_impl->ins.end(),
+        [&name](const auto& p) {
             return p->getName() == name;
         });
-    return it == m_ins.end() ? nullptr : &**it;
+    return it == m_impl->ins.end() ? nullptr : &**it;
 }
 
 Pin* Node::outPin(const PinUID& uid)
 {
     auto it = std::find_if(
-        m_outs.begin(), m_outs.end(), [&uid](const auto& p) {
+        m_impl->outs.begin(),
+        m_impl->outs.end(),
+        [&uid](const auto& p) {
             return p->getUid() == uid;
         });
-    return it == m_outs.end() ? nullptr : &**it;
+    return it == m_impl->outs.end() ? nullptr : &**it;
 }
 
 Pin* Node::outPin(const char* name)
 {
     auto it = std::find_if(
-        m_outs.begin(), m_outs.end(), [&name](const auto& p) {
+        m_impl->outs.begin(),
+        m_impl->outs.end(),
+        [&name](const auto& p) {
             return p->getName() == name;
         });
-    return it == m_outs.end() ? nullptr : &**it;
+    return it == m_impl->outs.end() ? nullptr : &**it;
 }
 
 void Node::calculate()
 {
-    for (auto& pin : m_outs) {
+    for (auto& pin : m_impl->outs) {
         pin->calculate();
     }
-    for (auto& pin : m_dynamicOuts) {
+    for (auto& pin : m_impl->dynamicOuts) {
         pin.pin().calculate();
     }
-    for (auto& pin : m_ins) {
+    for (auto& pin : m_impl->ins) {
         pin->calculate();
     }
-    for (auto& pin : m_dynamicIns) {
+    for (auto& pin : m_impl->dynamicIns) {
         pin.pin().calculate();
     }
 }
 
 void Node::prime()
 {
-    for (auto& pin : m_outs) {
+    for (auto& pin : m_impl->outs) {
         pin->prime();
     }
-    for (auto& pin : m_dynamicOuts) {
+    for (auto& pin : m_impl->dynamicOuts) {
         pin.pin().prime();
     }
-    for (auto& pin : m_ins) {
+    for (auto& pin : m_impl->ins) {
         pin->prime();
     }
-    for (auto& pin : m_dynamicIns) {
+    for (auto& pin : m_impl->dynamicIns) {
         pin.pin().prime();
     }
 }
 
 void Node::update()
 {
-    auto& ctx = m_ctx.get();
+    auto& ctx = m_impl->ctx.get();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
-    ImVec2 paddingTL = { m_style.padding.x, m_style.padding.y };
-    ImVec2 paddingBR = { m_style.padding.z, m_style.padding.w };
+    ImVec2 paddingTL = { m_impl->style.padding.x, m_impl->style.padding.y };
+    ImVec2 paddingBR = { m_impl->style.padding.z, m_impl->style.padding.w };
 
     draw_list->ChannelsSetCurrent(1); // Foreground
-    ImGui::SetCursorScreenPos(offset + m_pos);
+    ImGui::SetCursorScreenPos(offset + m_impl->pos);
 
     ImGui::BeginGroup();
 
     // Header
     ImGui::BeginGroup();
-    ImGui::TextColored(m_style.header_title_color, "%s", m_title.c_str());
+    ImGui::TextColored(m_impl->style.header_title_color, "%s", m_impl->title.c_str());
     ImGui::Spacing();
     ImGui::EndGroup();
     float headerH = ImGui::GetItemRectSize().y;
@@ -572,9 +690,9 @@ void Node::update()
     Pin* hovered_pin = nullptr;
 
     // Inputs
-    if (!m_ins.empty() || !m_dynamicIns.empty()) {
+    if (!m_impl->ins.empty() || !m_impl->dynamicIns.empty()) {
         ImGui::BeginGroup();
-        for (auto& p : m_ins) {
+        for (auto& p : m_impl->ins) {
             p->setPos(ImGui::GetCursorPos());
             bool is_hovering = false;
             p->update(&is_hovering);
@@ -582,7 +700,7 @@ void Node::update()
                 hovered_pin = &*p;
             }
         }
-        for (auto& dyn_pin : m_dynamicIns) {
+        for (auto& dyn_pin : m_impl->dynamicIns) {
             dyn_pin.pin().setPos(ImGui::GetCursorPos());
             bool is_hovering = false;
             dyn_pin.update(&is_hovering);
@@ -597,26 +715,26 @@ void Node::update()
     // Content
     ImGui::BeginGroup();
 
-    if (m_impl) {
-        m_impl->draw(*this);
+    if (m_impl->behaviour) {
+        m_impl->behaviour->draw(*this);
     } else {
         ImGui::TextUnformatted("<no renderer provided>");
     }
 
     // Dynamic inputs stale check can only be done after the call to
-    // m_impl->draw() and before any call to DynamicPin::update()
-    m_dynamicIns.erase(
+    // behaviour->draw() and before any call to DynamicPin::update()
+    m_impl->dynamicIns.erase(
         std::remove_if(
-            m_dynamicIns.begin(),
-            m_dynamicIns.end(),
+            m_impl->dynamicIns.begin(),
+            m_impl->dynamicIns.end(),
             [](const auto& elem) -> bool { return elem.isStale(); }),
-        m_dynamicIns.end());
-    m_dynamicOuts.erase(
+        m_impl->dynamicIns.end());
+    m_impl->dynamicOuts.erase(
         std::remove_if(
-            m_dynamicOuts.begin(),
-            m_dynamicOuts.end(),
+            m_impl->dynamicOuts.begin(),
+            m_impl->dynamicOuts.end(),
             [](const auto& elem) -> bool { return elem.isStale(); }),
-        m_dynamicOuts.end());
+        m_impl->dynamicOuts.end());
 
     ImGui::Dummy(ImVec2(0.f, 0.f));
     ImGui::EndGroup();
@@ -624,25 +742,25 @@ void Node::update()
 
     // Outputs
     float maxW = 0.0f;
-    for (auto& p : m_outs) {
+    for (auto& p : m_impl->outs) {
         float w = p->calcWidth();
         if (w > maxW)
             maxW = w;
     }
-    for (auto& dyn_pin : m_dynamicOuts) {
+    for (auto& dyn_pin : m_impl->dynamicOuts) {
         float w = dyn_pin.pin().calcWidth();
         if (w > maxW)
             maxW = w;
     }
     ImGui::BeginGroup();
-    for (auto& p : m_outs) {
+    for (auto& p : m_impl->outs) {
         // FIXME: This looks horrible
-        if ((m_pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
+        if ((m_impl->pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
             p->setPos(
                 ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - p->calcWidth(), 0.f));
         else
             p->setPos(ImVec2(
-                (m_pos + ImVec2(titleW - p->calcWidth(), 0) + ctx.getGrid().scroll())
+                (m_impl->pos + ImVec2(titleW - p->calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         bool is_hovering = false;
@@ -651,14 +769,14 @@ void Node::update()
             hovered_pin = &*p;
         }
     }
-    for (auto& dyn_pin : m_dynamicOuts) {
+    for (auto& dyn_pin : m_impl->dynamicOuts) {
         // FIXME: This looks horrible
-        if ((m_pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
+        if ((m_impl->pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
             dyn_pin.pin().setPos(
                 ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - dyn_pin.pin().calcWidth(), 0.f));
         else
             dyn_pin.pin().setPos(ImVec2(
-                (m_pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + ctx.getGrid().scroll())
+                (m_impl->pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         bool is_hovering = false;
@@ -671,30 +789,30 @@ void Node::update()
     ImGui::EndGroup();
 
     ImGui::EndGroup();
-    m_size = ImGui::GetItemRectSize();
-    ImVec2 headerSize = ImVec2(m_size.x + paddingBR.x, headerH);
+    m_impl->size = ImGui::GetItemRectSize();
+    ImVec2 headerSize = ImVec2(m_impl->size.x + paddingBR.x, headerH);
 
     // Background
     draw_list->ChannelsSetCurrent(0);
     draw_list->AddRectFilled(
-        offset + m_pos - paddingTL,
-        offset + m_pos + m_size + paddingBR,
-        m_style.bg,
-        m_style.radius);
+        offset + m_impl->pos - paddingTL,
+        offset + m_impl->pos + m_impl->size + paddingBR,
+        m_impl->style.bg,
+        m_impl->style.radius);
     draw_list->AddRectFilled(
-        offset + m_pos - paddingTL,
-        offset + m_pos + headerSize,
-        m_style.header_bg,
-        m_style.radius,
+        offset + m_impl->pos - paddingTL,
+        offset + m_impl->pos + headerSize,
+        m_impl->style.header_bg,
+        m_impl->style.radius,
         ImDrawFlags_RoundCornersTop);
-    m_fullSize = m_size + paddingTL + paddingBR;
-    ImU32 col = m_style.border_color;
-    float thickness = m_style.border_thickness;
+    m_impl->fullSize = m_impl->size + paddingTL + paddingBR;
+    ImU32 col = m_impl->style.border_color;
+    float thickness = m_impl->style.border_thickness;
     ImVec2 ptl = paddingTL;
     ImVec2 pbr = paddingBR;
     if (this->isSelected()) {
-        col = m_style.border_selected_color;
-        thickness = m_style.border_selected_thickness;
+        col = m_impl->style.border_selected_color;
+        thickness = m_impl->style.border_selected_thickness;
     }
     if (thickness < 0.f) {
         ptl.x -= thickness / 2;
@@ -704,10 +822,10 @@ void Node::update()
         thickness *= -1.f;
     }
     draw_list->AddRect(
-        offset + m_pos - ptl,
-        offset + m_pos + m_size + pbr,
+        offset + m_impl->pos - ptl,
+        offset + m_impl->pos + m_impl->size + pbr,
         col,
-        m_style.radius,
+        m_impl->style.radius,
         0,
         thickness);
 
@@ -729,30 +847,30 @@ void Node::update()
 
     if (isHovered()) {
         bool onHeader = ImGui::IsMouseHoveringRect(
-            offset + m_pos - paddingTL, offset + m_pos + headerSize);
+            offset + m_impl->pos - paddingTL, offset + m_impl->pos + headerSize);
 
         ctx.hoveredNode(this);
         if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
             ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
             setSelected(true);
             if (onHeader) {
-                m_dragged = true;
+                m_impl->dragged = true;
                 ctx.draggingNode(true);
             }
         }
     }
 
-    if (m_dragged || (m_selected && ctx.isNodeDragged())) {
+    if (m_impl->dragged || (m_impl->selected && ctx.isNodeDragged())) {
         float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
-        m_posTarget += ctx.getScreenSpaceDelta();
+        m_impl->posTarget += ctx.getScreenSpaceDelta();
         // "Slam" The position
-        m_pos.x = round(m_posTarget.x / step) * step;
-        m_pos.y = round(m_posTarget.y / step) * step;
+        m_impl->pos.x = round(m_impl->posTarget.x / step) * step;
+        m_impl->pos.y = round(m_impl->posTarget.y / step) * step;
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            m_dragged = false;
+            m_impl->dragged = false;
             ctx.draggingNode(false);
-            m_posTarget = m_pos;
+            m_impl->posTarget = m_impl->pos;
         }
     }
     ImGui::PopID();

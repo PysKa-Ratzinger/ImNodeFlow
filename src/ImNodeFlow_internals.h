@@ -46,6 +46,32 @@ struct ImNodeFlow::impl_t {
     bool draggingCanvas = false;
 };
 
+struct Node::impl_t {
+    std::reference_wrapper<ImNodeFlow> ctx;
+
+    NodeUID uid = 0;
+    std::string title;
+    ImVec2 pos;
+    ImVec2 posTarget;
+    ImVec2 size;
+    ImVec2 fullSize;
+    NodeStyle style;
+    bool selected = false;
+    bool selectedNext = false;
+    bool provisionallySelected = false;
+    bool provisionallySelectedNext = false;
+    bool dragged = false;
+    bool destroyed = false;
+    bool indestructable = false;
+
+    std::unique_ptr<INodeBehaviour> behaviour;
+
+    std::vector<std::unique_ptr<Pin>> ins;
+    std::vector<DynamicPin> dynamicIns;
+    std::vector<std::unique_ptr<Pin>> outs;
+    std::vector<DynamicPin> dynamicOuts;
+};
+
 } // namespace ImFlow
 
 #endif // IM_NODE_FLOW_INTERNALS

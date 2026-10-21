@@ -2,6 +2,12 @@
 
 #include "ImNodeFlow.h"
 
+// FIXME: Remove this header
+// These public API inline utilities are included by the public API file,
+// and including the internal data structures introduces compile-time
+// overhead for the users of the library
+#include "ImNodeFlow_internals.h"
+
 #include <cassert>
 #include <cstdint>
 #include <memory>
@@ -80,16 +86,16 @@ template <typename T>
 InPin<T>&
 Node::addIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
-    m_ins.emplace_back(
-        std::make_unique<InPin<T>>(m_ctx, uid, this, std::move(pin_info)));
-    return m_ins.back()->toIn<T>();
+    m_impl->ins.emplace_back(
+        std::make_unique<InPin<T>>(m_impl->ctx, uid, this, std::move(pin_info)));
+    return m_impl->ins.back()->toIn<T>();
 }
 
 template <typename T>
 const T&
 Node::showIN(InPinInfo<T> pin_info)
 {
-    for (auto& dyn_pin : m_dynamicIns) {
+    for (auto& dyn_pin : m_impl->dynamicIns) {
         if (dyn_pin.pin().getName() == pin_info.name) {
             dyn_pin.refresh();
             // TODO: Update pin with new styles from pin_info
@@ -97,17 +103,17 @@ Node::showIN(InPinInfo<T> pin_info)
         }
     }
 
-    m_dynamicIns.emplace_back(
+    m_impl->dynamicIns.emplace_back(
         std::make_unique<InPin<T>>(
-            m_ctx, PinUID::generate(), this, std::move(pin_info)));
-    return m_dynamicIns.back().pin().toIn<T>().val();
+            m_impl->ctx, PinUID::generate(), this, std::move(pin_info)));
+    return m_impl->dynamicIns.back().pin().toIn<T>().val();
 }
 
 template <typename T>
 const T&
 Node::showIN(const PinUID& uid, InPinInfo<T> pin_info)
 {
-    for (auto& dyn_pin : m_dynamicIns) {
+    for (auto& dyn_pin : m_impl->dynamicIns) {
         if (dyn_pin.pin().getUid() == uid) {
             dyn_pin.refresh();
             // TODO: Update pin with new styles from pin_info
@@ -115,9 +121,9 @@ Node::showIN(const PinUID& uid, InPinInfo<T> pin_info)
         }
     }
 
-    m_dynamicIns.emplace_back(
-        std::make_unique<InPin<T>>(m_ctx, uid, this, std::move(pin_info)));
-    return m_dynamicIns.back().pin().toIn<T>().val();
+    m_impl->dynamicIns.emplace_back(
+        std::make_unique<InPin<T>>(m_impl->ctx, uid, this, std::move(pin_info)));
+    return m_impl->dynamicIns.back().pin().toIn<T>().val();
 }
 
 template <typename T>
@@ -131,16 +137,16 @@ template <typename T>
 OutPin<T>&
 Node::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 {
-    m_outs.emplace_back(
+    m_impl->outs.emplace_back(
         std::make_unique<OutPin<T>>(
-            m_ctx, uid, this, std::move(pin_info)));
-    return m_outs.back()->toOut<T>();
+            m_impl->ctx, uid, this, std::move(pin_info)));
+    return m_impl->outs.back()->toOut<T>();
 }
 
 template <typename T>
 void Node::showOUT(OutPinInfo<T> pin_info)
 {
-    for (auto& dyn_pin : m_dynamicOuts) {
+    for (auto& dyn_pin : m_impl->dynamicOuts) {
         if (dyn_pin.pin().getName() == pin_info.name) {
             dyn_pin.refresh();
             // TODO: Update pin with new styles from pin_info
@@ -150,15 +156,15 @@ void Node::showOUT(OutPinInfo<T> pin_info)
         }
     }
 
-    m_dynamicOuts.emplace_back(
+    m_impl->dynamicOuts.emplace_back(
         std::make_unique<OutPin<T>>(
-            m_ctx, PinUID::generate(), this, std::move(pin_info)));
+            m_impl->ctx, PinUID::generate(), this, std::move(pin_info)));
 }
 
 template <typename T>
 void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 {
-    for (auto& dyn_pin : m_dynamicOuts) {
+    for (auto& dyn_pin : m_impl->dynamicOuts) {
         if (dyn_pin.pin().getUid() == uid) {
             dyn_pin.refresh();
             // TODO: Update pin with new styles from pin_info
@@ -168,10 +174,10 @@ void Node::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
         }
     }
 
-    m_dynamicOuts.emplace_back(
+    m_impl->dynamicOuts.emplace_back(
         std::make_unique<OutPin<T>>(
-            m_ctx, uid, this, std::move(pin_info)));
-    m_dynamicOuts.back().pin().toOut<T>().behaviour(
+            m_impl->ctx, uid, this, std::move(pin_info)));
+    m_impl->dynamicOuts.back().pin().toOut<T>().behaviour(
         std::move(pin_info.behaviour));
 }
 
