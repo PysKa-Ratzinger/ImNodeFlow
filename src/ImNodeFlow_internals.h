@@ -4,6 +4,31 @@
 
 #include "ImNodeFlow.h"
 
+namespace ImFlow::detail {
+
+// -----------------------------------------------------------------------------------------------------------------
+// DYNAMIC PIN
+
+/**
+ * @brief A dynamic pin is a pin with a temporary lifetime, and will be marked
+ * for deletion if not refreshed before every update
+ */
+class DynamicPin {
+public:
+    explicit DynamicPin(std::unique_ptr<Pin> pin);
+
+    void refresh();
+    void update(bool* out_hovering);
+    Pin& pin();
+    const Pin& pin() const;
+    [[nodiscard]] bool isStale() const;
+
+    std::unique_ptr<Pin> m_pin;
+    uint32_t m_ttl = 1;
+};
+
+} // namespace ImFlow::detail
+
 namespace ImFlow {
 
 struct ImNodeFlow::impl_t {
@@ -67,9 +92,9 @@ struct Node::impl_t {
     std::unique_ptr<INodeBehaviour> behaviour;
 
     std::vector<std::unique_ptr<Pin>> ins;
-    std::vector<DynamicPin> dynamicIns;
+    std::vector<detail::DynamicPin> dynamicIns;
     std::vector<std::unique_ptr<Pin>> outs;
-    std::vector<DynamicPin> dynamicOuts;
+    std::vector<detail::DynamicPin> dynamicOuts;
 };
 
 } // namespace ImFlow

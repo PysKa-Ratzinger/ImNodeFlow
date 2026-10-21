@@ -237,42 +237,6 @@ Pin::getSocketHitBounds(float expand_radius)
 }
 
 // -----------------------------------------------------------------------------------------------------------------
-// DYNAMIC PIN
-
-DynamicPin::DynamicPin(std::unique_ptr<Pin> pin)
-    : m_pin(std::move(pin))
-{
-    this->refresh();
-}
-
-void DynamicPin::refresh()
-{
-    this->m_ttl = 1;
-}
-
-void DynamicPin::update(bool* out_hovering)
-{
-    m_ttl = m_ttl > 0 ? m_ttl - 1 : m_ttl;
-    this->pin().update(out_hovering);
-}
-
-Pin& DynamicPin::pin()
-{
-    return *m_pin;
-}
-
-const Pin&
-DynamicPin::pin() const
-{
-    return *m_pin;
-}
-
-bool DynamicPin::isStale() const
-{
-    return m_ttl == 0;
-}
-
-// -----------------------------------------------------------------------------------------------------------------
 // LINK
 
 Link::Link(Pin& out_pin, Pin& in_pin) noexcept
@@ -1339,3 +1303,43 @@ void ImNodeFlow::update()
 }
 
 } // namespace ImFlow
+
+namespace ImFlow::detail {
+
+// -----------------------------------------------------------------------------------------------------------------
+// DYNAMIC PIN
+
+DynamicPin::DynamicPin(std::unique_ptr<Pin> pin)
+    : m_pin(std::move(pin))
+{
+    this->refresh();
+}
+
+void DynamicPin::refresh()
+{
+    this->m_ttl = 1;
+}
+
+void DynamicPin::update(bool* out_hovering)
+{
+    m_ttl = m_ttl > 0 ? m_ttl - 1 : m_ttl;
+    this->pin().update(out_hovering);
+}
+
+Pin& DynamicPin::pin()
+{
+    return *m_pin;
+}
+
+const Pin&
+DynamicPin::pin() const
+{
+    return *m_pin;
+}
+
+bool DynamicPin::isStale() const
+{
+    return m_ttl == 0;
+}
+
+} // namespace ImFlow::detail
