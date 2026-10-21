@@ -32,6 +32,12 @@ class INodeBehaviour;
 class Node;
 class ImNodeFlow;
 
+namespace detail {
+
+    struct editor_context_t;
+
+} // namespace detail
+
 // -----------------------------------------------------------------------------------------------------------------
 // CLASSES PRE-DEFINITIONS
 
@@ -738,8 +744,7 @@ public:
     bool mouse_on_free_space();
 
 private:
-    struct impl_t;
-    std::unique_ptr<impl_t> m_impl;
+    std::unique_ptr<detail::editor_context_t> m_impl;
 };
 
 // -----------------------------------------------------------------------------------------------------------------

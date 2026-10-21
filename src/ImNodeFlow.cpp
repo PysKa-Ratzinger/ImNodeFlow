@@ -851,9 +851,10 @@ ImNodeFlow::ImNodeFlow()
 }
 
 ImNodeFlow::ImNodeFlow(std::string name)
-    : m_impl(std::make_unique<impl_t>(impl_t {
-          .name { std::move(name) },
-      }))
+    : m_impl(std::make_unique<detail::editor_context_t>(
+          detail::editor_context_t {
+              .name { std::move(name) },
+          }))
 {
     m_instances++;
     m_impl->context.config().extra_window_wrapper = true;

@@ -27,11 +27,7 @@ public:
     uint32_t m_ttl = 1;
 };
 
-} // namespace ImFlow::detail
-
-namespace ImFlow {
-
-struct ImNodeFlow::impl_t {
+struct editor_context_t {
     std::string name;
     ContainedContext context;
 
@@ -70,6 +66,10 @@ struct ImNodeFlow::impl_t {
 
     bool draggingCanvas = false;
 };
+
+} // namespace ImFlow::detail
+
+namespace ImFlow {
 
 struct Node::impl_t {
     std::reference_wrapper<ImNodeFlow> ctx;
