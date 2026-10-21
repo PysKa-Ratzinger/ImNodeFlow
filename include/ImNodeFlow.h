@@ -751,8 +751,6 @@ private:
  */
 class Node {
 public:
-    virtual ~Node() = default;
-
     /**
      * @brief Node's ctor
      * @param ctx Reference to the ImFlow context
