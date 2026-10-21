@@ -1,5 +1,7 @@
 #include "ImNodeFlow.h"
 
+#include "ImNodeFlow_internals.h"
+
 #include "imgui_bezier_items.h"
 
 #include <imgui_internal.h>
@@ -365,7 +367,7 @@ namespace {
 Node& ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
     auto uid = NodeUID::generate();
-    auto res = m_nodes.emplace(
+    auto res = m_impl->nodes.emplace(
         uid,
         std::make_unique<Node>(
             *this, grid_coords, uid, std::move(node_info)));
@@ -761,9 +763,29 @@ void Node::update()
 
 int ImNodeFlow::m_instances = 0;
 
+ImNodeFlow::ImNodeFlow()
+    : ImNodeFlow("FlowGrid" + std::to_string(m_instances))
+{
+}
+
+ImNodeFlow::ImNodeFlow(std::string name)
+    : m_impl(std::make_unique<impl_t>(impl_t {
+          .name { std::move(name) },
+      }))
+{
+    m_instances++;
+    m_impl->context.config().extra_window_wrapper = true;
+    m_impl->context.config().color = m_impl->style.colors.background;
+}
+
+ImNodeFlow::ImNodeFlow(ImNodeFlow&&) noexcept = default;
+ImNodeFlow& ImNodeFlow::operator=(ImNodeFlow&&) = default;
+
+ImNodeFlow::~ImNodeFlow() = default;
+
 bool ImNodeFlow::mouse_on_selected_node()
 {
-    return std::any_of(m_nodes.begin(), m_nodes.end(), [](const auto& n) {
+    return std::any_of(m_impl->nodes.begin(), m_impl->nodes.end(), [](const auto& n) {
         return n.second->isSelected() && n.second->isHovered();
     });
 }
@@ -771,10 +793,10 @@ bool ImNodeFlow::mouse_on_selected_node()
 bool ImNodeFlow::mouse_on_free_space()
 {
     return std::all_of(
-               m_nodes.begin(),
-               m_nodes.end(),
+               m_impl->nodes.begin(),
+               m_impl->nodes.end(),
                [](const auto& n) { return !n.second->isHovered(); })
-        && std::all_of(m_links.begin(), m_links.end(), [](const auto& l) {
+        && std::all_of(m_impl->links.begin(), m_impl->links.end(), [](const auto& l) {
                return !l->isHovered();
            });
 }
@@ -782,22 +804,23 @@ bool ImNodeFlow::mouse_on_free_space()
 ImVec2
 ImNodeFlow::screen2grid(const ImVec2& p)
 {
-    if (ImGui::GetCurrentContext() == m_context.getRawContext())
-        return p - m_context.scroll();
-    return (p - m_context.origin()) / m_context.scale() - m_context.scroll();
+    if (ImGui::GetCurrentContext() == m_impl->context.getRawContext())
+        return p - m_impl->context.scroll();
+    return (p - m_impl->context.origin()) / m_impl->context.scale() - m_impl->context.scroll();
 }
 
 ImVec2
 ImNodeFlow::grid2screen(const ImVec2& p)
 {
-    if (ImGui::GetCurrentContext() == m_context.getRawContext())
-        return p + m_context.scroll();
-    return (p + m_context.scroll()) * m_context.scale() + m_context.origin();
+    if (ImGui::GetCurrentContext() == m_impl->context.getRawContext())
+        return p + m_impl->context.scroll();
+    return (p + m_impl->context.scroll()) * m_impl->context.scale() + m_impl->context.origin();
 }
 
 void ImNodeFlow::createLink(Pin& source_pin, Pin& target_pin)
 {
-    if (source_pin.getType() == PinType_Input && target_pin.getType() == PinType_Output) {
+    if (source_pin.getType() == PinType_Input
+        && target_pin.getType() == PinType_Output) {
         createLink(target_pin, source_pin);
         return;
     }
@@ -806,11 +829,13 @@ void ImNodeFlow::createLink(Pin& source_pin, Pin& target_pin)
         return;
     }
 
-    if (source_pin.getType() != PinType_Output || target_pin.getType() != PinType_Input) {
+    if (source_pin.getType() != PinType_Output
+        || target_pin.getType() != PinType_Input) {
         return;
     }
 
-    bool same_node_allowed = source_pin.allowsSameNodeConnections() && target_pin.allowsSameNodeConnections();
+    bool same_node_allowed = source_pin.allowsSameNodeConnections()
+        && target_pin.allowsSameNodeConnections();
     if (source_pin.getParent() == target_pin.getParent() && !same_node_allowed) {
         return;
     }
@@ -843,18 +868,36 @@ void ImNodeFlow::createLink(Pin& source_pin, Pin& target_pin)
         return;
     }
 
-    m_links.emplace_back(std::make_unique<Link>(source_pin, target_pin));
+    m_impl->links.emplace_back(std::make_unique<Link>(source_pin, target_pin));
+}
+
+void ImNodeFlow::droppedLinkPopUpContent(
+    std::function<void(Pin* dragged)> content,
+    ImGuiKey key)
+{
+    m_impl->droppedLinkPopUp = std::move(content);
+    m_impl->droppedLinkPupUpComboKey = key;
+}
+
+void ImNodeFlow::rightClickPopUpContent(right_click_popup_handler_t content)
+{
+    m_impl->rightClickPopUp = std::move(content);
+}
+
+void ImNodeFlow::dragDropTarget(std::function<void(const ImVec2&)> content)
+{
+    m_impl->dragdropTarget = std::move(content);
 }
 
 bool ImNodeFlow::getSingleUseClick(ImGuiMouseButton button) const
 {
     switch (button) {
     case ImGuiMouseButton_Left:
-        return m_singleUseClicks.left;
+        return m_impl->singleUseClicks.left;
     case ImGuiMouseButton_Right:
-        return m_singleUseClicks.right;
+        return m_impl->singleUseClicks.right;
     case ImGuiMouseButton_Middle:
-        return m_singleUseClicks.middle;
+        return m_impl->singleUseClicks.middle;
     default:
         return false;
     }
@@ -864,15 +907,15 @@ void ImNodeFlow::consumeSingleUseClick(ImGuiMouseButton button)
 {
     switch (button) {
     case ImGuiMouseButton_Left:
-        m_singleUseClicks.left = false;
+        m_impl->singleUseClicks.left = false;
         return;
 
     case ImGuiMouseButton_Right:
-        m_singleUseClicks.right = false;
+        m_impl->singleUseClicks.right = false;
         return;
 
     case ImGuiMouseButton_Middle:
-        m_singleUseClicks.middle = false;
+        m_impl->singleUseClicks.middle = false;
         return;
 
     default:
@@ -880,88 +923,168 @@ void ImNodeFlow::consumeSingleUseClick(ImGuiMouseButton button)
     }
 }
 
+const std::string& ImNodeFlow::getName() const
+{
+    return m_impl->name;
+}
+
+const ImVec2& ImNodeFlow::getPos() const
+{
+    return m_impl->context.origin();
+}
+
+const ImVec2& ImNodeFlow::getScroll() const
+{
+    return m_impl->context.scroll();
+}
+
+void ImNodeFlow::setScroll(ImVec2 scroll)
+{
+    m_impl->context.setScroll(scroll);
+}
+
+void ImNodeFlow::setScale(float scale)
+{
+    m_impl->context.setScale(scale);
+}
+
+ImVec2 ImNodeFlow::getScreenSpaceDelta() const
+{
+    return m_impl->context.getScreenDelta();
+}
+
+uint64_t ImNodeFlow::getNodesCount() const
+{
+    return m_impl->nodes.size();
+}
+
+ContainedContext& ImNodeFlow::getGrid()
+{
+    return m_impl->context;
+}
+
+[[nodiscard]] bool ImNodeFlow::isNodeDragged() const
+{
+    return m_impl->draggingNode;
+}
+
+const InfStyler& ImNodeFlow::getStyle() const
+{
+    return m_impl->style;
+}
+
+void ImNodeFlow::setStyle(InfStyler style)
+{
+    m_impl->style = std::move(style);
+}
+
+void ImNodeFlow::setSize(const ImVec2& size)
+{
+    m_impl->context.config().size = size;
+}
+
+void ImNodeFlow::draggingNode(bool state)
+{
+    m_impl->draggingNodeNext = state;
+}
+
+void ImNodeFlow::hovering(Pin* hovering)
+{
+    m_impl->hovering = hovering;
+}
+
+void ImNodeFlow::dragging(Pin* dragged)
+{
+    m_impl->dragOut = dragged;
+}
+
+void ImNodeFlow::hoveredNode(Node* hovering)
+{
+    m_impl->hoveredNode = hovering;
+}
+
 void ImNodeFlow::update()
 {
     // Updating looping stuff
-    m_hovering = nullptr;
-    m_hoveredNode = nullptr;
-    m_draggingNode = m_draggingNodeNext;
+    m_impl->hovering = nullptr;
+    m_impl->hoveredNode = nullptr;
+    m_impl->draggingNode = m_impl->draggingNodeNext;
 
-    m_singleUseClicks.left = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-    m_singleUseClicks.right = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
-    m_singleUseClicks.middle = ImGui::IsMouseClicked(ImGuiMouseButton_Middle);
+    m_impl->singleUseClicks.left = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    m_impl->singleUseClicks.right = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    m_impl->singleUseClicks.middle = ImGui::IsMouseClicked(ImGuiMouseButton_Middle);
 
     // Create child canvas
-    m_context.begin();
+    m_impl->context.begin();
     ImGui::GetIO().IniFilename = nullptr;
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     // Display grid
     ImVec2 gridSize = ImGui::GetWindowSize();
-    float subGridStep = m_style.grid_size / m_style.grid_subdivisions;
-    for (float x = fmodf(m_context.scroll().x, m_style.grid_size);
+    float subGridStep = m_impl->style.grid_size / m_impl->style.grid_subdivisions;
+    for (float x = fmodf(m_impl->context.scroll().x, m_impl->style.grid_size);
         x < gridSize.x;
-        x += m_style.grid_size)
+        x += m_impl->style.grid_size)
         draw_list->AddLine(
             ImVec2(x, 0.0f),
             ImVec2(x, gridSize.y),
-            m_style.colors.grid);
-    for (float y = fmodf(m_context.scroll().y, m_style.grid_size);
+            m_impl->style.colors.grid);
+    for (float y = fmodf(m_impl->context.scroll().y, m_impl->style.grid_size);
         y < gridSize.y;
-        y += m_style.grid_size)
+        y += m_impl->style.grid_size)
         draw_list->AddLine(
             ImVec2(0.0f, y),
             ImVec2(gridSize.x, y),
-            m_style.colors.grid);
-    if (m_context.scale() > 0.7f) {
-        for (float x = fmodf(m_context.scroll().x, subGridStep);
+            m_impl->style.colors.grid);
+    if (m_impl->context.scale() > 0.7f) {
+        for (float x = fmodf(m_impl->context.scroll().x, subGridStep);
             x < gridSize.x;
             x += subGridStep)
             draw_list->AddLine(
                 ImVec2(x, 0.0f),
                 ImVec2(x, gridSize.y),
-                m_style.colors.subGrid);
-        for (float y = fmodf(m_context.scroll().y, subGridStep);
+                m_impl->style.colors.subGrid);
+        for (float y = fmodf(m_impl->context.scroll().y, subGridStep);
             y < gridSize.y;
             y += subGridStep)
             draw_list->AddLine(
                 ImVec2(0.0f, y),
                 ImVec2(gridSize.x, y),
-                m_style.colors.subGrid);
+                m_impl->style.colors.subGrid);
     }
 
     // Propagate pin values
-    for (auto& node : m_nodes) {
+    for (auto& node : m_impl->nodes) {
         node.second->calculate();
     }
-    for (auto& node : m_nodes) {
+    for (auto& node : m_impl->nodes) {
         node.second->prime();
     }
 
     // Update and draw nodes
     // TODO: I don't like this
     draw_list->ChannelsSplit(2);
-    for (auto& node : m_nodes) {
+    for (auto& node : m_impl->nodes) {
         node.second->update();
     }
     // Remove "toDelete" nodes
-    for (auto iter = m_nodes.begin(); iter != m_nodes.end();) {
+    for (auto iter = m_impl->nodes.begin(); iter != m_impl->nodes.end();) {
         if (iter->second->toDestroy())
-            iter = m_nodes.erase(iter);
+            iter = m_impl->nodes.erase(iter);
         else
             ++iter;
     }
     draw_list->ChannelsMerge();
-    for (auto& node : m_nodes) {
+    for (auto& node : m_impl->nodes) {
         node.second->updatePublicStatus();
     }
 
     // Update and draw links
-    for (auto iter = m_links.begin(); iter != m_links.end();) {
+    for (auto iter = m_impl->links.begin(); iter != m_impl->links.end();) {
         // Clean up deleted links along the way
         if ((*iter)->isMarkedForDeletion()) {
-            iter = m_links.erase(iter);
+            iter = m_impl->links.erase(iter);
             continue;
         }
 
@@ -969,59 +1092,59 @@ void ImNodeFlow::update()
         ++iter;
     }
 
-    if (m_dragOut) {
+    if (m_impl->dragOut) {
         // Links drop-off
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            if (m_hovering) {
-                m_dragOut->linkTo(*m_hovering);
+            if (m_impl->hovering) {
+                m_impl->dragOut->linkTo(*m_impl->hovering);
             } else if (
-                mouse_on_free_space() && m_droppedLinkPopUp && (m_droppedLinkPupUpComboKey == ImGuiKey_None || ImGui::IsKeyDown(m_droppedLinkPupUpComboKey))) {
-                m_droppedLinkLeft = m_dragOut;
+                mouse_on_free_space() && m_impl->droppedLinkPopUp && (m_impl->droppedLinkPupUpComboKey == ImGuiKey_None || ImGui::IsKeyDown(m_impl->droppedLinkPupUpComboKey))) {
+                m_impl->droppedLinkLeft = m_impl->dragOut;
                 ImGui::OpenPopup("DroppedLinkPopUp");
             }
         }
 
         // Links drag-out
-        if (m_dragOut->getType() == PinType_Output)
+        if (m_impl->dragOut->getType() == PinType_Output)
             detail::smart_bezier(
-                m_dragOut->pinPoint(),
+                m_impl->dragOut->pinPoint(),
                 ImGui::GetMousePos(),
-                m_dragOut->getStyle().color,
-                m_dragOut->getStyle().extra.link_dragged_thickness);
+                m_impl->dragOut->getStyle().color,
+                m_impl->dragOut->getStyle().extra.link_dragged_thickness);
         else
             detail::smart_bezier(
                 ImGui::GetMousePos(),
-                m_dragOut->pinPoint(),
-                m_dragOut->getStyle().color,
-                m_dragOut->getStyle().extra.link_dragged_thickness);
+                m_impl->dragOut->pinPoint(),
+                m_impl->dragOut->getStyle().color,
+                m_impl->dragOut->getStyle().extra.link_dragged_thickness);
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-            m_dragOut = nullptr;
+            m_impl->dragOut = nullptr;
     }
 
-    if (this->mouse_on_free_space() && !m_box.active && !m_draggingNode && !m_dragOut && getSingleUseClick(getGrid().config().selection_box_button) && ImGui::IsWindowHovered()) {
+    if (this->mouse_on_free_space() && !m_impl->box.active && !m_impl->draggingNode && !m_impl->dragOut && getSingleUseClick(getGrid().config().selection_box_button) && ImGui::IsWindowHovered()) {
         consumeSingleUseClick(getGrid().config().selection_box_button);
-        m_box.active = true;
-        m_box.selectionStart = ImGui::GetMousePos();
+        m_impl->box.active = true;
+        m_impl->box.selectionStart = ImGui::GetMousePos();
 
         // Deselect all nodes if not holding down CTRL
         if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
-            for (auto& node : m_nodes) {
+            for (auto& node : m_impl->nodes) {
                 node.second->setSelected(false);
             }
         }
     }
 
-    if (m_box.active) {
-        ImRect boxClip { m_box.selectionStart, m_box.selectionStart };
+    if (m_impl->box.active) {
+        ImRect boxClip { m_impl->box.selectionStart, m_impl->box.selectionStart };
         boxClip.Add(ImGui::GetMousePos());
 
         draw_list->AddRectFilled(
-            boxClip.GetBL(), boxClip.GetTR(), m_box.selectionColor);
+            boxClip.GetBL(), boxClip.GetTR(), m_impl->box.selectionColor);
         draw_list->AddRect(
             boxClip.GetBL(),
             boxClip.GetTR(),
-            m_box.borderColor,
+            m_impl->box.borderColor,
             0.0F,
             0,
             1.5F);
@@ -1030,15 +1153,15 @@ void ImNodeFlow::update()
 
         if (ImGui::IsMouseReleased(
                 getGrid().config().selection_box_button)) {
-            m_box.active = false;
+            m_impl->box.active = false;
             shouldMarkSelected = true;
         } else if (
             getGrid().config().selection_box_cancel_button != getGrid().config().selection_box_button && ImGui::IsMouseClicked(getGrid().config().selection_box_cancel_button)) {
             // cancel selection
-            m_box.active = false;
+            m_impl->box.active = false;
         }
 
-        for (auto& elem : m_nodes) {
+        for (auto& elem : m_impl->nodes) {
             auto& node = *elem.second;
 
             ImVec2 nodePos = grid2screen(node.getTLPos());
@@ -1056,41 +1179,41 @@ void ImNodeFlow::update()
     }
 
     // Right-click PopUp
-    if (m_rightClickPopUp && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && ImGui::IsWindowHovered()) {
-        m_hoveredNodeAux = m_hoveredNode;
+    if (m_impl->rightClickPopUp && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && ImGui::IsWindowHovered()) {
+        m_impl->hoveredNodeAux = m_impl->hoveredNode;
         ImGui::OpenPopup("RightClickPopUp");
     }
     if (ImGui::BeginPopup("RightClickPopUp")) {
-        m_rightClickPopUp(m_hoveredNodeAux);
+        m_impl->rightClickPopUp(m_impl->hoveredNodeAux);
         ImGui::EndPopup();
     }
 
     // Dropped Link PopUp
     if (ImGui::BeginPopup("DroppedLinkPopUp")) {
-        m_droppedLinkPopUp(m_droppedLinkLeft);
+        m_impl->droppedLinkPopUp(m_impl->droppedLinkLeft);
         ImGui::EndPopup();
     }
 
-    if (m_context.hovered() && this->getSingleUseClick(m_context.config().scroll_button)) {
-        this->consumeSingleUseClick(m_context.config().scroll_button);
-        m_draggingCanvas = true;
+    if (m_impl->context.hovered() && this->getSingleUseClick(m_impl->context.config().scroll_button)) {
+        this->consumeSingleUseClick(m_impl->context.config().scroll_button);
+        m_impl->draggingCanvas = true;
     }
 
-    if (m_draggingCanvas) {
-        if (!ImGui::IsMouseDown(m_context.config().scroll_button)) {
-            m_draggingCanvas = false;
+    if (m_impl->draggingCanvas) {
+        if (!ImGui::IsMouseDown(m_impl->context.config().scroll_button)) {
+            m_impl->draggingCanvas = false;
         }
     }
 
-    if (m_draggingCanvas && ImGui::IsMouseDragging(m_context.config().scroll_button)) {
-        m_context.updateScroll();
+    if (m_impl->draggingCanvas && ImGui::IsMouseDragging(m_impl->context.config().scroll_button)) {
+        m_impl->context.updateScroll();
     }
 
-    m_context.end();
+    m_impl->context.end();
 
     if (ImGui::BeginDragDropTarget()) {
-        if (m_dragdropTarget) {
-            m_dragdropTarget(screen2grid(ImGui::GetMousePos()));
+        if (m_impl->dragdropTarget) {
+            m_impl->dragdropTarget(screen2grid(ImGui::GetMousePos()));
         }
 
         ImGui::EndDragDropTarget();

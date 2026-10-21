@@ -489,23 +489,26 @@ public:
      * @brief Instantiate a new editor with default name.
      * Editor name will be "FlowGrid + the number of editors"
      */
-    ImNodeFlow()
-        : ImNodeFlow("FlowGrid" + std::to_string(m_instances))
-    {
-    }
+    ImNodeFlow();
 
     /**
      * @brief Instantiate a new editor with given name
      * @details Creates a new Node Editor with the given name.
      * @param name Name of the editor
      */
-    explicit ImNodeFlow(std::string name)
-        : m_name(std::move(name))
-    {
-        m_instances++;
-        m_context.config().extra_window_wrapper = true;
-        m_context.config().color = m_style.colors.background;
-    }
+    explicit ImNodeFlow(std::string name);
+
+    // delete copy-ctor
+    ImNodeFlow(const ImNodeFlow&) = delete;
+    // delete copy-operator
+    ImNodeFlow& operator=(const ImNodeFlow&) = delete;
+
+    // move-ctor
+    ImNodeFlow(ImNodeFlow&&) noexcept;
+    // move-operator
+    ImNodeFlow& operator=(ImNodeFlow&&);
+
+    ~ImNodeFlow();
 
     /**
      * @brief Handler loop
@@ -603,31 +606,21 @@ public:
      */
     void droppedLinkPopUpContent(
         std::function<void(Pin* dragged)> content,
-        ImGuiKey key = ImGuiKey_None)
-    {
-        m_droppedLinkPopUp = std::move(content);
-        m_droppedLinkPupUpComboKey = key;
-    }
+        ImGuiKey key = ImGuiKey_None);
 
     /**
      * @brief Pop-up when right-clicking
      * @details Sets the content of a pop-up that can be displayed when right-clicking on the grid.
      * @param content Function or Lambda containing only the contents of the pop-up and the subsequent logic
      */
-    void rightClickPopUpContent(right_click_popup_handler_t content)
-    {
-        m_rightClickPopUp = std::move(content);
-    }
+    void rightClickPopUpContent(right_click_popup_handler_t content);
 
     /**
      * @brief <BR>Pop-up when drag_dropping
      * @details Sets the node pos when drag dropping a node to the grid
      * @param content Function or Lambda containing only the pos of the mouse when clicked
      */
-    void dragDropTarget(std::function<void(const ImVec2&)> content)
-    {
-        m_dragdropTarget = std::move(content);
-    }
+    void dragDropTarget(std::function<void(const ImVec2&)> content);
 
     /**
      * @brief Get mouse clicking status
@@ -646,83 +639,72 @@ public:
      * @brief Get editor's name
      * @return Const reference to editor's name
      */
-    const std::string& getName() { return m_name; }
+    [[nodiscard]] const std::string& getName() const;
 
     /**
      * @brief Get editor's position
      * @return Const reference to editor's position in screen coordinates
      */
-    const ImVec2& getPos() { return m_context.origin(); }
+    [[nodiscard]] const ImVec2& getPos() const;
 
     /**
      * @brief Get editor's grid scroll
      * @details Scroll is the offset from the origin of the grid, changes while navigating the grid.
      * @return Const reference to editor's grid scroll
      */
-    const ImVec2& getScroll() { return m_context.scroll(); }
+    const ImVec2& getScroll() const;
 
     /**
      * @brief Sets the context's scroll to a user specified value
      */
-    void setScroll(ImVec2 scroll) { m_context.setScroll(scroll); }
+    void setScroll(ImVec2 scroll);
 
     /**
      * @brief Sets the context's scale to a user specified value
      */
-    void setScale(float scale) { m_context.setScale(scale); }
+    void setScale(float scale);
 
     /**
      * @brief Get the scale adjusted screen space mouse delta, needed for dragging
      *
      * @return scale adjusted mouse delta.
      */
-    ImVec2 getScreenSpaceDelta() { return m_context.getScreenDelta(); }
-
-    /**
-     * @brief Get editor's list of nodes
-     * @return Const reference to editor's internal nodes list
-     */
-    std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>&
-    getNodes()
-    {
-        return m_nodes;
-    }
+    ImVec2 getScreenSpaceDelta() const;
 
     /**
      * @brief Get nodes count
      * @return Number of nodes present in the editor
      */
-    uint32_t getNodesCount() { return (uint32_t)m_nodes.size(); }
-
-    /**
-     * @brief Get editor's list of links
-     * @return Const reference to editor's internal links list
-     */
-    const std::vector<std::unique_ptr<Link>>& getLinks() { return m_links; }
+    uint64_t getNodesCount() const;
 
     /**
      * @brief Get zooming viewport
      * @return Const reference to editor's internal viewport for zoom support
      */
-    ContainedContext& getGrid() { return m_context; }
+    ContainedContext& getGrid();
 
     /**
      * @brief Get dragging status
      * @return [TRUE] if a Node is being dragged around the grid
      */
-    [[nodiscard]] bool isNodeDragged() const { return m_draggingNode; }
+    [[nodiscard]] bool isNodeDragged() const;
 
     /**
      * @brief Get current style
      * @return Reference to style variables
      */
-    InfStyler& getStyle() { return m_style; }
+    const InfStyler& getStyle() const;
+
+    /**
+     * @brief Modify current style
+     */
+    void setStyle(InfStyler style);
 
     /**
      * @brief Set editor's size
      * @param size Editor's size. Set to (0, 0) to auto-fit.
      */
-    void setSize(const ImVec2& size) { m_context.config().size = size; }
+    void setSize(const ImVec2& size);
 
     /**
      * @brief Set dragging status
@@ -730,25 +712,25 @@ public:
      *
      * The new state will only be updated one at the start of each frame.
      */
-    void draggingNode(bool state) { m_draggingNodeNext = state; }
+    void draggingNode(bool state);
 
     /**
      * @brief Set what pin is being hovered
      * @param hovering Pointer to the hovered pin
      */
-    void hovering(Pin* hovering) { m_hovering = hovering; }
+    void hovering(Pin* hovering);
 
     /**
      * @brief Set what pin is being dragged
      * @param dragged Pointer to the dragged pin
      */
-    void dragging(Pin* dragged) { m_dragOut = dragged; }
+    void dragging(Pin* dragged);
 
     /**
      * @brief Set what node is being hovered
      * @param hovering Pointer to the hovered node
      */
-    void hoveredNode(Node* hovering) { m_hoveredNode = hovering; }
+    void hoveredNode(Node* hovering);
 
     /**
      * @brief Convert coordinates from screen to grid
@@ -777,43 +759,8 @@ public:
     bool mouse_on_free_space();
 
 private:
-    std::string m_name;
-    ContainedContext m_context;
-
-    struct {
-        bool left = false;
-        bool right = false;
-        bool middle = false;
-    } m_singleUseClicks;
-
-    std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>
-        m_nodes;
-    std::vector<std::unique_ptr<Link>> m_links;
-
-    std::function<void(Pin* dragged)> m_droppedLinkPopUp;
-    ImGuiKey m_droppedLinkPupUpComboKey = ImGuiKey_None;
-    Pin* m_droppedLinkLeft = nullptr;
-    right_click_popup_handler_t m_rightClickPopUp;
-    std::function<void(const ImVec2&)> m_dragdropTarget;
-    Node* m_hoveredNodeAux = nullptr;
-
-    Node* m_hoveredNode = nullptr;
-    bool m_draggingNode = false, m_draggingNodeNext = false;
-    Pin* m_hovering = nullptr;
-    Pin* m_dragOut = nullptr;
-
-    InfStyler m_style;
-
-    struct SelectionBox {
-        bool active = false;
-        ImVec2 selectionStart;
-        ImU32 selectionColor = IM_COL32(100, 150, 255, 50);
-        ImU32 borderColor = IM_COL32(100, 150, 255, 200);
-    };
-
-    SelectionBox m_box;
-
-    bool m_draggingCanvas = false;
+    struct impl_t;
+    std::unique_ptr<impl_t> m_impl;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
