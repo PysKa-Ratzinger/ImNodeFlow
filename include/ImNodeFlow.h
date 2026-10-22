@@ -1,5 +1,7 @@
 #ifndef IM_NODE_FLOW
 #define IM_NODE_FLOW
+#include <optional>
+#include <type_traits>
 #pragma once
 
 #include "../src/context_wrapper.h"
@@ -29,19 +31,26 @@ template <typename T>
 class OutPin;
 class Pin;
 class INodeBehaviour;
-class Node;
+template <bool TIsConst = false>
+class NodeRefImpl;
 class ImNodeFlow;
 
+using NodeRef = NodeRefImpl<false>;
+using ConstNodeRef = NodeRefImpl<true>;
+
+/// NOTE: Do not depend on anything inside the detail namespace as a user of
+/// the public API
 namespace detail {
 
     struct editor_context_t;
+    struct node_t;
 
 } // namespace detail
 
 // -----------------------------------------------------------------------------------------------------------------
 // CLASSES PRE-DEFINITIONS
 
-using right_click_popup_handler_t = std::function<void(Node* node)>;
+using right_click_popup_handler_t = std::function<void(std::optional<NodeRef> node)>;
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
@@ -233,7 +242,7 @@ struct OutPinInfo {
     /// Name of the pin
     std::string name;
     /// Behaviour of the pin when a value update is requested
-    std::function<T(Node&)> behaviour;
+    std::function<T(NodeRef)> behaviour;
     /// Custom render function
     std::function<void(Pin* p)> renderer;
     /// Whether links coming from the same node are allowed
@@ -424,41 +433,6 @@ struct InfStyler {
 };
 
 // -----------------------------------------------------------------------------------------------------------------
-// NODE BEHAVIOUR INTERFACE
-
-/**
- * @brief Node behaviour strategy.
- *
- * This is what allows the user to customize the node's appearance and
- * behaviour
- */
-class INodeBehaviour {
-public:
-    virtual ~INodeBehaviour() = default;
-
-    /**
-     * @brief Called immediately after a node is constructed.
-     */
-    virtual void setup(ImFlow::Node& node) { }
-
-    /**
-     * @brief Called each frame. Responsible for the appearance of the
-     * node's inner content
-     */
-    virtual void draw(ImFlow::Node& node) = 0;
-
-    /**
-     * @brief Called during a node cloning event. If not implemented or
-     * nullptr is returned, the cloning event fails for the corresponding
-     * node.
-     */
-    [[nodiscard]] virtual std::unique_ptr<INodeBehaviour> clone()
-    {
-        return { };
-    }
-};
-
-// -----------------------------------------------------------------------------------------------------------------
 // NODE FLOW CONTEXT
 
 /**
@@ -508,7 +482,7 @@ public:
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node& addNode(const ImVec2& grid_coords, NodeInfo node_info = { });
+    NodeRef addNode(const ImVec2& grid_coords, NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid
@@ -517,7 +491,7 @@ public:
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node& placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info = { });
+    NodeRef placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info = { });
 
     /**
      * @brief Add a node to the grid using mouse position
@@ -526,7 +500,7 @@ public:
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node& placeNode(NodeInfo node_info = { });
+    NodeRef placeNode(NodeInfo node_info = { });
 
     /**
      * @brief Add a node whos operation can be defined within a lambda.
@@ -536,9 +510,9 @@ public:
      * @return Reference to the newly added node. Do not save this
      * reference.
      */
-    Node& addNodeLambda(
+    NodeRef addNodeLambda(
         const ImVec2& grid_coords,
-        std::function<void(Node&)> draw_func);
+        std::function<void(NodeRef)> draw_func);
 
     /**
      * @brief Add a node to the grid
@@ -550,7 +524,7 @@ public:
      * reference.
      */
     template <typename T, typename... Params>
-    Node& emplaceNode(const ImVec2& grid_coords, Params&&... args);
+    NodeRef emplaceNode(const ImVec2& grid_coords, Params&&... args);
 
     /**
      * @brief Add a node to the grid
@@ -562,7 +536,7 @@ public:
      * reference.
      */
     template <typename T, typename... Params>
-    Node& emplaceNodeAt(const ImVec2& screen_coords, Params&&... args);
+    NodeRef emplaceNodeAt(const ImVec2& screen_coords, Params&&... args);
 
     /**
      * @brief Add a node to the grid using mouse position
@@ -573,7 +547,7 @@ public:
      * reference.
      */
     template <typename T, typename... Params>
-    Node& emplaceNodeOnMouse(Params&&... args);
+    NodeRef emplaceNodeOnMouse(Params&&... args);
 
     /**
      * @brief Creates a link between two pins
@@ -714,8 +688,9 @@ public:
     /**
      * @brief Set what node is being hovered
      * @param hovering Pointer to the hovered node
+     * @internal For internal use only
      */
-    void hoveredNode(Node* hovering);
+    void hoveredNode(detail::node_t* hovering);
 
     /**
      * @brief Convert coordinates from screen to grid
@@ -754,26 +729,40 @@ private:
  * @brief Parent class for custom nodes
  * @details Main class from which custom nodes can be created. All interactions with the main grid are handled internally.
  */
-class Node {
+template <bool TIsConst>
+class NodeRefImpl {
 public:
+    using underlying_type = std::conditional_t<TIsConst, const detail::node_t, detail::node_t>;
+
+    using pin_pointer_t = std::conditional_t<
+        TIsConst,
+        const Pin*,
+        Pin*>;
+
+    template <typename T>
+    using in_pin_pointer_t = std::conditional_t<
+        TIsConst,
+        const InPin<T>*,
+        InPin<T>*>;
+
+    template <typename T>
+    using out_pin_pointer_t = std::conditional_t<
+        TIsConst,
+        const OutPin<T>*,
+        OutPin<T>*>;
+
     /**
-     * @brief Node's ctor
-     * @param ctx Reference to the ImFlow context
-     * @param pos Position for the new node
-     * @param uid The UID of this node
-     * @param node_info User provided customization options
+     * @brief NodeRef's ctor
+     * @param internal_node Reference to the referred to internal node
      */
-    explicit Node(
-        ImNodeFlow& ctx,
-        ImVec2 pos,
-        NodeUID uid,
-        NodeInfo node_info);
+    explicit NodeRefImpl(underlying_type& internal_node);
 
     /**
      * @brief Main loop of the node
      * @details Updates position, hovering and selected status, and renders the node. Must be called each frame.
      */
-    void update();
+    void update()
+        requires(!TIsConst);
 
     /**
      * @brief Add an Input to the node
@@ -788,7 +777,8 @@ public:
      * instead.
      */
     template <typename T>
-    InPin<T>& addIN(InPinInfo<T> pin_info);
+    InPin<T>& addIN(InPinInfo<T> pin_info)
+        requires(!TIsConst);
 
     /**
      * @brief Add an Input to the node
@@ -803,19 +793,22 @@ public:
      * instead.
      */
     template <typename T>
-    InPin<T>& addIN(const PinUID& uid, InPinInfo<T> pin_info);
+    InPin<T>& addIN(const PinUID& uid, InPinInfo<T> pin_info)
+        requires(!TIsConst);
 
     /**
      * @brief Remove input pin
      * @param uid Unique identifier of the pin
      */
-    void dropIN(const PinUID& uid);
+    void dropIN(const PinUID& uid)
+        requires(!TIsConst);
 
     /**
      * @brief Remove all input pin's with the associated name
      * @param name Pin's name filter
      */
-    void dropIN(const char* name);
+    void dropIN(const char* name)
+        requires(!TIsConst);
 
     /**
      * @brief Show a temporary input pin
@@ -829,7 +822,8 @@ public:
      * @return Const reference to the value of the connected link for the current frame of defReturn
      */
     template <typename T>
-    const T& showIN(InPinInfo<T> pin_info);
+    const T& showIN(InPinInfo<T> pin_info)
+        requires(!TIsConst);
 
     /**
      * @brief Show a temporary input pin
@@ -843,7 +837,8 @@ public:
      * @return Const reference to the value of the connected link for the current frame of defReturn
      */
     template <typename T>
-    const T& showIN(const PinUID& uid, InPinInfo<T> pin_info);
+    const T& showIN(const PinUID& uid, InPinInfo<T> pin_info)
+        requires(!TIsConst);
 
     /**
      * @brief Add an Output to the node
@@ -858,7 +853,8 @@ public:
      * instead.
      */
     template <typename T>
-    OutPin<T>& addOUT(OutPinInfo<T> pin_info);
+    OutPin<T>& addOUT(OutPinInfo<T> pin_info)
+        requires(!TIsConst);
 
     /**
      * @brief Add an Output to the node
@@ -873,19 +869,22 @@ public:
      * instead.
      */
     template <typename T>
-    OutPin<T>& addOUT(const PinUID& uid, OutPinInfo<T> pin_info);
+    OutPin<T>& addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
+        requires(!TIsConst);
 
     /**
      * @brief Remove output pin
      * @param uid Unique identifier of the pin
      */
-    void dropOUT(const PinUID& uid);
+    void dropOUT(const PinUID& uid)
+        requires(!TIsConst);
 
     /**
      * @brief Remove all output pins with a matching name
      * @param name The name to filter for
      */
-    void dropOUT(const char* name);
+    void dropOUT(const char* name)
+        requires(!TIsConst);
 
     /**
      * @brief Show a temporary output pin
@@ -898,7 +897,8 @@ public:
      * @param pin_info User given options to the InPin during construction
      */
     template <typename T>
-    void showOUT(OutPinInfo<T> pin_info);
+    void showOUT(OutPinInfo<T> pin_info)
+        requires(!TIsConst);
 
     /**
      * @brief Show a temporary output pin
@@ -911,35 +911,36 @@ public:
      * @param pin_info User given options to the InPin during construction
      */
     template <typename T>
-    void showOUT(const PinUID& uid, OutPinInfo<T> pin_info);
+    void showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
+        requires(!TIsConst);
 
     /**
      * @brief Get generic reference to input pin
      * @param uid Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    Pin* inPin(const PinUID& uid);
+    pin_pointer_t inPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to input pin with the specified name
      * @param uid Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    Pin* inPin(const char* name);
+    pin_pointer_t inPin(const char* name);
 
     /**
      * @brief Get generic reference to output pin
      * @param uid Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    Pin* outPin(const PinUID& uid);
+    pin_pointer_t outPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to output pin of the same name
      * @param name Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    Pin* outPin(const char* name);
+    pin_pointer_t outPin(const char* name);
 
     /**
      * @brief Get generic reference to input pin
@@ -948,7 +949,8 @@ public:
      * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    InPin<T>* inPin(const PinUID& uid);
+    in_pin_pointer_t<T>
+    inPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to input pin with the specified name
@@ -957,7 +959,8 @@ public:
      * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    InPin<T>* inPin(const char* name);
+    in_pin_pointer_t<T>
+    inPin(const char* name);
 
     /**
      * @brief Get generic reference to output pin
@@ -966,7 +969,8 @@ public:
      * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    OutPin<T>* outPin(const PinUID& uid);
+    out_pin_pointer_t<T>
+    outPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to output pin of the same name
@@ -975,12 +979,14 @@ public:
      * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    OutPin<T>* outPin(const char* name);
+    out_pin_pointer_t<T>
+    outPin(const char* name);
 
     /**
      * @brief Delete itself
      */
-    void destroy();
+    void destroy()
+        requires(!TIsConst);
 
     /*
      * @brief Get if node must be deleted
@@ -991,11 +997,11 @@ public:
      * @brief Get hovered status
      * @return [TRUE] if the mouse is hovering the node
      */
-    bool isHovered();
+    bool isHovered() const;
 
     /**
      * @brief Get node's UID
-     * @return Node's unique identifier
+     * @return NodeRef's unique identifier
      */
     [[nodiscard]] NodeUID getUID() const;
 
@@ -1057,31 +1063,36 @@ public:
      * @brief Set node's uid
      * @param uid Node's unique identifier
      */
-    Node& setUID(NodeUID uid);
+    NodeRefImpl& setUID(NodeUID uid)
+        requires(!TIsConst);
 
     /**
      * @brief Set node's name
      * @param name New title
      */
-    Node& setTitle(const std::string& title);
+    NodeRefImpl& setTitle(const std::string& title)
+        requires(!TIsConst);
 
     /**
      * @brief Set node's position
      * @param pos Position in grid coordinates
      */
-    Node& setPos(const ImVec2& pos);
+    NodeRefImpl& setPos(const ImVec2& pos)
+        requires(!TIsConst);
 
     /**
      * @brief Set node's style
      * @param style New style
      */
-    Node& setStyle(NodeStyle style);
+    NodeRefImpl& setStyle(NodeStyle style)
+        requires(!TIsConst);
 
     /**
      * @brief Set node's style
      * @param style New style
      */
-    Node& setIndestructable(bool indestruct);
+    NodeRefImpl& setIndestructable(bool indestruct)
+        requires(!TIsConst);
 
     /**
      * @brief Set selected status
@@ -1089,7 +1100,8 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    Node& setSelected(bool state);
+    NodeRefImpl& setSelected(bool state)
+        requires(!TIsConst);
 
     /**
      * @brief Set provisionally selected status
@@ -1097,28 +1109,76 @@ public:
      *
      * Status only updates when updatePublicStatus() is called
      */
-    Node& setProvisionallySelected(bool state);
+    NodeRefImpl& setProvisionallySelected(bool state)
+        requires(!TIsConst);
 
     /**
      * @brief Update the isSelected status of the node
      */
-    void updatePublicStatus();
+    void updatePublicStatus()
+        requires(!TIsConst);
 
     /**
      * @brief Have every pin calculate their next output value
      */
-    void calculate();
+    void calculate()
+        requires(!TIsConst);
 
     /**
      * @brief Have every pin commit their calculated values as their new
      * output value
      */
-    void prime();
+    void prime()
+        requires(!TIsConst);
 
-    struct impl_t;
+    /**
+     * @internal For internal use only
+     */
+    operator underlying_type*()
+    {
+        return &m_node.get();
+    }
 
 private:
-    std::unique_ptr<impl_t> m_impl;
+    std::reference_wrapper<underlying_type> m_node;
+};
+
+extern template class NodeRefImpl<false>;
+extern template class NodeRefImpl<true>;
+
+// -----------------------------------------------------------------------------------------------------------------
+// NODE BEHAVIOUR INTERFACE
+
+/**
+ * @brief Node behaviour strategy.
+ *
+ * This is what allows the user to customize the node's appearance and
+ * behaviour
+ */
+class INodeBehaviour {
+public:
+    virtual ~INodeBehaviour() = default;
+
+    /**
+     * @brief Called immediately after a node is constructed.
+     */
+    virtual void setup(NodeRef node) { }
+
+    /**
+     * @brief Called each frame. Responsible for the appearance of the
+     * node's inner content
+     */
+    virtual void draw(NodeRef node) = 0;
+
+    /**
+     * @brief Called during a node cloning event. If not implemented or
+     * nullptr is returned, the cloning event fails for the corresponding
+     * node.
+     */
+    [[nodiscard]] virtual std::unique_ptr<INodeBehaviour> clone()
+    {
+        return { };
+    }
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -1137,7 +1197,7 @@ public:
      * @param parent Pointer to the Node containing the pin
      * @param style Style of the pin
      */
-    explicit Pin(ImNodeFlow& ctx, PinUID uid, Node* parent, BasePinInfo info)
+    explicit Pin(ImNodeFlow& ctx, PinUID uid, detail::node_t* parent, BasePinInfo info)
         : m_ctx(ctx)
         , m_uid(uid)
         , m_name(std::move(info.name))
@@ -1299,7 +1359,7 @@ public:
      * @brief Get pin's parent node
      * @return Generic type pointer to pin's parent node. (Node that contains it)
      */
-    Node* getParent() { return m_parent; }
+    NodeRef getParent() { return NodeRef(*m_parent); }
 
     /**
      * @brief Get pin's type
@@ -1398,7 +1458,7 @@ protected:
     ImVec2 m_pos = ImVec2(0.f, 0.f);
     ImVec2 m_size = ImVec2(0.f, 0.f);
     PinType m_type;
-    Node* m_parent = nullptr;
+    detail::node_t* m_parent = nullptr;
     PinStyle m_style;
     PinConnStrat m_strat;
     bool m_allowSelfConnection = false;
@@ -1426,7 +1486,7 @@ public:
     explicit InPin(
         ImNodeFlow& ctx,
         PinUID uid,
-        Node* parent,
+        detail::node_t* parent,
         InPinInfo<T> info)
         : Pin(ctx,
               uid,
@@ -1490,7 +1550,7 @@ public:
      * @brief Get value carried by the connected link
      * @return Reference to the value of the connected OutPin. Or the default value if not connected
      */
-    const T& value();
+    const T& value() const;
 
 private:
     T m_emptyVal;
@@ -1518,7 +1578,7 @@ public:
     explicit OutPin(
         ImNodeFlow& ctx,
         PinUID uid,
-        Node* parent,
+        detail::node_t* parent,
         OutPinInfo<T> info)
         : Pin(ctx,
               uid,
@@ -1554,14 +1614,14 @@ public:
      * @brief Get output value
      * @return Const reference to the internal value of the pin
      */
-    const T& value();
+    const T& value() const;
 
     /**
      * @brief Set logic to calculate output value
      * @details Used to define the pin behaviour. This is what gets the data from the parent's inputs, and applies the needed logic.
      * @param func Function or lambda expression used to calculate output value
      */
-    OutPin<T>& behaviour(std::function<T(Node&)> func)
+    OutPin<T>& behaviour(std::function<T(NodeRef)> func)
     {
         m_behaviour = std::move(func);
         return *this;
@@ -1574,7 +1634,7 @@ public:
     [[nodiscard]] uint64_t getTypeID() const override;
 
 private:
-    std::function<T(Node&)> m_behaviour;
+    std::function<T(NodeRef)> m_behaviour;
     T m_val;
     T m_valNext;
 };

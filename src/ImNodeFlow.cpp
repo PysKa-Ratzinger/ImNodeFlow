@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cassert>
 #include <memory>
+#include <optional>
 #include <utility>
 
 namespace ImFlow {
@@ -316,43 +317,55 @@ namespace {
      * @brief Helper struct for creating a node from a lambda
      */
     struct NodeWrapper : public INodeBehaviour {
-        std::function<void(Node&)> m_draw_func;
+        std::function<void(NodeRef)> m_draw_func;
 
-        NodeWrapper(std::function<void(Node&)> draw_func)
+        NodeWrapper(std::function<void(NodeRef)> draw_func)
             : m_draw_func(std::move(draw_func))
         {
         }
 
-        void draw(Node& node) override { m_draw_func(node); }
+        void draw(NodeRef node) override { m_draw_func(node); }
     };
 
 } // anonymous namespace
 
-Node& ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
+NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
     auto uid = NodeUID::generate();
     auto res = m_impl->nodes.emplace(
         uid,
-        std::make_unique<Node>(
-            *this, grid_coords, uid, std::move(node_info)));
+        detail::node_t {
+            .ctx = *this,
+            .uid = uid,
+            .pos = grid_coords,
+            .posTarget = grid_coords,
+            .style = std::move(node_info.style),
+            .behaviour = std::move(node_info.behaviour),
+        });
 
     assert(res.second && "Failed to create new Node");
-    return *res.first->second;
+    detail::node_t& node = res.first->second;
+
+    if (node.behaviour) {
+        node.behaviour->setup(NodeRef { node });
+    }
+
+    return NodeRef { node };
 }
 
-Node& ImNodeFlow::placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info)
+NodeRef ImNodeFlow::placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info)
 {
     return addNode(screen2grid(screen_coords), std::move(node_info));
 }
 
-Node& ImNodeFlow::placeNode(NodeInfo node_info)
+NodeRef ImNodeFlow::placeNode(NodeInfo node_info)
 {
     return placeNodeAt(ImGui::GetMousePos(), std::move(node_info));
 }
 
-Node& ImNodeFlow::addNodeLambda(
+NodeRef ImNodeFlow::addNodeLambda(
     const ImVec2& grid_coords,
-    std::function<void(Node&)> draw_func)
+    std::function<void(NodeRef)> draw_func)
 {
     return addNode(
         grid_coords,
@@ -364,288 +377,327 @@ Node& ImNodeFlow::addNodeLambda(
 // -----------------------------------------------------------------------------------------------------------------
 // BASE NODE
 
-Node::Node(ImNodeFlow& ctx, ImVec2 pos, NodeUID uid, NodeInfo node_info)
-    : m_impl(std::make_unique<Node::impl_t>(Node::impl_t {
-          .ctx { ctx },
-          .uid { uid },
-          .pos { pos },
-          .posTarget { pos },
-          .style { std::move(node_info.style) },
-          .behaviour { std::move(node_info.behaviour) },
-      }))
+template <bool TIsConst>
+NodeRefImpl<TIsConst>::NodeRefImpl(underlying_type& internal_node)
+    : m_node(internal_node)
 {
-    if (m_impl->behaviour) {
-        m_impl->behaviour->setup(*this);
+}
+
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::destroy()
+    requires(!TIsConst)
+{
+    if (m_node.get().behaviour) {
+        m_node.get().behaviour.reset();
     }
+    m_node.get().destroyed = true;
 }
 
-void Node::destroy()
+template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::toDestroy() const
 {
-    if (m_impl->behaviour) {
-        m_impl->behaviour.reset();
-    }
-    m_impl->destroyed = true;
+    return m_node.get().destroyed;
 }
 
-bool Node::toDestroy() const
+template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::isHovered() const
 {
-    return m_impl->destroyed;
-}
-
-bool Node::isHovered()
-{
-    ImVec2 paddingTL = { m_impl->style.padding.x, m_impl->style.padding.y };
-    ImVec2 paddingBR = { m_impl->style.padding.z, m_impl->style.padding.w };
+    ImVec2 paddingTL = { m_node.get().style.padding.x, m_node.get().style.padding.y };
+    ImVec2 paddingBR = { m_node.get().style.padding.z, m_node.get().style.padding.w };
     return ImGui::IsMouseHoveringRect(
-        m_impl->ctx.get().grid2screen(m_impl->pos - paddingTL),
-        m_impl->ctx.get().grid2screen(m_impl->pos + m_impl->size + paddingBR));
+        m_node.get().ctx.get().grid2screen(m_node.get().pos - paddingTL),
+        m_node.get().ctx.get().grid2screen(m_node.get().pos + m_node.get().size + paddingBR));
 }
 
-NodeUID Node::getUID() const
+template <bool TIsConst>
+NodeUID NodeRefImpl<TIsConst>::getUID() const
 {
-    return m_impl->uid;
+    return m_node.get().uid;
 }
 
-const std::string& Node::getName() const
+template <bool TIsConst>
+const std::string& NodeRefImpl<TIsConst>::getName() const
 {
-    return m_impl->title;
+    return m_node.get().title;
 }
 
-const ImVec2& Node::getSize() const
+template <bool TIsConst>
+const ImVec2& NodeRefImpl<TIsConst>::getSize() const
 {
-    return m_impl->size;
+    return m_node.get().size;
 }
 
-const ImVec2& Node::getFullSize() const
+template <bool TIsConst>
+const ImVec2& NodeRefImpl<TIsConst>::getFullSize() const
 {
-    return m_impl->fullSize;
+    return m_node.get().fullSize;
 }
 
-const ImVec2& Node::getPos() const
+template <bool TIsConst>
+const ImVec2& NodeRefImpl<TIsConst>::getPos() const
 {
-    return m_impl->pos;
+    return m_node.get().pos;
 }
 
-ImVec2 Node::getTLPos() const
+template <bool TIsConst>
+ImVec2 NodeRefImpl<TIsConst>::getTLPos() const
 {
-    return m_impl->pos - ImVec2 { m_impl->style.padding.x, m_impl->style.padding.y };
+    return m_node.get().pos - ImVec2 { m_node.get().style.padding.x, m_node.get().style.padding.y };
 }
 
-const NodeStyle& Node::getStyle() const
+template <bool TIsConst>
+const NodeStyle& NodeRefImpl<TIsConst>::getStyle() const
 {
-    return m_impl->style;
+    return m_node.get().style;
 }
 
-bool Node::isSelected() const
+template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::isSelected() const
 {
-    return m_impl->selected || m_impl->provisionallySelected;
+    return m_node.get().selected || m_node.get().provisionallySelected;
 }
 
-bool Node::isDragged() const
+template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::isDragged() const
 {
-    return m_impl->dragged;
+    return m_node.get().dragged;
 }
 
-bool Node::isIndestructable() const
+template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::isIndestructable() const
 {
-    return m_impl->indestructable;
+    return m_node.get().indestructable;
 }
 
-Node& Node::setUID(NodeUID uid)
+template <bool TIsConst>
+NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setUID(NodeUID uid)
+    requires(!TIsConst)
 {
-    m_impl->uid = uid;
+    m_node.get().uid = uid;
     return *this;
 }
 
-Node& Node::setTitle(const std::string& title)
+template <bool TIsConst>
+NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setTitle(const std::string& title)
+    requires(!TIsConst)
 {
-    m_impl->title = title;
+    m_node.get().title = title;
     return *this;
 }
 
-Node& Node::setPos(const ImVec2& pos)
+template <bool TIsConst>
+NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setPos(const ImVec2& pos)
+    requires(!TIsConst)
 {
-    m_impl->pos = pos;
-    m_impl->posTarget = pos;
+    m_node.get().pos = pos;
+    m_node.get().posTarget = pos;
     return *this;
 }
 
-Node& Node::setStyle(NodeStyle style)
+template <bool TIsConst>
+NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setStyle(NodeStyle style)
+    requires(!TIsConst)
 {
-    m_impl->style = std::move(style);
+    m_node.get().style = std::move(style);
     return *this;
 }
 
-Node& Node::setIndestructable(bool indestruct)
+template <bool TIsConst>
+NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setIndestructable(bool indestruct)
+    requires(!TIsConst)
 {
-    m_impl->indestructable = indestruct;
+    m_node.get().indestructable = indestruct;
     return *this;
 }
 
-Node& Node::setSelected(bool state)
+template <bool TIsConst>
+NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setSelected(bool state)
+    requires(!TIsConst)
 {
-    m_impl->selectedNext = state;
+    m_node.get().selectedNext = state;
     return *this;
 }
 
-Node& Node::setProvisionallySelected(bool state)
+template <bool TIsConst>
+NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setProvisionallySelected(bool state)
+    requires(!TIsConst)
 {
-    m_impl->provisionallySelectedNext = state;
+    m_node.get().provisionallySelectedNext = state;
     return *this;
 }
 
-void Node::updatePublicStatus()
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::updatePublicStatus()
+    requires(!TIsConst)
 {
-    m_impl->selected = m_impl->selectedNext;
-    m_impl->provisionallySelected = m_impl->provisionallySelectedNext;
-    m_impl->provisionallySelectedNext = false;
+    m_node.get().selected = m_node.get().selectedNext;
+    m_node.get().provisionallySelected = m_node.get().provisionallySelectedNext;
+    m_node.get().provisionallySelectedNext = false;
 }
 
-void Node::dropIN(const PinUID& uid)
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::dropIN(const PinUID& uid)
+    requires(!TIsConst)
 {
     auto iter = std::find_if(
-        m_impl->ins.begin(), m_impl->ins.end(), [&](auto const& pin) -> bool {
+        m_node.get().ins.begin(), m_node.get().ins.end(), [&](auto const& pin) -> bool {
             return pin->getUid() == uid;
         });
 
-    if (iter != m_impl->ins.end()) {
-        m_impl->ins.erase(iter);
+    if (iter != m_node.get().ins.end()) {
+        m_node.get().ins.erase(iter);
     }
 }
 
-void Node::dropIN(const char* name)
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::dropIN(const char* name)
+    requires(!TIsConst)
 {
-    m_impl->ins.erase(
+    m_node.get().ins.erase(
         std::remove_if(
-            m_impl->ins.begin(),
-            m_impl->ins.end(),
+            m_node.get().ins.begin(),
+            m_node.get().ins.end(),
             [&](auto const& pin) -> bool {
                 return pin->getName() == name;
             }),
-        m_impl->ins.end());
+        m_node.get().ins.end());
 }
 
-void Node::dropOUT(const PinUID& uid)
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::dropOUT(const PinUID& uid)
+    requires(!TIsConst)
 {
     auto iter = std::find_if(
-        m_impl->outs.begin(),
-        m_impl->outs.end(),
+        m_node.get().outs.begin(),
+        m_node.get().outs.end(),
         [&uid](auto const& pin) -> bool {
             return pin->getUid() == uid;
         });
 
-    if (iter != m_impl->outs.end()) {
-        m_impl->outs.erase(iter);
+    if (iter != m_node.get().outs.end()) {
+        m_node.get().outs.erase(iter);
     }
 }
 
+template <bool TIsConst>
 inline void
-Node::dropOUT(const char* name)
+NodeRefImpl<TIsConst>::dropOUT(const char* name)
+    requires(!TIsConst)
 {
-    m_impl->outs.erase(
+    m_node.get().outs.erase(
         std::remove_if(
-            m_impl->outs.begin(),
-            m_impl->outs.end(),
+            m_node.get().outs.begin(),
+            m_node.get().outs.end(),
             [&name](auto const& pin) -> bool {
                 return pin->getName() == name;
             }),
-        m_impl->outs.end());
+        m_node.get().outs.end());
 }
 
-Pin* Node::inPin(const PinUID& uid)
+template <bool TIsConst>
+auto NodeRefImpl<TIsConst>::inPin(const PinUID& uid) -> pin_pointer_t
 {
     auto it = std::find_if(
-        m_impl->ins.begin(),
-        m_impl->ins.end(),
+        m_node.get().ins.begin(),
+        m_node.get().ins.end(),
         [&uid](const auto& p) {
             return p->getUid() == uid;
         });
-    return it == m_impl->ins.end() ? nullptr : &**it;
+    return it == m_node.get().ins.end() ? nullptr : &**it;
 }
 
-Pin* Node::inPin(const char* name)
+template <bool TIsConst>
+auto NodeRefImpl<TIsConst>::inPin(const char* name) -> pin_pointer_t
 {
     auto it = std::find_if(
-        m_impl->ins.begin(),
-        m_impl->ins.end(),
+        m_node.get().ins.begin(),
+        m_node.get().ins.end(),
         [&name](const auto& p) {
             return p->getName() == name;
         });
-    return it == m_impl->ins.end() ? nullptr : &**it;
+    return it == m_node.get().ins.end() ? nullptr : &**it;
 }
 
-Pin* Node::outPin(const PinUID& uid)
+template <bool TIsConst>
+auto NodeRefImpl<TIsConst>::outPin(const PinUID& uid) -> pin_pointer_t
 {
     auto it = std::find_if(
-        m_impl->outs.begin(),
-        m_impl->outs.end(),
+        m_node.get().outs.begin(),
+        m_node.get().outs.end(),
         [&uid](const auto& p) {
             return p->getUid() == uid;
         });
-    return it == m_impl->outs.end() ? nullptr : &**it;
+    return it == m_node.get().outs.end() ? nullptr : &**it;
 }
 
-Pin* Node::outPin(const char* name)
+template <bool TIsConst>
+auto NodeRefImpl<TIsConst>::outPin(const char* name) -> pin_pointer_t
 {
     auto it = std::find_if(
-        m_impl->outs.begin(),
-        m_impl->outs.end(),
+        m_node.get().outs.begin(),
+        m_node.get().outs.end(),
         [&name](const auto& p) {
             return p->getName() == name;
         });
-    return it == m_impl->outs.end() ? nullptr : &**it;
+    return it == m_node.get().outs.end() ? nullptr : &**it;
 }
 
-void Node::calculate()
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::calculate()
+    requires(!TIsConst)
 {
-    for (auto& pin : m_impl->outs) {
+    for (auto& pin : m_node.get().outs) {
         pin->calculate();
     }
-    for (auto& pin : m_impl->dynamicOuts) {
+    for (auto& pin : m_node.get().dynamicOuts) {
         pin.pin().calculate();
     }
-    for (auto& pin : m_impl->ins) {
+    for (auto& pin : m_node.get().ins) {
         pin->calculate();
     }
-    for (auto& pin : m_impl->dynamicIns) {
+    for (auto& pin : m_node.get().dynamicIns) {
         pin.pin().calculate();
     }
 }
 
-void Node::prime()
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::prime()
+    requires(!TIsConst)
 {
-    for (auto& pin : m_impl->outs) {
+    for (auto& pin : m_node.get().outs) {
         pin->prime();
     }
-    for (auto& pin : m_impl->dynamicOuts) {
+    for (auto& pin : m_node.get().dynamicOuts) {
         pin.pin().prime();
     }
-    for (auto& pin : m_impl->ins) {
+    for (auto& pin : m_node.get().ins) {
         pin->prime();
     }
-    for (auto& pin : m_impl->dynamicIns) {
+    for (auto& pin : m_node.get().dynamicIns) {
         pin.pin().prime();
     }
 }
 
-void Node::update()
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::update()
+    requires(!TIsConst)
 {
-    auto& ctx = m_impl->ctx.get();
+    auto& ctx = m_node.get().ctx.get();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImGui::PushID(this);
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
-    ImVec2 paddingTL = { m_impl->style.padding.x, m_impl->style.padding.y };
-    ImVec2 paddingBR = { m_impl->style.padding.z, m_impl->style.padding.w };
+    ImVec2 paddingTL = { m_node.get().style.padding.x, m_node.get().style.padding.y };
+    ImVec2 paddingBR = { m_node.get().style.padding.z, m_node.get().style.padding.w };
 
     draw_list->ChannelsSetCurrent(1); // Foreground
-    ImGui::SetCursorScreenPos(offset + m_impl->pos);
+    ImGui::SetCursorScreenPos(offset + m_node.get().pos);
 
     ImGui::BeginGroup();
 
     // Header
     ImGui::BeginGroup();
-    ImGui::TextColored(m_impl->style.header_title_color, "%s", m_impl->title.c_str());
+    ImGui::TextColored(m_node.get().style.header_title_color, "%s", m_node.get().title.c_str());
     ImGui::Spacing();
     ImGui::EndGroup();
     float headerH = ImGui::GetItemRectSize().y;
@@ -654,9 +706,9 @@ void Node::update()
     Pin* hovered_pin = nullptr;
 
     // Inputs
-    if (!m_impl->ins.empty() || !m_impl->dynamicIns.empty()) {
+    if (!m_node.get().ins.empty() || !m_node.get().dynamicIns.empty()) {
         ImGui::BeginGroup();
-        for (auto& p : m_impl->ins) {
+        for (auto& p : m_node.get().ins) {
             p->setPos(ImGui::GetCursorPos());
             bool is_hovering = false;
             p->update(&is_hovering);
@@ -664,7 +716,7 @@ void Node::update()
                 hovered_pin = &*p;
             }
         }
-        for (auto& dyn_pin : m_impl->dynamicIns) {
+        for (auto& dyn_pin : m_node.get().dynamicIns) {
             dyn_pin.pin().setPos(ImGui::GetCursorPos());
             bool is_hovering = false;
             dyn_pin.update(&is_hovering);
@@ -679,26 +731,26 @@ void Node::update()
     // Content
     ImGui::BeginGroup();
 
-    if (m_impl->behaviour) {
-        m_impl->behaviour->draw(*this);
+    if (m_node.get().behaviour) {
+        m_node.get().behaviour->draw(*this);
     } else {
         ImGui::TextUnformatted("<no renderer provided>");
     }
 
     // Dynamic inputs stale check can only be done after the call to
     // behaviour->draw() and before any call to DynamicPin::update()
-    m_impl->dynamicIns.erase(
+    m_node.get().dynamicIns.erase(
         std::remove_if(
-            m_impl->dynamicIns.begin(),
-            m_impl->dynamicIns.end(),
+            m_node.get().dynamicIns.begin(),
+            m_node.get().dynamicIns.end(),
             [](const auto& elem) -> bool { return elem.isStale(); }),
-        m_impl->dynamicIns.end());
-    m_impl->dynamicOuts.erase(
+        m_node.get().dynamicIns.end());
+    m_node.get().dynamicOuts.erase(
         std::remove_if(
-            m_impl->dynamicOuts.begin(),
-            m_impl->dynamicOuts.end(),
+            m_node.get().dynamicOuts.begin(),
+            m_node.get().dynamicOuts.end(),
             [](const auto& elem) -> bool { return elem.isStale(); }),
-        m_impl->dynamicOuts.end());
+        m_node.get().dynamicOuts.end());
 
     ImGui::Dummy(ImVec2(0.f, 0.f));
     ImGui::EndGroup();
@@ -706,25 +758,25 @@ void Node::update()
 
     // Outputs
     float maxW = 0.0f;
-    for (auto& p : m_impl->outs) {
+    for (auto& p : m_node.get().outs) {
         float w = p->calcWidth();
         if (w > maxW)
             maxW = w;
     }
-    for (auto& dyn_pin : m_impl->dynamicOuts) {
+    for (auto& dyn_pin : m_node.get().dynamicOuts) {
         float w = dyn_pin.pin().calcWidth();
         if (w > maxW)
             maxW = w;
     }
     ImGui::BeginGroup();
-    for (auto& p : m_impl->outs) {
+    for (auto& p : m_node.get().outs) {
         // FIXME: This looks horrible
-        if ((m_impl->pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
+        if ((m_node.get().pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
             p->setPos(
                 ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - p->calcWidth(), 0.f));
         else
             p->setPos(ImVec2(
-                (m_impl->pos + ImVec2(titleW - p->calcWidth(), 0) + ctx.getGrid().scroll())
+                (m_node.get().pos + ImVec2(titleW - p->calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         bool is_hovering = false;
@@ -733,14 +785,14 @@ void Node::update()
             hovered_pin = &*p;
         }
     }
-    for (auto& dyn_pin : m_impl->dynamicOuts) {
+    for (auto& dyn_pin : m_node.get().dynamicOuts) {
         // FIXME: This looks horrible
-        if ((m_impl->pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
+        if ((m_node.get().pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
             dyn_pin.pin().setPos(
                 ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - dyn_pin.pin().calcWidth(), 0.f));
         else
             dyn_pin.pin().setPos(ImVec2(
-                (m_impl->pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + ctx.getGrid().scroll())
+                (m_node.get().pos + ImVec2(titleW - dyn_pin.pin().calcWidth(), 0) + ctx.getGrid().scroll())
                     .x,
                 ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         bool is_hovering = false;
@@ -753,30 +805,30 @@ void Node::update()
     ImGui::EndGroup();
 
     ImGui::EndGroup();
-    m_impl->size = ImGui::GetItemRectSize();
-    ImVec2 headerSize = ImVec2(m_impl->size.x + paddingBR.x, headerH);
+    m_node.get().size = ImGui::GetItemRectSize();
+    ImVec2 headerSize = ImVec2(m_node.get().size.x + paddingBR.x, headerH);
 
     // Background
     draw_list->ChannelsSetCurrent(0);
     draw_list->AddRectFilled(
-        offset + m_impl->pos - paddingTL,
-        offset + m_impl->pos + m_impl->size + paddingBR,
-        m_impl->style.bg,
-        m_impl->style.radius);
+        offset + m_node.get().pos - paddingTL,
+        offset + m_node.get().pos + m_node.get().size + paddingBR,
+        m_node.get().style.bg,
+        m_node.get().style.radius);
     draw_list->AddRectFilled(
-        offset + m_impl->pos - paddingTL,
-        offset + m_impl->pos + headerSize,
-        m_impl->style.header_bg,
-        m_impl->style.radius,
+        offset + m_node.get().pos - paddingTL,
+        offset + m_node.get().pos + headerSize,
+        m_node.get().style.header_bg,
+        m_node.get().style.radius,
         ImDrawFlags_RoundCornersTop);
-    m_impl->fullSize = m_impl->size + paddingTL + paddingBR;
-    ImU32 col = m_impl->style.border_color;
-    float thickness = m_impl->style.border_thickness;
+    m_node.get().fullSize = m_node.get().size + paddingTL + paddingBR;
+    ImU32 col = m_node.get().style.border_color;
+    float thickness = m_node.get().style.border_thickness;
     ImVec2 ptl = paddingTL;
     ImVec2 pbr = paddingBR;
     if (this->isSelected()) {
-        col = m_impl->style.border_selected_color;
-        thickness = m_impl->style.border_selected_thickness;
+        col = m_node.get().style.border_selected_color;
+        thickness = m_node.get().style.border_selected_thickness;
     }
     if (thickness < 0.f) {
         ptl.x -= thickness / 2;
@@ -786,10 +838,10 @@ void Node::update()
         thickness *= -1.f;
     }
     draw_list->AddRect(
-        offset + m_impl->pos - ptl,
-        offset + m_impl->pos + m_impl->size + pbr,
+        offset + m_node.get().pos - ptl,
+        offset + m_node.get().pos + m_node.get().size + pbr,
         col,
-        m_impl->style.radius,
+        m_node.get().style.radius,
         0,
         thickness);
 
@@ -811,34 +863,37 @@ void Node::update()
 
     if (isHovered()) {
         bool onHeader = ImGui::IsMouseHoveringRect(
-            offset + m_impl->pos - paddingTL, offset + m_impl->pos + headerSize);
+            offset + m_node.get().pos - paddingTL, offset + m_node.get().pos + headerSize);
 
-        ctx.hoveredNode(this);
+        ctx.hoveredNode(&m_node.get());
         if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
             ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
             setSelected(true);
             if (onHeader) {
-                m_impl->dragged = true;
+                m_node.get().dragged = true;
                 ctx.draggingNode(true);
             }
         }
     }
 
-    if (m_impl->dragged || (m_impl->selected && ctx.isNodeDragged())) {
+    if (m_node.get().dragged || (m_node.get().selected && ctx.isNodeDragged())) {
         float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
-        m_impl->posTarget += ctx.getScreenSpaceDelta();
+        m_node.get().posTarget += ctx.getScreenSpaceDelta();
         // "Slam" The position
-        m_impl->pos.x = round(m_impl->posTarget.x / step) * step;
-        m_impl->pos.y = round(m_impl->posTarget.y / step) * step;
+        m_node.get().pos.x = round(m_node.get().posTarget.x / step) * step;
+        m_node.get().pos.y = round(m_node.get().posTarget.y / step) * step;
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            m_impl->dragged = false;
+            m_node.get().dragged = false;
             ctx.draggingNode(false);
-            m_impl->posTarget = m_impl->pos;
+            m_node.get().posTarget = m_node.get().pos;
         }
     }
     ImGui::PopID();
 }
+
+template class NodeRefImpl<false>;
+template class NodeRefImpl<true>;
 
 // -----------------------------------------------------------------------------------------------------------------
 // HANDLER
@@ -869,7 +924,8 @@ ImNodeFlow::~ImNodeFlow() = default;
 bool ImNodeFlow::mouse_on_selected_node()
 {
     return std::any_of(m_impl->nodes.begin(), m_impl->nodes.end(), [](const auto& n) {
-        return n.second->isSelected() && n.second->isHovered();
+        ConstNodeRef node { n.second };
+        return node.isSelected() && node.isHovered();
     });
 }
 
@@ -878,7 +934,7 @@ bool ImNodeFlow::mouse_on_free_space()
     return std::all_of(
                m_impl->nodes.begin(),
                m_impl->nodes.end(),
-               [](const auto& n) { return !n.second->isHovered(); })
+               [](const auto& n) { return !ConstNodeRef { n.second }.isHovered(); })
         && std::all_of(m_impl->links.begin(), m_impl->links.end(), [](const auto& l) {
                return !l->isHovered();
            });
@@ -1081,7 +1137,7 @@ void ImNodeFlow::dragging(Pin* dragged)
     m_impl->dragOut = dragged;
 }
 
-void ImNodeFlow::hoveredNode(Node* hovering)
+void ImNodeFlow::hoveredNode(detail::node_t* hovering)
 {
     m_impl->hoveredNode = hovering;
 }
@@ -1139,28 +1195,28 @@ void ImNodeFlow::update()
 
     // Propagate pin values
     for (auto& node : m_impl->nodes) {
-        node.second->calculate();
+        NodeRef { node.second }.calculate();
     }
     for (auto& node : m_impl->nodes) {
-        node.second->prime();
+        NodeRef { node.second }.prime();
     }
 
     // Update and draw nodes
     // TODO: I don't like this
     draw_list->ChannelsSplit(2);
     for (auto& node : m_impl->nodes) {
-        node.second->update();
+        NodeRef { node.second }.update();
     }
     // Remove "toDelete" nodes
     for (auto iter = m_impl->nodes.begin(); iter != m_impl->nodes.end();) {
-        if (iter->second->toDestroy())
+        if (NodeRef { iter->second }.toDestroy())
             iter = m_impl->nodes.erase(iter);
         else
             ++iter;
     }
     draw_list->ChannelsMerge();
     for (auto& node : m_impl->nodes) {
-        node.second->updatePublicStatus();
+        NodeRef { node.second }.updatePublicStatus();
     }
 
     // Update and draw links
@@ -1213,7 +1269,7 @@ void ImNodeFlow::update()
         // Deselect all nodes if not holding down CTRL
         if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
             for (auto& node : m_impl->nodes) {
-                node.second->setSelected(false);
+                NodeRef { node.second }.setSelected(false);
             }
         }
     }
@@ -1245,7 +1301,7 @@ void ImNodeFlow::update()
         }
 
         for (auto& elem : m_impl->nodes) {
-            auto& node = *elem.second;
+            NodeRef node { elem.second };
 
             ImVec2 nodePos = grid2screen(node.getTLPos());
             ImVec2 nodeSize = node.getFullSize();
@@ -1267,7 +1323,11 @@ void ImNodeFlow::update()
         ImGui::OpenPopup("RightClickPopUp");
     }
     if (ImGui::BeginPopup("RightClickPopUp")) {
-        m_impl->rightClickPopUp(m_impl->hoveredNodeAux);
+        std::optional<NodeRef> arg;
+        if (m_impl->hoveredNodeAux != nullptr) {
+            arg.emplace(*m_impl->hoveredNodeAux);
+        }
+        m_impl->rightClickPopUp(std::move(arg));
         ImGui::EndPopup();
     }
 

@@ -4,7 +4,7 @@
 
 class SimpleSum : public ImFlow::INodeBehaviour {
 public:
-    void setup(ImFlow::Node& node) override
+    void setup(ImFlow::NodeRef node) override
     {
         node.setTitle("Simple sum");
         node.setStyle(ImFlow::NodeStyles::green);
@@ -12,13 +12,13 @@ public:
         node.addIN<int>({ .name = "In", .default_value = 0 });
         node.addOUT<int>({
             .name = "Out",
-            .behaviour = [this](ImFlow::Node& node) -> int {
+            .behaviour = [this](ImFlow::NodeRef node) -> int {
                 return node.inPin<int>("In")->value() + m_valB;
             },
         });
     }
 
-    void draw(ImFlow::Node& node) override
+    void draw(ImFlow::NodeRef node) override
     {
         ImGui::SetNextItemWidth(100.f);
         ImGui::InputInt("##ValB", &m_valB);
@@ -30,7 +30,7 @@ private:
 
 class MultipleInputAdder : public ImFlow::INodeBehaviour {
 public:
-    void setup(ImFlow::Node& node) override
+    void setup(ImFlow::NodeRef node) override
     {
         node.setTitle("Multiple input adder");
         node.setStyle(ImFlow::NodeStyles::cyan);
@@ -45,13 +45,13 @@ public:
         });
         node.addOUT<int>({
             .name = "Out",
-            .behaviour = [](ImFlow::Node& node) -> int {
+            .behaviour = [](ImFlow::NodeRef node) -> int {
                 return node.inPin<int>("In")->value();
             },
         });
     };
 
-    void draw(ImFlow::Node& node) override
+    void draw(ImFlow::NodeRef node) override
     {
         ImGui::SetNextItemWidth(100.F);
         ImGui::Text("Result: %d", node.inPin<int>("In")->value());
@@ -65,7 +65,7 @@ public:
 
 class CollapsingNode : public ImFlow::INodeBehaviour {
 public:
-    void setup(ImFlow::Node& node) override
+    void setup(ImFlow::NodeRef node) override
     {
         node.setTitle("Collapsing node");
         node.setStyle(ImFlow::NodeStyles::red);
@@ -83,7 +83,7 @@ public:
 
         node.addOUT<int>({
             .name = "Out",
-            .behaviour = [this](ImFlow::Node& node) -> int {
+            .behaviour = [this](ImFlow::NodeRef node) -> int {
                 return node.inPin<int>("A")->value() + node.inPin<int>("B")->value();
             },
             .renderer = [](auto* pin) -> void {
@@ -93,7 +93,7 @@ public:
         });
     }
 
-    void draw(ImFlow::Node& node) override
+    void draw(ImFlow::NodeRef node) override
     {
         ImGui::TextUnformatted("Select me to see more");
 
@@ -118,7 +118,7 @@ public:
         if (m_multiplier) {
             node.showOUT<int>({
                 .name = "Multiplier",
-                .behaviour = [](ImFlow::Node& node) -> int {
+                .behaviour = [](ImFlow::NodeRef node) -> int {
                     return node.inPin<int>("A")->value() * node.inPin<int>("B")->value();
                 },
                 .style = ImFlow::PinStyles::red,
@@ -132,7 +132,7 @@ private:
 
 class ResultNode : public ImFlow::INodeBehaviour {
 public:
-    void setup(ImFlow::Node& node) override
+    void setup(ImFlow::NodeRef node) override
     {
         node.setTitle("Result node");
         node.setStyle(ImFlow::NodeStyles::brown);
@@ -140,7 +140,7 @@ public:
         node.addIN<int>({ .name = "B", .default_value = 0 });
     }
 
-    void draw(ImFlow::Node& node) override
+    void draw(ImFlow::NodeRef node) override
     {
         ImGui::Text(
             "Result: %d",
@@ -150,7 +150,7 @@ public:
 
 class NotGate : public ImFlow::INodeBehaviour {
 public:
-    void setup(ImFlow::Node& node) override
+    void setup(ImFlow::NodeRef node) override
     {
         node.setTitle("Not");
         node.setStyle(ImFlow::NodeStyles::red);
@@ -165,13 +165,13 @@ public:
         });
         node.addOUT<bool>({
             .name = "OUT",
-            .behaviour = [this](ImFlow::Node& node) -> int {
+            .behaviour = [this](ImFlow::NodeRef node) -> int {
                 return !node.inPin<bool>("IN")->value();
             },
         });
     }
 
-    void draw(ImFlow::Node& node) override
+    void draw(ImFlow::NodeRef node) override
     {
         auto& inPin = *node.inPin<bool>("IN");
         auto& outPin = *node.outPin<bool>("OUT");
@@ -198,8 +198,8 @@ struct NodeEditor {
     {
         mINF.setSize({ width, height });
         mINF.setSize({ width, height });
-        mINF.rightClickPopUpContent([this](ImFlow::Node* node) -> void {
-            if (node != nullptr) {
+        mINF.rightClickPopUpContent([this](std::optional<ImFlow::NodeRef> node) -> void {
+            if (node.has_value()) {
                 ImGui::Text(
                     "you have right-clicked on [%s]",
                     node->getName().c_str());
@@ -233,10 +233,10 @@ struct NodeEditor {
             }
         });
 
-        auto& n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
-        auto& n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
-        auto& result = mINF.emplaceNode<ResultNode>({ 340, 20 });
-        auto& multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
+        auto n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
+        auto n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
+        auto result = mINF.emplaceNode<ResultNode>({ 340, 20 });
+        auto multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
 
         result.setIndestructable(true);
 
@@ -248,7 +248,7 @@ struct NodeEditor {
         n2.outPin("Out")->linkTo(*multi_adder.inPin("In"));
 
         // Add a collapsing node
-        auto& collapsingNode = mINF.emplaceNode<CollapsingNode>({ 330, 230 });
+        auto collapsingNode = mINF.emplaceNode<CollapsingNode>({ 330, 230 });
 
         n1.outPin("Out")->linkTo(*collapsingNode.inPin("A"));
         n2.outPin("Out")->linkTo(*collapsingNode.inPin("B"));
@@ -258,11 +258,11 @@ struct NodeEditor {
         // If this flashes too fast, the frame rate may be too high. Check you
         // have VSync enabled, or as a last resource, add more gates to slow
         // down the clock.
-        std::vector<ImFlow::Node*> notGateChain;
+        std::vector<ImFlow::NodeRef> notGateChain;
 
         for (int y = 0; y < 3; y++) {
             for (int x = 0; x < 3; x++) {
-                notGateChain.emplace_back(&mINF.emplaceNode<NotGate>({
+                notGateChain.emplace_back(mINF.emplaceNode<NotGate>({
                     float(50 + x * 90),
                     float(350 + y * 50),
                 }));
@@ -270,8 +270,8 @@ struct NodeEditor {
         }
 
         for (int i = 0; i < notGateChain.size(); i++) {
-            auto& curr_gate = *notGateChain.at(i);
-            auto& next_gate = *notGateChain.at((i + 1) % notGateChain.size());
+            auto& curr_gate = notGateChain.at(i);
+            auto& next_gate = notGateChain.at((i + 1) % notGateChain.size());
 
             curr_gate.outPin("OUT")->linkTo(*next_gate.inPin("IN"));
 

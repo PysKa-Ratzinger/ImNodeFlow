@@ -37,7 +37,7 @@ struct editor_context_t {
         bool middle = false;
     } singleUseClicks;
 
-    std::unordered_map<NodeUID, std::unique_ptr<Node>, NodeUID::Hash>
+    std::unordered_map<NodeUID, node_t, NodeUID::Hash>
         nodes;
     std::vector<std::unique_ptr<Link>> links;
 
@@ -46,9 +46,9 @@ struct editor_context_t {
     Pin* droppedLinkLeft = nullptr;
     right_click_popup_handler_t rightClickPopUp;
     std::function<void(const ImVec2&)> dragdropTarget;
-    Node* hoveredNodeAux = nullptr;
+    node_t* hoveredNodeAux = nullptr;
 
-    Node* hoveredNode = nullptr;
+    node_t* hoveredNode = nullptr;
     bool draggingNode = false, draggingNodeNext = false;
     Pin* hovering = nullptr;
     Pin* dragOut = nullptr;
@@ -67,11 +67,7 @@ struct editor_context_t {
     bool draggingCanvas = false;
 };
 
-} // namespace ImFlow::detail
-
-namespace ImFlow {
-
-struct Node::impl_t {
+struct node_t {
     std::reference_wrapper<ImNodeFlow> ctx;
 
     NodeUID uid = 0;
@@ -97,6 +93,6 @@ struct Node::impl_t {
     std::vector<detail::DynamicPin> dynamicOuts;
 };
 
-} // namespace ImFlow
+} // namespace ImFlow::detail
 
 #endif // IM_NODE_FLOW_INTERNALS
