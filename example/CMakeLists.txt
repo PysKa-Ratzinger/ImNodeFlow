@@ -40,7 +40,7 @@ endif()
 
 # Common definitions
 target_include_directories(example PRIVATE ${IMNODEFLOW_DIR}/include)
-set_property(TARGET example PROPERTY CXX_STANDARD 17)
+set_property(TARGET example PROPERTY CXX_STANDARD 20)
 target_compile_definitions(example PRIVATE IMGUI_DEFINE_MATH_OPERATORS)
 
 if(CMAKE_SYSTEM_NAME MATCHES Emscripten)
