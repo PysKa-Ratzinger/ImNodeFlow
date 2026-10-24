@@ -91,22 +91,6 @@ struct PinStyleExtras {
  */
 class PinStyle {
 public:
-    constexpr PinStyle(
-        ImU32 color,
-        int socket_shape,
-        float socket_radius,
-        float socket_hovered_radius,
-        float socket_connected_radius,
-        float socket_thickness) noexcept
-        : color(color)
-        , socket_shape(socket_shape)
-        , socket_radius(socket_radius)
-        , socket_hovered_radius(socket_hovered_radius)
-        , socket_connected_radius(socket_connected_radius)
-        , socket_thickness(socket_thickness)
-    {
-    }
-
     /// @brief Socket and link color
     ImU32 color;
     /// @brief Socket shape ID
@@ -126,17 +110,17 @@ public:
 namespace PinStyles {
 
     /// @brief Default cyan style
-    static constexpr PinStyle cyan = { IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle cyan { IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
     /// @brief Default green style
-    static constexpr PinStyle green = { IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f };
+    static constexpr PinStyle green { IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f };
     /// @brief Default blue style
-    static constexpr PinStyle blue = { IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle blue { IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
     /// @brief Default brown style
-    static constexpr PinStyle brown = { IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle brown { IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
     /// @brief Default red style
-    static constexpr PinStyle red = { IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle red { IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
     /// @brief Default white style
-    static constexpr PinStyle white = { IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f };
+    static constexpr PinStyle white { IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f };
 
     static inline constexpr PinStyle default_style = cyan;
 
@@ -269,22 +253,12 @@ struct NodeUID {
  */
 class NodeStyle {
 public:
-    constexpr NodeStyle(
-        ImU32 header_bg,
-        ImColor header_title_color,
-        float radius) noexcept
-        : header_bg(header_bg)
-        , header_title_color(header_title_color)
-        , radius(radius)
-    {
-    }
-
     /// @brief Body's background color
     ImU32 bg = IM_COL32(55, 64, 75, 255);
     /// @brief Header's background color
-    ImU32 header_bg;
+    ImU32 header_bg = IM_COL32(71, 142, 173, 255);
     /// @brief Header title color
-    ImColor header_title_color;
+    ImColor header_title_color = ImColor(233, 241, 244, 255);
     /// @brief Border color
     ImU32 border_color = IM_COL32(30, 38, 41, 140);
     /// @brief Border color when selected
@@ -293,7 +267,7 @@ public:
     /// @brief Body's content padding (Left Top Right Bottom)
     ImVec4 padding = ImVec4(13.7f, 6.f, 13.7f, 2.f);
     /// @brief Edges rounding
-    float radius;
+    float radius = 6.5f;
     /// @brief Border thickness
     float border_thickness = -1.35f;
     /// @brief Border thickness when selected
@@ -301,15 +275,33 @@ public:
 };
 
 namespace NodeStyles {
-
     /// @brief Default cyan style
-    static constexpr NodeStyle cyan = { IM_COL32(71, 142, 173, 255), ImColor(233, 241, 244, 255), 6.5f };
+    static constexpr NodeStyle cyan {
+        .header_bg = IM_COL32(71, 142, 173, 255),
+        .header_title_color = ImColor(233, 241, 244, 255),
+        .radius = 6.5f,
+    };
+
     /// @brief Default green style
-    static constexpr NodeStyle green = { IM_COL32(90, 191, 93, 255), ImColor(233, 241, 244, 255), 3.5f };
+    static constexpr NodeStyle green {
+        .header_bg = IM_COL32(90, 191, 93, 255),
+        .header_title_color = ImColor(233, 241, 244, 255),
+        .radius = 3.5f,
+    };
+
     /// @brief Default red style
-    static constexpr NodeStyle red = { IM_COL32(191, 90, 90, 255), ImColor(233, 241, 244, 255), 11.f };
+    static constexpr NodeStyle red {
+        .header_bg = IM_COL32(191, 90, 90, 255),
+        .header_title_color = ImColor(233, 241, 244, 255),
+        .radius = 11.f,
+    };
+
     /// @brief Default brown style
-    static constexpr NodeStyle brown = { IM_COL32(191, 134, 90, 255), ImColor(233, 241, 244, 255), 6.5f };
+    static constexpr NodeStyle brown {
+        .header_bg = IM_COL32(191, 134, 90, 255),
+        .header_title_color = ImColor(233, 241, 244, 255),
+        .radius = 6.5f,
+    };
 
     static inline constexpr NodeStyle default_style = cyan;
 
