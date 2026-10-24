@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../src/context_wrapper.h"
+#include "ImNodeFlow/fwd.h"
 
 #include <imgui.h>
 
@@ -14,40 +15,26 @@
 #include <type_traits>
 #include <utility>
 
-namespace ImFlow {
+/// NOTE: Do not depend on anything inside the detail namespace as a user of
+/// the public API
+namespace ImFlow::detail {
 
 // -----------------------------------------------------------------------------------------------------------------
 // FORWARD DECLARATIONS
 
-template <typename T, bool TIsConst = false>
-class InPinRef;
-template <typename T, bool TIsConst = false>
-class OutPinRef;
-template <bool TIsConst = false>
-class PinRef;
-class INodeBehaviour;
-template <bool TIsConst = false>
-class NodeRefImpl;
-class ImNodeFlow;
+class IPin;
+class Link;
+struct editor_context_t;
+struct node_t;
+struct pin_base_t;
+template <typename T>
+struct in_pin_t;
+template <typename T>
+struct out_pin_t;
 
-using NodeRef = NodeRefImpl<false>;
-using ConstNodeRef = NodeRefImpl<true>;
+} // namespace ImFlow::detail
 
-/// NOTE: Do not depend on anything inside the detail namespace as a user of
-/// the public API
-namespace detail {
-
-    class IPin;
-    class Link;
-    struct editor_context_t;
-    struct node_t;
-    struct pin_base_t;
-    template <typename T>
-    struct in_pin_t;
-    template <typename T>
-    struct out_pin_t;
-
-} // namespace detail
+namespace ImFlow {
 
 // -----------------------------------------------------------------------------------------------------------------
 // CLASSES PRE-DEFINITIONS
