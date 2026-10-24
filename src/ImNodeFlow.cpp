@@ -2,9 +2,12 @@
 
 #include "./INodeBehaviour.impl"
 #include "./Link.impl"
+#include "./uid_helpers.impl"
 
 #include "./ImNodeFlow_internals.h"
+
 #include "ImNodeFlow/IContainedContext.h"
+#include "ImNodeFlow/NodeUID.h"
 
 #include "imgui.h"
 #include "imgui_bezier_items.h"
@@ -23,52 +26,6 @@
 #include <utility>
 
 namespace ImFlow {
-
-// -----------------------------------------------------------------------------------------------------------------
-// PinUID
-
-PinUID::PinUID(uint64_t value) noexcept
-    : id(value)
-{
-}
-
-PinUID
-PinUID::generate() noexcept
-{
-    static uint64_t id = 0;
-
-    return PinUID { id++ };
-}
-
-bool PinUID::operator==(PinUID const& other) const noexcept
-{
-    return this->id == other.id;
-}
-
-// -----------------------------------------------------------------------------------------------------------------
-// NodeUID
-
-NodeUID::NodeUID(uint64_t value) noexcept
-    : id(value)
-{
-}
-
-NodeUID
-NodeUID::generate() noexcept
-{
-    static uint64_t id = 0;
-    return NodeUID { id++ };
-}
-
-bool NodeUID::operator==(NodeUID const& other) const noexcept
-{
-    return this->id == other.id;
-}
-
-auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
-{
-    return std::hash<uint64_t> { }(uid.id);
-}
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN
@@ -429,7 +386,7 @@ namespace {
 
 NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
-    auto uid = NodeUID::generate();
+    auto uid = detail::generate_node_uid();
     auto res = m_impl->nodes.emplace(
         uid,
         detail::node_t {

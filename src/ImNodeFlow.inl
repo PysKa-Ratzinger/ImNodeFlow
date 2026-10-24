@@ -8,6 +8,7 @@
 // overhead for the users of the library
 #include "./ImNodeFlow_internals.h"
 #include "./Link.h"
+#include "./uid_helpers.h"
 
 #include <cassert>
 #include <cstdint>
@@ -262,7 +263,7 @@ InPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addIN(InPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    return addIN(PinUID::generate(), std::move(pin_info));
+    return addIN(detail::generate_pin_uid(), std::move(pin_info));
 }
 
 template <bool TIsConst>
@@ -292,7 +293,7 @@ NodeRefImpl<TIsConst>::showIN(InPinInfo<T> pin_info)
 
     m_node.get().dynamicIns.emplace_back(
         std::make_unique<detail::in_pin_t<T>>(
-            m_node.get().ctx, PinUID::generate(), *this, std::move(pin_info)));
+            m_node.get().ctx, detail::generate_pin_uid(), *this, std::move(pin_info)));
     return m_node.get().dynamicIns.back().pin().template toIn<T>().val();
 }
 
@@ -322,7 +323,7 @@ OutPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addOUT(OutPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    return addOUT<T>(PinUID::generate(), std::move(pin_info));
+    return addOUT<T>(detail::generate_pin_uid(), std::move(pin_info));
 }
 
 template <bool TIsConst>
@@ -356,7 +357,7 @@ void NodeRefImpl<TIsConst>::showOUT(OutPinInfo<T> pin_info)
 
     m_node.get().dynamicOuts.emplace_back(
         std::make_unique<detail::out_pin_t<T>>(
-            m_node.get().ctx, PinUID::generate(), *this, std::move(pin_info)));
+            m_node.get().ctx, detail::generate_pin_uid(), *this, std::move(pin_info)));
 }
 
 template <bool TIsConst>

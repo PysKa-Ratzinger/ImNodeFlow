@@ -4,12 +4,25 @@
 
 #include "ImNodeFlow.h"
 
+#include "ImNodeFlow/NodeUID.h"
+#include "ImNodeFlow/PinUID.h"
+
 #include "./context_wrapper.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <vector>
+
+template <>
+struct std::hash<ImFlow::NodeUID> {
+    constexpr std::size_t operator()(const ImFlow::NodeUID& n) const noexcept
+    {
+        return std::hash<uint64_t> { }(n.id);
+    }
+};
 
 namespace ImFlow::detail {
 
@@ -68,8 +81,7 @@ struct editor_context_t {
         bool middle = false;
     } singleUseClicks;
 
-    std::unordered_map<NodeUID, node_t, NodeUID::Hash>
-        nodes;
+    std::unordered_map<NodeUID, node_t> nodes;
     std::vector<std::unique_ptr<Link>> links;
 
     std::function<void(PinRef<> dragged)> droppedLinkPopUp;
@@ -101,7 +113,7 @@ struct editor_context_t {
 struct node_t {
     std::reference_wrapper<ImNodeFlow> ctx;
 
-    NodeUID uid = 0;
+    NodeUID uid;
     std::string title;
     ImVec2 pos;
     ImVec2 posTarget;

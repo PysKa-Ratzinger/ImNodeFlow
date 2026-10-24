@@ -5,7 +5,9 @@
 #include "ImNodeFlow/IContainedContext.h"
 #include "ImNodeFlow/INodeBehaviour.h"
 #include "ImNodeFlow/NodeStyle.h"
+#include "ImNodeFlow/NodeUID.h"
 #include "ImNodeFlow/PinStyle.h"
+#include "ImNodeFlow/PinUID.h"
 #include "ImNodeFlow/Style.h"
 #include "ImNodeFlow/fwd.h"
 
@@ -47,15 +49,6 @@ using right_click_popup_handler_t = std::function<void(std::optional<NodeRef> no
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
-
-struct PinUID {
-    PinUID(uint64_t value) noexcept;
-
-    static PinUID generate() noexcept;
-    bool operator==(PinUID const& other) const noexcept;
-
-    uint64_t id;
-};
 
 /**
  * @brief Pins type identifier
@@ -165,19 +158,6 @@ struct OutPinInfo {
 
 // -----------------------------------------------------------------------------------------------------------------
 // NODE'S PROPERTIES
-
-struct NodeUID {
-    NodeUID(uint64_t value) noexcept;
-
-    static NodeUID generate() noexcept;
-    bool operator==(NodeUID const& other) const noexcept;
-
-    uint64_t id;
-
-    struct Hash {
-        auto operator()(const NodeUID& uid) const -> std::size_t;
-    };
-};
 
 /**
  * @brief User customizable options when creating a new Node
