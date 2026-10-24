@@ -3,6 +3,8 @@ project(example VERSION 1.0 LANGUAGES CXX)
 
 option(USE_SYSTEM_IMGUI "Use system Imgui instead of automatic download" OFF)
 
+add_compile_options(-Werror=return-type)
+
 set(IMNODEFLOW_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 list(APPEND imnode_flow_sources
   ${IMNODEFLOW_DIR}/src/ImNodeFlow.cpp)
