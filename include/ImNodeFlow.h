@@ -3,22 +3,16 @@
 #pragma once
 
 #include "../src/context_wrapper.h"
-#include "../src/imgui_bezier_math.h"
 
 #include <imgui.h>
 
-#include <algorithm>
-#include <cmath>
 #include <cstdint>
 #include <functional>
-#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 namespace ImFlow {
 
