@@ -6,7 +6,7 @@
 // These public API inline utilities are included by the public API file,
 // and including the internal data structures introduces compile-time
 // overhead for the users of the library
-#include "ImNodeFlow_internals.h"
+#include "./ImNodeFlow_internals.h"
 
 #include <cassert>
 #include <cstdint>
