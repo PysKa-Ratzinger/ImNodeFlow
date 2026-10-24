@@ -198,7 +198,7 @@ void PinRef<TIsConst>::addLink(detail::Link* link)
         return;
     }
 
-    if (base.strat == PinConnStrat_AllowOnlySingleConnection) {
+    if (base.strat == PinConnStrat::AllowOnlySingleConnection) {
         this->deleteAllLinks();
     }
 

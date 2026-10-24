@@ -6,6 +6,7 @@
 #include "ImNodeFlow/INodeBehaviour.h"
 #include "ImNodeFlow/NodeStyle.h"
 #include "ImNodeFlow/NodeUID.h"
+#include "ImNodeFlow/PinConnStrat.h"
 #include "ImNodeFlow/PinStyle.h"
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/PinUID.h"
@@ -45,38 +46,6 @@ struct out_pin_t;
 namespace ImFlow {
 
 // -----------------------------------------------------------------------------------------------------------------
-// PIN'S PROPERTIES
-
-/**
- * @brief Strategy to use for input pins regarding multiple connections
- */
-enum PinConnStrat {
-    /// When a new link is created, all other links connecting to this pin
-    /// are deleted.
-    PinConnStrat_AllowOnlySingleConnection,
-
-    /// Multiple links are allowed.
-    ///
-    /// When applied to an input pin, if an accumulate operation is not
-    /// provided, it will default to fetch the value from the oldest
-    /// connected link.
-    ///
-    /// The behaviour for an output pin does not change besides allowing
-    /// the creation of multiple links.
-    PinConnStrat_AllowMultiplePreferOldest,
-
-    /// Multiple links are allowed.
-    ///
-    /// When applied to an input pin, if an accumulate operation is not
-    /// provided, it will be set to fetch the value from the newest
-    /// connected link.
-    ///
-    /// The behaviour for an output pin does not change besides allowing
-    /// the creation of multiple links.
-    PinConnStrat_AllowMultiplePreferNewest,
-};
-
-// -----------------------------------------------------------------------------------------------------------------
 // PIN INFO STRUCTURES
 
 /**
@@ -107,7 +76,7 @@ struct InPinInfo {
     /// Style to apply to the pin
     PinStyle style = PinStyles::default_style;
     /// Strategy to use regarding multiple link connections
-    PinConnStrat strat = PinConnStrat_AllowOnlySingleConnection;
+    PinConnStrat strat = PinConnStrat::AllowOnlySingleConnection;
     /// Custom render function
     std::function<void(PinRef<> p)> renderer { };
 
@@ -134,7 +103,7 @@ struct OutPinInfo {
     /// Style to apply to the pin
     PinStyle style = PinStyles::default_style;
     /// Strategy to use regarding multiple link connections
-    PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest;
+    PinConnStrat strat = PinConnStrat::AllowMultiplePreferOldest;
     /// Custom render function
     std::function<void(PinRef<> p)> renderer { };
 

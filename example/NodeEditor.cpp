@@ -38,7 +38,7 @@ public:
         node.setStyle(ImFlow::NodeStyles::cyan);
         node.addIN<int>({
             .name = "In",
-            .strat = ImFlow::PinConnStrat_AllowMultiplePreferOldest,
+            .strat = ImFlow::PinConnStrat::AllowMultiplePreferOldest,
             .default_value = 0,
             .accumulate_op =
                 [](bool first, int init, int new_input) -> int {
@@ -158,7 +158,7 @@ public:
         node.setStyle(ImFlow::NodeStyles::red);
         node.addIN<bool>({
             .name = "IN",
-            .strat = ImFlow::PinConnStrat_AllowMultiplePreferOldest,
+            .strat = ImFlow::PinConnStrat::AllowMultiplePreferOldest,
             .default_value = false,
             .accumulate_op =
                 [](bool first, bool init, bool new_input) -> bool {

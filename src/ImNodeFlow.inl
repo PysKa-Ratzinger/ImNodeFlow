@@ -2,6 +2,7 @@
 
 #include "ImNodeFlow.h"
 
+#include "ImNodeFlow/PinConnStrat.h"
 #include "ImNodeFlow/PinType.h"
 
 // FIXME: Remove this header
@@ -103,8 +104,8 @@ in_pin_t<T>::in_pin_t(
         this->accumulatorOp = std::move(info.accumulate_op);
     } else {
         switch (info.strat) {
-        case PinConnStrat::PinConnStrat_AllowOnlySingleConnection:
-        case PinConnStrat::PinConnStrat_AllowMultiplePreferOldest:
+        case PinConnStrat::AllowOnlySingleConnection:
+        case PinConnStrat::AllowMultiplePreferOldest:
             this->accumulatorOp =
                 [](bool first_pin,
                     T init,
@@ -113,7 +114,7 @@ in_pin_t<T>::in_pin_t(
             };
             break;
 
-        case PinConnStrat::PinConnStrat_AllowMultiplePreferNewest:
+        case PinConnStrat::AllowMultiplePreferNewest:
             this->accumulatorOp =
                 [](bool first_pin,
                     T init,
