@@ -4,6 +4,8 @@
 
 #include "ImNodeFlow.h"
 
+#include "./context_wrapper.h"
+
 #include <cstdint>
 #include <memory>
 #include <unordered_map>

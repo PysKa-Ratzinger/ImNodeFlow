@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ImNodeFlow/IContainedContext.h"
+
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -176,48 +178,30 @@ AppendDrawData(ImDrawList* src, ImVec2 origin, float scale)
     dl->_IdxWritePtr = dl->IdxBuffer.Data + dl->IdxBuffer.Size;
 }
 
-struct ContainedContextConfig {
-    bool extra_window_wrapper = false;
-    ImVec2 size = { 0.f, 0.f };
-    ImU32 color = IM_COL32_WHITE;
-    bool zoom_enabled = true;
-    float zoom_min = 0.3f;
-    float zoom_max = 2.f;
-    float zoom_divisions = 10.f;
-    float zoom_smoothness = 5.f;
-    float default_zoom = 1.f;
-    ImGuiKey reset_zoom_key = ImGuiKey_R;
-    ImGuiMouseButton selection_box_button = ImGuiMouseButton_Left;
-    ImGuiMouseButton selection_box_cancel_button = ImGuiMouseButton_Right;
-    ImGuiMouseButton scroll_button = ImGuiMouseButton_Middle;
-
-    ImGuiWindowFlags extra_viewport_window_flags = 0;
-};
-
-class ContainedContext {
+class ContainedContext final : public ImFlow::IContainedContext {
 public:
-    ~ContainedContext();
-    ContainedContextConfig& config() { return m_config; }
-    void begin();
-    void end();
-    void updateScroll();
-    [[nodiscard]] ImVec2 size() const { return m_size; }
-    [[nodiscard]] float scale() const { return m_scale; }
-    [[nodiscard]] const ImVec2& origin() const { return m_origin; }
-    [[nodiscard]] bool hovered() const { return m_hovered; }
-    [[nodiscard]] const ImVec2& scroll() const { return m_scroll; }
-    void setScroll(ImVec2 scroll) { m_scroll = scroll; }
-    void setScale(float scale) { m_scale = m_scaleTarget = scale; }
-    [[nodiscard]] ImVec2 getScreenDelta()
+    ~ContainedContext() final;
+    ImFlow::ContainedContextConfig& config() final { return m_config; }
+    void begin() final;
+    void end() final;
+    void updateScroll() final;
+    [[nodiscard]] ImVec2 size() const final { return m_size; }
+    [[nodiscard]] float scale() const final { return m_scale; }
+    [[nodiscard]] const ImVec2& origin() const final { return m_origin; }
+    [[nodiscard]] bool hovered() const final { return m_hovered; }
+    [[nodiscard]] const ImVec2& scroll() const final { return m_scroll; }
+    void setScroll(ImVec2 scroll) final { m_scroll = scroll; }
+    void setScale(float scale) final { m_scale = m_scaleTarget = scale; }
+    [[nodiscard]] ImVec2 getScreenDelta() final
     {
         return m_original_ctx->IO.MouseDelta / scale();
     }
-    ImGuiContext* getRawContext() { return m_ctx; }
-    void setFontDensity();
-    void sampleHostFontDensity();
+    ImGuiContext* getRawContext() final { return m_ctx; }
+    void setFontDensity() final;
+    void sampleHostFontDensity() final;
 
 private:
-    ContainedContextConfig m_config;
+    ImFlow::ContainedContextConfig m_config;
 
     ImVec2 m_origin;
     ImVec2 m_pos;

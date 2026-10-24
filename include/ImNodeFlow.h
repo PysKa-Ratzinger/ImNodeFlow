@@ -2,7 +2,6 @@
 #define IM_NODE_FLOW
 #pragma once
 
-#include "../src/context_wrapper.h"
 #include "ImNodeFlow/fwd.h"
 
 #include <imgui.h>
@@ -596,7 +595,7 @@ public:
      * @brief Get zooming viewport
      * @return Const reference to editor's internal viewport for zoom support
      */
-    ContainedContext& getGrid();
+    IContainedContext& getGrid();
 
     /**
      * @brief Get dragging status

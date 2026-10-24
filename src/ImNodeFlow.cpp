@@ -1,6 +1,7 @@
 #include "ImNodeFlow.h"
 
-#include "ImNodeFlow_internals.h"
+#include "./ImNodeFlow_internals.h"
+#include "ImNodeFlow/IContainedContext.h"
 
 #include "imgui.h"
 #include "imgui_bezier_items.h"
@@ -1226,7 +1227,7 @@ uint64_t ImNodeFlow::getNodesCount() const
     return m_impl->nodes.size();
 }
 
-ContainedContext& ImNodeFlow::getGrid()
+IContainedContext& ImNodeFlow::getGrid()
 {
     return m_impl->context;
 }
@@ -1493,6 +1494,8 @@ void ImNodeFlow::update()
         ImGui::EndDragDropTarget();
     }
 }
+
+IContainedContext::~IContainedContext() = default;
 
 } // namespace ImFlow
 
