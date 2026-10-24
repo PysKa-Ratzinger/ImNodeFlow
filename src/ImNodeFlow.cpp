@@ -1,5 +1,7 @@
 #include "ImNodeFlow.h"
 
+#include "./INodeBehaviour.impl"
+
 #include "./ImNodeFlow_internals.h"
 #include "ImNodeFlow/IContainedContext.h"
 
@@ -66,13 +68,6 @@ auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
 {
     return std::hash<uint64_t> { }(uid.id);
 }
-
-// -----------------------------------------------------------------------------------------------------------------
-// INODEBEHAVIOUR
-
-void INodeBehaviour::setup(NodeRef node) { }
-
-void INodeBehaviour::draw(NodeRef node) { }
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN
