@@ -71,6 +71,8 @@ auto NodeUID::Hash::operator()(const NodeUID& uid) const -> std::size_t
 
 void INodeBehaviour::setup(NodeRef node) { }
 
+void INodeBehaviour::draw(NodeRef node) { }
+
 // -----------------------------------------------------------------------------------------------------------------
 // PIN
 

@@ -63,7 +63,7 @@ public:
      * @brief Called each frame. Responsible for the appearance of the
      * node's inner content
      */
-    virtual void draw(NodeRef node) = 0;
+    virtual void draw(NodeRef node);
 
     /**
      * @brief Called during a node cloning event. If not implemented or
