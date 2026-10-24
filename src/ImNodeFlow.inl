@@ -11,6 +11,7 @@
 #include <cassert>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 
 namespace ImFlow::detail {
@@ -34,6 +35,185 @@ template <typename T>
 inline static uint64_t get_type_id()
 {
     return type_id<T>;
+}
+
+// -----------------------------------------------------------------------------------------------------------------
+// IPIN TYPE CONVERSIONS
+
+template <typename T>
+in_pin_t<T>& IPin::toIn()
+{
+    auto& base = this->toBase();
+    assert(base.type == PinType_Input && get_type_id<T>() == this->getTypeID());
+    return static_cast<in_pin_t<T>&>(*this);
+}
+
+template <typename T>
+in_pin_t<T> const& IPin::toIn() const
+{
+    auto const& base = this->toBase();
+    assert(base.type == PinType_Input && get_type_id<T>() == this->getTypeID());
+    return static_cast<in_pin_t<T> const&>(*this);
+}
+
+template <typename T>
+out_pin_t<T>& IPin::toOut()
+{
+    auto const& base = this->toBase();
+    assert(base.type == PinType_Output && get_type_id<T>() == this->getTypeID());
+    return static_cast<out_pin_t<T>&>(*this);
+}
+
+template <typename T>
+out_pin_t<T> const& IPin::toOut() const
+{
+    auto const& base = this->toBase();
+    assert(base.type == PinType_Output && get_type_id<T>() == this->getTypeID());
+    return static_cast<out_pin_t<T> const&>(*this);
+}
+
+// -----------------------------------------------------------------------------------------------------------------
+// PIN UTILS
+
+template <typename T>
+in_pin_t<T>::in_pin_t(
+    ImNodeFlow& ctx,
+    PinUID uid,
+    detail::node_t& parent,
+    InPinInfo<T> info)
+    : base {
+        .ctx = ctx,
+        .uid = uid,
+        .name = std::move(info.name),
+        .type = PinType_Input,
+        .parent = &parent,
+        .style = std::move(info.style),
+        .strat = info.strat,
+        .allowSelfConnection = info.allow_same_node_connections,
+        .renderer = std::move(info.renderer),
+    }
+    , emptyVal { info.default_value }
+    , val { info.default_value }
+{
+    if (info.accumulate_op) {
+        this->accumulatorOp = std::move(info.accumulate_op);
+    } else {
+        switch (info.strat) {
+        case PinConnStrat::PinConnStrat_AllowOnlySingleConnection:
+        case PinConnStrat::PinConnStrat_AllowMultiplePreferOldest:
+            this->accumulatorOp =
+                [](bool first_pin,
+                    T init,
+                    T const& incoming_value) -> T {
+                return incoming_value;
+            };
+            break;
+
+        case PinConnStrat::PinConnStrat_AllowMultiplePreferNewest:
+            this->accumulatorOp =
+                [](bool first_pin,
+                    T init,
+                    T const& incoming_value) -> T {
+                return first_pin ? incoming_value : init;
+            };
+        }
+    }
+}
+
+template <typename T>
+out_pin_t<T>::out_pin_t(
+    ImNodeFlow& ctx,
+    PinUID uid,
+    detail::node_t& parent,
+    OutPinInfo<T> info)
+    : base {
+        .ctx = ctx,
+        .uid = uid,
+        .name = std::move(info.name),
+        .type = PinType_Output,
+        .parent = &parent,
+        .style = std::move(info.style),
+        .strat = info.strat,
+        .allowSelfConnection = info.allow_same_node_connections,
+        .renderer = std::move(info.renderer),
+    }
+    , behaviour { std::move(info.behaviour) }
+    , val { }
+{
+}
+
+template <typename T>
+pin_base_t& in_pin_t<T>::toBase()
+{
+    return this->base;
+}
+
+template <typename T>
+pin_base_t const& in_pin_t<T>::toBase() const
+{
+    return this->base;
+}
+
+template <typename T>
+uint64_t in_pin_t<T>::getTypeID() const
+{
+    return get_type_id<T>();
+}
+
+template <typename T>
+void in_pin_t<T>::calculate()
+{
+    T next_value = this->emptyVal;
+
+    next_value = this->emptyVal;
+
+    bool first = true;
+    for (auto& link : this->base.links) {
+        auto& out_pin = link.link()->outPin().toOut<T>();
+        next_value = this->accumulatorOp(
+            first,
+            next_value,
+            out_pin.val);
+        first = false;
+    }
+
+    this->valNext = next_value;
+}
+
+template <typename T>
+void in_pin_t<T>::prime()
+{
+    this->val = this->valNext;
+}
+
+template <typename T>
+pin_base_t& out_pin_t<T>::toBase()
+{
+    return this->base;
+}
+
+template <typename T>
+pin_base_t const& out_pin_t<T>::toBase() const
+{
+    return this->base;
+}
+
+template <typename T>
+uint64_t out_pin_t<T>::getTypeID() const
+{
+    return get_type_id<T>();
+}
+
+template <typename T>
+void out_pin_t<T>::calculate()
+{
+    this->valNext = this->behaviour(NodeRef { *this->base.parent });
+}
+
+template <typename T>
+void out_pin_t<T>::prime()
+{
+    this->val = this->valNext;
 }
 
 } // namespace ImFlow::detail
@@ -77,7 +257,7 @@ NodeRef ImNodeFlow::emplaceNodeOnMouse(Params&&... args)
 
 template <bool TIsConst>
 template <typename T>
-InPin<T>&
+InPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addIN(InPinInfo<T> pin_info)
     requires(!TIsConst)
 {
@@ -86,14 +266,13 @@ NodeRefImpl<TIsConst>::addIN(InPinInfo<T> pin_info)
 
 template <bool TIsConst>
 template <typename T>
-InPin<T>&
+InPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addIN(const PinUID& uid, InPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    m_node.get().ins.emplace_back(
-        std::make_unique<InPin<T>>(
-            m_node.get().ctx, uid, *this, std::move(pin_info)));
-    return m_node.get().ins.back()->template toIn<T>();
+    m_node.get().ins.emplace_back(std::make_unique<detail::in_pin_t<T>>(
+        m_node.get().ctx, uid, *this, std::move(pin_info)));
+    return PinRef<TIsConst> { *m_node.get().ins.back() }.template toIn<T>();
 }
 
 template <bool TIsConst>
@@ -111,7 +290,7 @@ NodeRefImpl<TIsConst>::showIN(InPinInfo<T> pin_info)
     }
 
     m_node.get().dynamicIns.emplace_back(
-        std::make_unique<InPin<T>>(
+        std::make_unique<detail::in_pin_t<T>>(
             m_node.get().ctx, PinUID::generate(), *this, std::move(pin_info)));
     return m_node.get().dynamicIns.back().pin().template toIn<T>().val();
 }
@@ -131,14 +310,14 @@ NodeRefImpl<TIsConst>::showIN(const PinUID& uid, InPinInfo<T> pin_info)
     }
 
     m_node.get().dynamicIns.emplace_back(
-        std::make_unique<InPin<T>>(
+        std::make_unique<detail::in_pin_t<T>>(
             m_node.get().ctx, uid, *this, std::move(pin_info)));
     return m_node.get().dynamicIns.back().pin().template toIn<T>().val();
 }
 
 template <bool TIsConst>
 template <typename T>
-OutPin<T>&
+OutPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addOUT(OutPinInfo<T> pin_info)
     requires(!TIsConst)
 {
@@ -147,14 +326,16 @@ NodeRefImpl<TIsConst>::addOUT(OutPinInfo<T> pin_info)
 
 template <bool TIsConst>
 template <typename T>
-OutPin<T>&
+OutPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
     requires(!TIsConst)
 {
     m_node.get().outs.emplace_back(
-        std::make_unique<OutPin<T>>(
+        std::make_unique<detail::out_pin_t<T>>(
             m_node.get().ctx, uid, *this, std::move(pin_info)));
-    return m_node.get().outs.back()->template toOut<T>();
+    return OutPinRef<T, TIsConst> {
+        m_node.get().outs.back()->template toOut<T>()
+    };
 }
 
 template <bool TIsConst>
@@ -163,17 +344,17 @@ void NodeRefImpl<TIsConst>::showOUT(OutPinInfo<T> pin_info)
     requires(!TIsConst)
 {
     for (auto& dyn_pin : m_node.get().dynamicOuts) {
-        if (dyn_pin.pin().getName() == pin_info.name) {
+        if (dyn_pin.pin().toBase().name == pin_info.name) {
             dyn_pin.refresh();
             // TODO: Update pin with new styles from pin_info
-            dyn_pin.pin().template toOut<T>().behaviour(
-                std::move(pin_info.behaviour));
+            dyn_pin.pin().template toOut<T>().behaviour
+                = std::move(pin_info.behaviour);
             return;
         }
     }
 
     m_node.get().dynamicOuts.emplace_back(
-        std::make_unique<OutPin<T>>(
+        std::make_unique<detail::out_pin_t<T>>(
             m_node.get().ctx, PinUID::generate(), *this, std::move(pin_info)));
 }
 
@@ -193,7 +374,7 @@ void NodeRefImpl<TIsConst>::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
     }
 
     m_node.get().dynamicOuts.emplace_back(
-        std::make_unique<OutPin<T>>(
+        std::make_unique<detail::out_pin_t<T>>(
             m_node.get().ctx, uid, *this, std::move(pin_info)));
     m_node.get().dynamicOuts.back().pin().template toOut<T>().behaviour(
         std::move(pin_info.behaviour));
@@ -201,135 +382,106 @@ void NodeRefImpl<TIsConst>::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
 
 template <bool TIsConst>
 template <typename T>
-auto NodeRefImpl<TIsConst>::inPin(const PinUID& uid) -> in_pin_pointer_t<T>
+std::optional<InPinRef<T, TIsConst>>
+NodeRefImpl<TIsConst>::inPin(const PinUID& uid)
 {
-    auto* pin = this->inPin(uid);
-    return pin ? &pin->template toIn<T>() : nullptr;
+    auto pin = this->inPin(uid);
+    if (!pin.has_value()) {
+        return std::nullopt;
+    }
+
+    detail::IPin& ipin_ref = *pin;
+    return InPinRef<T, TIsConst> { ipin_ref.toIn<T>() };
 }
 
 template <bool TIsConst>
 template <typename T>
-auto NodeRefImpl<TIsConst>::inPin(const char* name) -> in_pin_pointer_t<T>
+std::optional<InPinRef<T, TIsConst>>
+NodeRefImpl<TIsConst>::inPin(const char* name)
 {
-    auto* pin = this->inPin(name);
-    return pin ? &pin->template toIn<T>() : nullptr;
+    auto pin = this->inPin(name);
+    if (!pin.has_value()) {
+        return std::nullopt;
+    }
+
+    detail::IPin& ipin_ref = *pin;
+    return InPinRef<T, TIsConst> { ipin_ref.toIn<T>() };
 }
 
 template <bool TIsConst>
 template <typename T>
-auto NodeRefImpl<TIsConst>::outPin(const PinUID& uid) -> out_pin_pointer_t<T>
+std::optional<OutPinRef<T, TIsConst>>
+NodeRefImpl<TIsConst>::outPin(const PinUID& uid)
 {
-    auto* pin = this->outPin(uid);
-    return pin ? &pin->template toOut<T>() : nullptr;
+    auto pin = this->outPin(uid);
+    if (!pin.has_value()) {
+        return std::nullopt;
+    }
+
+    detail::IPin& ipin_ref = *pin;
+    return OutPinRef<T, TIsConst> { ipin_ref.toOut<T>() };
 }
 
 template <bool TIsConst>
 template <typename T>
-auto NodeRefImpl<TIsConst>::outPin(const char* name) -> out_pin_pointer_t<T>
+std::optional<OutPinRef<T, TIsConst>>
+NodeRefImpl<TIsConst>::outPin(const char* name)
 {
-    auto* pin = this->outPin(name);
-    return pin ? &pin->template toOut<T>() : nullptr;
+    auto pin = this->outPin(name);
+    if (!pin.has_value()) {
+        return std::nullopt;
+    }
+
+    detail::IPin& ipin_ref = *pin;
+    return OutPinRef<T, TIsConst> { ipin_ref.toOut<T>() };
 }
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN
 
+template <bool TIsConst>
 template <typename T>
-InPin<T>&
-Pin::toIn()
+InPinRef<T, TIsConst>
+PinRef<TIsConst>::toIn()
 {
-    assert(this->m_type == PinType::PinType_Input && this->getTypeID() == detail::type_id<T> && "Invalid cast attempted");
-    return static_cast<InPin<T>&>(*this);
+    return InPinRef<T, TIsConst> { m_pin.get().template toIn<T>() };
 }
 
+template <bool TIsConst>
 template <typename T>
-InPin<T> const&
-Pin::toIn() const
+OutPinRef<T, TIsConst>
+PinRef<TIsConst>::toOut()
 {
-    assert(this->m_type == PinType::PinType_Input && this->getTypeID() == detail::type_id<T> && "Invalid cast attempted");
-    return static_cast<InPin<T>&>(*this);
-}
-
-template <typename T>
-OutPin<T>&
-Pin::toOut()
-{
-    assert(this->m_type == PinType::PinType_Output && this->getTypeID() == detail::type_id<T> && "Invalid cast attempted");
-    return static_cast<OutPin<T>&>(*this);
-}
-
-template <typename T>
-OutPin<T> const&
-Pin::toOut() const
-{
-    assert(this->m_type == PinType::PinType_Output && this->getTypeID() == detail::type_id<T> && "Invalid cast attempted");
-    return static_cast<OutPin<T>&>(*this);
+    return OutPinRef<T, TIsConst> { m_pin.get().template toOut<T>() };
 }
 
 // -----------------------------------------------------------------------------------------------------------------
 // IN PIN
 
-template <class T>
-uint64_t InPin<T>::getTypeID() const
-{
-    return detail::get_type_id<T>();
-}
-
-template <class T>
-void InPin<T>::calculate()
-{
-    m_valNext = m_emptyVal;
-
-    bool first = true;
-    for (auto& link : m_links) {
-        m_valNext = m_accumulatorOp(
-            first,
-            m_valNext,
-            link->outPin().template toOut<T>().value());
-        first = false;
-    }
-}
-
-template <class T>
-void InPin<T>::prime()
-{
-    m_val = m_valNext;
-}
-
-template <class T>
+template <typename T, bool TIsConst>
 const T&
-InPin<T>::value() const
+InPinRef<T, TIsConst>::value() const
 {
-    return m_val;
+    return m_in_pin.get().val;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
 // OUT PIN
 
-template <class T>
-void OutPin<T>::calculate()
-{
-    m_valNext = m_behaviour(getParent());
-}
-
-template <class T>
-void OutPin<T>::prime()
-{
-    m_val = m_valNext;
-}
-
-template <class T>
+template <typename T, bool TIsConst>
 const T&
-OutPin<T>::value() const
+OutPinRef<T, TIsConst>::value() const
 {
-    return m_val;
+    return m_out_pin.get().val;
 }
 
-template <class T>
-uint64_t
-OutPin<T>::getTypeID() const
+template <typename T, bool TIsConst>
+OutPinRef<T, TIsConst>& OutPinRef<T, TIsConst>::behaviour(std::function<T(NodeRef)> func)
+    requires(!TIsConst)
 {
-    return detail::get_type_id<T>();
+    auto& pin = m_out_pin.get();
+    pin.behaviour = std::move(func);
+    return *this;
 }
 
 } // namespace ImFlow

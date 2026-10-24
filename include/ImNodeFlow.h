@@ -1,7 +1,5 @@
 #ifndef IM_NODE_FLOW
 #define IM_NODE_FLOW
-#include <optional>
-#include <type_traits>
 #pragma once
 
 #include "../src/context_wrapper.h"
@@ -15,7 +13,9 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -25,11 +25,12 @@ namespace ImFlow {
 // -----------------------------------------------------------------------------------------------------------------
 // FORWARD DECLARATIONS
 
-template <typename T>
-class InPin;
-template <typename T>
-class OutPin;
-class Pin;
+template <typename T, bool TIsConst = false>
+class InPinRef;
+template <typename T, bool TIsConst = false>
+class OutPinRef;
+template <bool TIsConst = false>
+class PinRef;
 class INodeBehaviour;
 template <bool TIsConst = false>
 class NodeRefImpl;
@@ -42,8 +43,15 @@ using ConstNodeRef = NodeRefImpl<true>;
 /// the public API
 namespace detail {
 
+    class IPin;
+    class Link;
     struct editor_context_t;
     struct node_t;
+    struct pin_base_t;
+    template <typename T>
+    struct in_pin_t;
+    template <typename T>
+    struct out_pin_t;
 
 } // namespace detail
 
@@ -51,6 +59,41 @@ namespace detail {
 // CLASSES PRE-DEFINITIONS
 
 using right_click_popup_handler_t = std::function<void(std::optional<NodeRef> node)>;
+
+// -----------------------------------------------------------------------------------------------------------------
+// NODE BEHAVIOUR INTERFACE
+
+/**
+ * @brief Node behaviour strategy.
+ *
+ * This is what allows the user to customize the node's appearance and
+ * behaviour
+ */
+class INodeBehaviour {
+public:
+    virtual ~INodeBehaviour() = default;
+
+    /**
+     * @brief Called immediately after a node is constructed.
+     */
+    virtual void setup(NodeRef node);
+
+    /**
+     * @brief Called each frame. Responsible for the appearance of the
+     * node's inner content
+     */
+    virtual void draw(NodeRef node) = 0;
+
+    /**
+     * @brief Called during a node cloning event. If not implemented or
+     * nullptr is returned, the cloning event fails for the corresponding
+     * node.
+     */
+    [[nodiscard]] virtual std::unique_ptr<INodeBehaviour> clone()
+    {
+        return { };
+    }
+};
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
@@ -155,8 +198,10 @@ namespace PinStyles {
 /**
  * @brief Pins type identifier
  */
-enum PinType { PinType_Input,
-    PinType_Output };
+enum PinType {
+    PinType_Input,
+    PinType_Output,
+};
 
 /**
  * @brief Strategy to use for input pins regarding multiple connections
@@ -196,8 +241,6 @@ enum PinConnStrat {
 struct BasePinInfo {
     /// Name of the pin
     std::string name;
-    /// Whether it's an input pin or an output pin
-    PinType kind;
     /// Whether links coming from the same node are allowed
     bool allow_same_node_connections;
     /// Style to apply to the pin
@@ -205,7 +248,7 @@ struct BasePinInfo {
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat;
     /// Custom render function
-    std::function<void(Pin* p)> renderer;
+    std::function<void(PinRef<> p)> renderer;
 };
 
 /**
@@ -215,17 +258,18 @@ template <typename T>
 struct InPinInfo {
     /// Name of the pin
     std::string name;
-    /// Default value the input pin will return when not connected
-    /// to any output pin
-    T default_value;
     /// Whether links coming from the same node are allowed
-    bool allow_same_node_connections = false;
+    bool allow_same_node_connections;
     /// Style to apply to the pin
     PinStyle style = PinStyles::default_style;
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat_AllowOnlySingleConnection;
     /// Custom render function
-    std::function<void(Pin* p)> renderer;
+    std::function<void(PinRef<> p)> renderer;
+
+    /// Default value the input pin will return when not connected
+    /// to any output pin
+    T default_value;
     /// When an input pin supports multiple inputs, the pin's value will
     /// be calculated by first initializing it to the default value, and
     /// then calling this accumulator function for every connected pin
@@ -241,16 +285,20 @@ template <typename T>
 struct OutPinInfo {
     /// Name of the pin
     std::string name;
-    /// Behaviour of the pin when a value update is requested
-    std::function<T(NodeRef)> behaviour;
-    /// Custom render function
-    std::function<void(Pin* p)> renderer;
     /// Whether links coming from the same node are allowed
-    bool allow_same_node_connections = true;
+    bool allow_same_node_connections;
     /// Style to apply to the pin
     PinStyle style = PinStyles::default_style;
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat_AllowMultiplePreferOldest;
+    /// Custom render function
+    std::function<void(PinRef<> p)> renderer;
+
+    /// Default value the output pin will return before the behaviour has a
+    /// chance to change it.
+    T default_value;
+    /// Behaviour of the pin when a value update is requested
+    std::function<T(NodeRef)> behaviour;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -328,79 +376,6 @@ struct NodeInfo {
     std::unique_ptr<INodeBehaviour> behaviour;
     /// Style to apply to the node
     NodeStyle style = NodeStyles::default_style;
-};
-
-// -----------------------------------------------------------------------------------------------------------------
-// LINK
-
-/**
- * @brief Link between two Pins of two different Nodes
- */
-class Link {
-public:
-    /**
-     * @brief Construct a link
-     * @param out_pin Pointer to the output Pin of the Link
-     * @param in_pin Pointer to the input Pin of the Link
-     */
-    explicit Link(Pin& out_pin, Pin& in_pin) noexcept;
-
-    /**
-     * @brief Destruction of a link
-     * @details Deletes references of this links form connected pins
-     */
-    ~Link() noexcept;
-
-    /**
-     * @brief Looping function to update the Link
-     * @param ctx The ImNodeFlow context containing this link
-     * @details Draws the Link and updates Hovering and Selected status.
-     */
-    void update(ImNodeFlow& ctx);
-
-    /**
-     * @brief Get output pin of the link
-     * @return Reference to the Pin
-     */
-    [[nodiscard]] Pin& outPin() const { return *m_out_pin; }
-
-    /**
-     * @brief Get input pin of the link
-     * @return Reference to the Pin
-     */
-    [[nodiscard]] Pin& inPin() const { return *m_in_pin; }
-
-    /**
-     * @brief Get hovering status
-     * @return [TRUE] If the link is hovered in the current frame
-     */
-    [[nodiscard]] bool isHovered() const { return m_hovered; }
-
-    /**
-     * @brief Get selected status
-     * @return [TRUE] If the link is selected in the current frame
-     */
-    [[nodiscard]] bool isSelected() const { return m_selected; }
-
-    /**
-     * @brief Destroys this link
-     */
-    void destroy() noexcept;
-
-    /**
-     * @brief Returns whether or not this link was marked for deletion
-     */
-    [[nodiscard]] bool isMarkedForDeletion() const
-    {
-        return m_marked_for_deletion;
-    }
-
-private:
-    bool m_marked_for_deletion = false;
-    Pin* m_out_pin;
-    Pin* m_in_pin;
-    bool m_hovered = false;
-    bool m_selected = false;
 };
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -554,7 +529,7 @@ public:
      * @param source_pin Reference to the input pin
      * @param target_pint Reference to the output pin
      */
-    void createLink(Pin& source_pin, Pin& target_pin);
+    void createLink(PinRef<> source_pin, PinRef<> target_pin);
 
     /**
      * @brief Pop-up when link is "dropped"
@@ -564,7 +539,7 @@ public:
      * @param key Optional key required in order to open the pop-up
      */
     void droppedLinkPopUpContent(
-        std::function<void(Pin* dragged)> content,
+        std::function<void(PinRef<> dragged)> content,
         ImGuiKey key = ImGuiKey_None);
 
     /**
@@ -676,14 +651,16 @@ public:
     /**
      * @brief Set what pin is being hovered
      * @param hovering Pointer to the hovered pin
+     * @internal For internal use only
      */
-    void hovering(Pin* hovering);
+    void hovering(detail::IPin* hovering);
 
     /**
      * @brief Set what pin is being dragged
      * @param dragged Pointer to the dragged pin
+     * @internal For internal use only
      */
-    void dragging(Pin* dragged);
+    void dragging(detail::IPin* dragged);
 
     /**
      * @brief Set what node is being hovered
@@ -734,23 +711,6 @@ class NodeRefImpl {
 public:
     using underlying_type = std::conditional_t<TIsConst, const detail::node_t, detail::node_t>;
 
-    using pin_pointer_t = std::conditional_t<
-        TIsConst,
-        const Pin*,
-        Pin*>;
-
-    template <typename T>
-    using in_pin_pointer_t = std::conditional_t<
-        TIsConst,
-        const InPin<T>*,
-        InPin<T>*>;
-
-    template <typename T>
-    using out_pin_pointer_t = std::conditional_t<
-        TIsConst,
-        const OutPin<T>*,
-        OutPin<T>*>;
-
     /**
      * @brief NodeRef's ctor
      * @param internal_node Reference to the referred to internal node
@@ -777,7 +737,7 @@ public:
      * instead.
      */
     template <typename T>
-    InPin<T>& addIN(InPinInfo<T> pin_info)
+    InPinRef<T, TIsConst> addIN(InPinInfo<T> pin_info)
         requires(!TIsConst);
 
     /**
@@ -793,7 +753,7 @@ public:
      * instead.
      */
     template <typename T>
-    InPin<T>& addIN(const PinUID& uid, InPinInfo<T> pin_info)
+    InPinRef<T, TIsConst> addIN(const PinUID& uid, InPinInfo<T> pin_info)
         requires(!TIsConst);
 
     /**
@@ -853,7 +813,7 @@ public:
      * instead.
      */
     template <typename T>
-    OutPin<T>& addOUT(OutPinInfo<T> pin_info)
+    OutPinRef<T, TIsConst> addOUT(OutPinInfo<T> pin_info)
         requires(!TIsConst);
 
     /**
@@ -869,7 +829,7 @@ public:
      * instead.
      */
     template <typename T>
-    OutPin<T>& addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
+    OutPinRef<T, TIsConst> addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
         requires(!TIsConst);
 
     /**
@@ -919,28 +879,28 @@ public:
      * @param uid Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    pin_pointer_t inPin(const PinUID& uid);
+    std::optional<PinRef<TIsConst>> inPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to input pin with the specified name
      * @param uid Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    pin_pointer_t inPin(const char* name);
+    std::optional<PinRef<TIsConst>> inPin(const char* name);
 
     /**
      * @brief Get generic reference to output pin
      * @param uid Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    pin_pointer_t outPin(const PinUID& uid);
+    std::optional<PinRef<TIsConst>> outPin(const PinUID& uid);
 
     /**
      * @brief Get generic reference to output pin of the same name
      * @param name Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    pin_pointer_t outPin(const char* name);
+    std::optional<PinRef<TIsConst>> outPin(const char* name);
 
     /**
      * @brief Get generic reference to input pin
@@ -949,7 +909,7 @@ public:
      * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    in_pin_pointer_t<T>
+    std::optional<InPinRef<T, TIsConst>>
     inPin(const PinUID& uid);
 
     /**
@@ -959,7 +919,7 @@ public:
      * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    in_pin_pointer_t<T>
+    std::optional<InPinRef<T, TIsConst>>
     inPin(const char* name);
 
     /**
@@ -969,7 +929,7 @@ public:
      * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    out_pin_pointer_t<T>
+    std::optional<OutPinRef<T, TIsConst>>
     outPin(const PinUID& uid);
 
     /**
@@ -979,7 +939,7 @@ public:
      * @return Pointer to the pin, if it exists
      */
     template <typename T>
-    out_pin_pointer_t<T>
+    std::optional<OutPinRef<T, TIsConst>>
     outPin(const char* name);
 
     /**
@@ -1134,9 +1094,14 @@ public:
     /**
      * @internal For internal use only
      */
-    operator underlying_type*()
+    operator underlying_type&()
     {
-        return &m_node.get();
+        return m_node.get();
+    }
+
+    [[nodiscard]] constexpr bool operator==(const NodeRefImpl& other) const noexcept
+    {
+        return &m_node.get() == &other.m_node.get();
     }
 
 private:
@@ -1147,75 +1112,25 @@ extern template class NodeRefImpl<false>;
 extern template class NodeRefImpl<true>;
 
 // -----------------------------------------------------------------------------------------------------------------
-// NODE BEHAVIOUR INTERFACE
-
-/**
- * @brief Node behaviour strategy.
- *
- * This is what allows the user to customize the node's appearance and
- * behaviour
- */
-class INodeBehaviour {
-public:
-    virtual ~INodeBehaviour() = default;
-
-    /**
-     * @brief Called immediately after a node is constructed.
-     */
-    virtual void setup(NodeRef node) { }
-
-    /**
-     * @brief Called each frame. Responsible for the appearance of the
-     * node's inner content
-     */
-    virtual void draw(NodeRef node) = 0;
-
-    /**
-     * @brief Called during a node cloning event. If not implemented or
-     * nullptr is returned, the cloning event fails for the corresponding
-     * node.
-     */
-    [[nodiscard]] virtual std::unique_ptr<INodeBehaviour> clone()
-    {
-        return { };
-    }
-};
-
-// -----------------------------------------------------------------------------------------------------------------
 // PINS
 
 /**
  * @brief Generic base class for pins
  */
-class Pin {
+template <bool TIsConst>
+class PinRef {
 public:
-    /**
-     * @brief Generic pin constructor
-     * @param ctx Reference to the ImNodeFlow context
-     * @param name Name of the pin
-     * @param kind Specifies Input or Output
-     * @param parent Pointer to the Node containing the pin
-     * @param style Style of the pin
-     */
-    explicit Pin(ImNodeFlow& ctx, PinUID uid, detail::node_t* parent, BasePinInfo info)
-        : m_ctx(ctx)
-        , m_uid(uid)
-        , m_name(std::move(info.name))
-        , m_type(info.kind)
-        , m_parent(parent)
-        , m_style(std::move(info.style))
-        , m_strat(info.strat)
-        , m_allowSelfConnection(info.allow_same_node_connections)
-        , m_renderer(std::move(info.renderer))
+    using underlying_type = std::conditional_t<
+        TIsConst,
+        const detail::IPin,
+        detail::IPin>;
+
+    explicit PinRef(underlying_type& pin)
+        : m_pin(pin)
     {
     }
 
-    virtual ~Pin()
-    {
-        // Make sure we disconnect from every connected link and mark
-        // them for disconnection
-        this->deleteAllLinks();
-    }
+    virtual ~PinRef() noexcept = default;
 
     /**
      * @brief Safely casts a base Pin into the underlying InPin, if
@@ -1225,17 +1140,7 @@ public:
      * otherwise.
      */
     template <typename T>
-    InPin<T>& toIn();
-
-    /**
-     * @brief Safely casts a base Pin into the underlying InPin, if
-     * possible. Crashes the program otherwise.
-     *
-     * @return Reference to the underlying InPin<T> if possible. Crash
-     * otherwise.
-     */
-    template <typename T>
-    InPin<T> const& toIn() const;
+    InPinRef<T, TIsConst> toIn();
 
     /**
      * @brief Safely casts a base Pin into the underlying OutPin, if
@@ -1245,17 +1150,7 @@ public:
      * otherwise.
      */
     template <typename T>
-    OutPin<T>& toOut();
-
-    /**
-     * @brief Safely casts a base Pin into the underlying OutPin, if
-     * possible. Crashes the program otherwise.
-     *
-     * @return Reference to the underlying OutPin<T> if possible. Crash
-     * otherwise.
-     */
-    template <typename T>
-    OutPin<T> const& toOut() const;
+    OutPinRef<T, TIsConst> toOut();
 
     /**
      * @brief Main loop of the pin
@@ -1263,7 +1158,8 @@ public:
      * @param out_hovering When not null, it receives the value of whether the
      * mouse is hovering over the pin
      */
-    void update(bool* out_hovering);
+    void update(bool* out_hovering)
+        requires(!TIsConst);
 
     /**
      * @brief Draw default pin's socket
@@ -1281,22 +1177,21 @@ public:
      * @brief Custom render function to override Pin appearance
      * @param r Function or lambda expression with new ImGui rendering
      */
-    Pin& renderer(std::function<void(Pin* p)> r)
-    {
-        m_renderer = std::move(r);
-        return *this;
-    }
+    PinRef& renderer(std::function<void(PinRef<> p)> r)
+        requires(!TIsConst);
 
     /**
      * @brief Creates a new link between this pin and another pin
      * @param other Reference of the pin we want to connect with
      */
-    void linkTo(Pin& other);
+    void linkTo(PinRef<TIsConst> other)
+        requires(!TIsConst);
 
     /**
      * @brief Delete all link reference
      */
-    void deleteAllLinks();
+    void deleteAllLinks()
+        requires(!TIsConst);
 
     /**
      * @brief Handles the request for when a link is trying to connect
@@ -1305,7 +1200,8 @@ public:
      * @internal This function is for internal use only. Do not call this
      * function as an API user.
      */
-    void addLink(Link* link);
+    void addLink(detail::Link* link)
+        requires(!TIsConst);
 
     /**
      * @brief Delete a single link reference
@@ -1313,107 +1209,100 @@ public:
      * @internal This function is for internal use only. Do not call this
      * function as an API user.
      */
-    void removeLink(Link* link);
+    void removeLink(detail::Link* link)
+        requires(!TIsConst);
 
     /**
      * @brief Get connected status
      * @return [TRUE] if the pin is connected
      */
-    bool isConnected() const { return !m_links.empty(); }
-
-    /**
-     * @brief Get all the links connected to this pin
-     * @return A copy of the vector with pointers to the connected links
-     */
-    std::vector<const Link*> getLinks() const
-    {
-        // Return by copy
-        return std::vector<const Link*> { m_links.begin(), m_links.end() };
-    }
+    [[nodiscard]] bool isConnected() const;
 
     /**
      * @brief Get pin's UID
      * @return Unique identifier of the pin
      */
-    [[nodiscard]] PinUID getUid() const { return m_uid; }
+    [[nodiscard]] PinUID getUid() const;
 
     /**
      * @brief Get pin's name
      * @return Const reference to pin's name
      */
-    const std::string& getName() { return m_name; }
+    [[nodiscard]] const std::string& getName() const;
 
     /**
      * @brief Get pin's position
      * @return Const reference to pin's position in grid coordinates
      */
-    [[nodiscard]] const ImVec2& getPos() { return m_pos; }
+    [[nodiscard]] const ImVec2& getPos() const;
 
     /**
      * @brief Get pin's hit-box size
      * @return Const reference to pin's hit-box size
      */
-    [[nodiscard]] const ImVec2& getSize() { return m_size; }
+    [[nodiscard]] const ImVec2& getSize() const;
 
     /**
      * @brief Get pin's parent node
      * @return Generic type pointer to pin's parent node. (Node that contains it)
      */
-    NodeRef getParent() { return NodeRef(*m_parent); }
+    [[nodiscard]] NodeRefImpl<TIsConst> getParent() const;
 
     /**
      * @brief Get pin's type
      * @return The pin type. Either Input or Output
      */
-    PinType getType() { return m_type; }
+    [[nodiscard]] PinType getType() const;
 
     /**
      * @brief Get pin's data type (aka: \<T>)
      * @return String containing unique information identifying the data type
      */
-    [[nodiscard]] virtual uint64_t getTypeID() const = 0;
+    [[nodiscard]] uint64_t getTypeID() const;
 
     /**
      * @brief Get pin's style
-     * @return Smart pointer to pin's style
+     * @return Reference to pin's style
      */
-    PinStyle& getStyle() { return m_style; }
+    const PinStyle& getStyle() const;
+
+    /**
+     * @brief Sets pin's style
+     */
+    void setStyle(PinStyle style)
+        requires(!TIsConst);
 
     /**
      * @brief Specify if connections from an output on the same node are allowed
      * @param state New state of the flag
      */
     void allowSameNodeConnections(bool state)
-    {
-        m_allowSelfConnection = state;
-    }
+        requires(!TIsConst);
 
     /**
      * @brief Specify if connections from an output on the same node are allowed
      * @param state New state of the flag
      */
-    [[nodiscard]] bool allowsSameNodeConnections() const
-    {
-        return m_allowSelfConnection;
-    }
+    [[nodiscard]] bool allowsSameNodeConnections() const;
 
     /**
      * @brief Get pin's link attachment point (socket)
      * @return Grid coordinates to the attachment point between the link and the pin's socket
      */
-    virtual ImVec2 pinPoint() = 0;
+    ImVec2 pinPoint() const;
 
     /**
      * @brief Calculate pin's width pre-rendering
      * @return The with of the pin once it will be rendered
      */
-    float calcWidth() { return ImGui::CalcTextSize(m_name.c_str()).x; }
+    float calcWidth() const;
 
     /**
      * @brief Set pin's position
      * @param pos Position in screen coordinates
      */
-    void setPos(ImVec2 pos) { m_pos = pos; }
+    void setPos(ImVec2 pos)
+        requires(!TIsConst);
 
     /**
      * @brief Get socket hit bounds for interaction
@@ -1428,9 +1317,7 @@ public:
      * @param enabled If true, socket area will be included in pin hitbox
      */
     void setSocketHitboxEnabled(bool enabled)
-    {
-        m_socketHitboxEnabled = enabled;
-    }
+        requires(!TIsConst);
 
     /**
      * @brief When the context calls this method, the pins should calculate
@@ -1439,7 +1326,8 @@ public:
      * was in the closing iteration step.
      * @internal This function is for internal use only
      */
-    virtual void calculate() = 0;
+    void calculate()
+        requires(!TIsConst);
 
     /**
      * @brief When the context calls this method, the pins should update
@@ -1449,32 +1337,37 @@ public:
      * part of the flow graph, since their state is undefined.
      * @internal This function is for internal use only
      */
-    virtual void prime() = 0;
+    void prime()
+        requires(!TIsConst);
+
+    /**
+     * @internal For internal use only
+     */
+    operator underlying_type&()
+    {
+        return m_pin.get();
+    }
 
 protected:
-    std::reference_wrapper<ImNodeFlow> m_ctx;
-    PinUID m_uid;
-    std::string m_name;
-    ImVec2 m_pos = ImVec2(0.f, 0.f);
-    ImVec2 m_size = ImVec2(0.f, 0.f);
-    PinType m_type;
-    detail::node_t* m_parent = nullptr;
-    PinStyle m_style;
-    PinConnStrat m_strat;
-    bool m_allowSelfConnection = false;
-    bool m_socketHitboxEnabled = true;
-    std::function<void(Pin* p)> m_renderer;
-    std::vector<Link*> m_links { };
+    std::reference_wrapper<underlying_type> m_pin;
 };
+
+extern template class PinRef<false>;
+extern template class PinRef<true>;
 
 /**
  * @brief Input specific pin
  * @details Derived from the generic class Pin. The input pin owns the link pointer.
  * @tparam T Data type handled by the pin
  */
-template <class T>
-class InPin : public Pin {
+template <class T, bool TIsConst>
+class InPinRef : public PinRef<TIsConst> {
 public:
+    using underlyin_type = std::conditional_t<
+        TIsConst,
+        const detail::in_pin_t<T>,
+        detail::in_pin_t<T>>;
+
     /**
      * @brief Input pin constructor
      * @param ctx Reference to the ImNodeFlow context
@@ -1483,68 +1376,11 @@ public:
      * @param defReturn Default return value when the pin is not connected
      * @param style Style of the pin
      */
-    explicit InPin(
-        ImNodeFlow& ctx,
-        PinUID uid,
-        detail::node_t* parent,
-        InPinInfo<T> info)
-        : Pin(ctx,
-              uid,
-              parent,
-              BasePinInfo {
-                  .name = std::move(info.name),
-                  .kind = PinType::PinType_Input,
-                  .allow_same_node_connections = info.allow_same_node_connections,
-                  .style = std::move(info.style),
-                  .strat = info.strat,
-                  .renderer = std::move(info.renderer),
-              })
-        , m_emptyVal(info.default_value)
-        , m_val(info.default_value)
+    explicit InPinRef(underlyin_type& pin)
+        : PinRef<TIsConst>(pin)
+        , m_in_pin(pin)
     {
-        if (info.accumulate_op) {
-            m_accumulatorOp = std::move(info.accumulate_op);
-        } else {
-            switch (info.strat) {
-            case PinConnStrat::PinConnStrat_AllowOnlySingleConnection:
-            case PinConnStrat::PinConnStrat_AllowMultiplePreferOldest:
-                m_accumulatorOp =
-                    [](bool first_pin,
-                        T init,
-                        T const& incoming_value) -> T {
-                    return incoming_value;
-                };
-                break;
-
-            case PinConnStrat::PinConnStrat_AllowMultiplePreferNewest:
-                m_accumulatorOp =
-                    [](bool first_pin,
-                        T init,
-                        T const& incoming_value) -> T {
-                    return first_pin ? incoming_value : init;
-                };
-            }
-        }
     }
-
-    /**
-     * @brief Get pin's data type (aka: \<T>)
-     * @return String containing unique information identifying the data type
-     */
-    [[nodiscard]] uint64_t getTypeID() const override;
-
-    /**
-     * @brief Get pin's link attachment point (socket)
-     * @return Grid coordinates to the attachment point between the link and the pin's socket
-     */
-    ImVec2 pinPoint() override
-    {
-        return m_pos + ImVec2(-m_style.extra.socket_padding, m_size.y / 2);
-    }
-
-    void calculate() override;
-
-    void prime() override;
 
     /**
      * @brief Get value carried by the connected link
@@ -1553,11 +1389,7 @@ public:
     const T& value() const;
 
 private:
-    T m_emptyVal;
-    T m_val;
-    T m_valNext;
-    std::function<T(bool first_pin, T init, T const& incoming_value)>
-        m_accumulatorOp;
+    std::reference_wrapper<underlyin_type> m_in_pin;
 };
 
 /**
@@ -1565,50 +1397,22 @@ private:
  * @details Derived from the generic class Pin. The output pin handles the logic.
  * @tparam T Data type handled by the pin
  */
-template <class T>
-class OutPin : public Pin {
+template <class T, bool TIsConst>
+class OutPinRef final : public PinRef<TIsConst> {
 public:
-    /**
-     * @brief Output pin constructor
-     * @param ctx Reference to the ImNodeFlow context
-     * @param uid UID for the current pin
-     * @param parent Pointer to the Node containing the pin
-     * @param info user-provided customization options
-     */
-    explicit OutPin(
-        ImNodeFlow& ctx,
-        PinUID uid,
-        detail::node_t* parent,
-        OutPinInfo<T> info)
-        : Pin(ctx,
-              uid,
-              parent,
-              BasePinInfo {
-                  .name = std::move(info.name),
-                  .kind = PinType::PinType_Output,
-                  .allow_same_node_connections = info.allow_same_node_connections,
-                  .style = std::move(info.style),
-                  .strat = info.strat,
-                  .renderer = std::move(info.renderer),
-              })
-        , m_behaviour(std::move(info.behaviour))
+    using underlying_type = std::conditional_t<
+        TIsConst,
+        const detail::out_pin_t<T>,
+        detail::out_pin_t<T>>;
+
+    explicit OutPinRef(
+        underlying_type& out_pin)
+        : PinRef<TIsConst>(out_pin)
+        , m_out_pin(out_pin)
     {
     }
 
-    ~OutPin() override = default;
-
-    /**
-     * @brief Get pin's link attachment point (socket)
-     * @return Grid coordinates to the attachment point between the link and the pin's socket
-     */
-    ImVec2 pinPoint() override
-    {
-        return m_pos + ImVec2(m_size.x + m_style.extra.socket_padding, m_size.y / 2);
-    }
-
-    void calculate() override;
-
-    void prime() override;
+    ~OutPinRef() override = default;
 
     /**
      * @brief Get output value
@@ -1621,22 +1425,11 @@ public:
      * @details Used to define the pin behaviour. This is what gets the data from the parent's inputs, and applies the needed logic.
      * @param func Function or lambda expression used to calculate output value
      */
-    OutPin<T>& behaviour(std::function<T(NodeRef)> func)
-    {
-        m_behaviour = std::move(func);
-        return *this;
-    }
-
-    /**
-     * @brief Get pin's data type (aka: \<T>)
-     * @return String containing unique information identifying the data type
-     */
-    [[nodiscard]] uint64_t getTypeID() const override;
+    OutPinRef<T, TIsConst>& behaviour(std::function<T(NodeRef)> func)
+        requires(!TIsConst);
 
 private:
-    std::function<T(NodeRef)> m_behaviour;
-    T m_val;
-    T m_valNext;
+    std::reference_wrapper<underlying_type> m_out_pin;
 };
 
 } // namespace ImFlow

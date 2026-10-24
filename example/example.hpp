@@ -13,7 +13,7 @@ public:
         node.addOUT<int>({
             .name = "Out",
             .behaviour = [this](ImFlow::NodeRef node) -> int {
-                return node.inPin<int>("In")->value() + m_valB;
+                return node.inPin<int>("In")->value() + this->m_valB;
             },
         });
     }
@@ -36,8 +36,8 @@ public:
         node.setStyle(ImFlow::NodeStyles::cyan);
         node.addIN<int>({
             .name = "In",
-            .default_value = 0,
             .strat = ImFlow::PinConnStrat_AllowMultiplePreferOldest,
+            .default_value = 0,
             .accumulate_op =
                 [](bool first, int init, int new_input) -> int {
                 return first ? new_input : init + new_input;
@@ -72,24 +72,24 @@ public:
 
         node.addIN<int>({
             .name = "A",
-            .default_value = 0,
             .style = ImFlow::PinStyles::red,
+            .default_value = 0,
         });
         node.addIN<int>({
             .name = "B",
-            .default_value = 0,
             .style = ImFlow::PinStyles::red,
+            .default_value = 0,
         });
 
         node.addOUT<int>({
             .name = "Out",
+            .style = ImFlow::PinStyles::red,
+            .renderer = [](ImFlow::PinRef<> pin) -> void {
+                ImGui::TextUnformatted("<OUTPIN>");
+            },
             .behaviour = [this](ImFlow::NodeRef node) -> int {
                 return node.inPin<int>("A")->value() + node.inPin<int>("B")->value();
             },
-            .renderer = [](auto* pin) -> void {
-                ImGui::TextUnformatted("<OUTPIN>");
-            },
-            .style = ImFlow::PinStyles::red,
         });
     }
 
@@ -118,10 +118,10 @@ public:
         if (m_multiplier) {
             node.showOUT<int>({
                 .name = "Multiplier",
+                .style = ImFlow::PinStyles::red,
                 .behaviour = [](ImFlow::NodeRef node) -> int {
                     return node.inPin<int>("A")->value() * node.inPin<int>("B")->value();
                 },
-                .style = ImFlow::PinStyles::red,
             });
         }
     }
@@ -156,8 +156,8 @@ public:
         node.setStyle(ImFlow::NodeStyles::red);
         node.addIN<bool>({
             .name = "IN",
-            .default_value = false,
             .strat = ImFlow::PinConnStrat_AllowMultiplePreferOldest,
+            .default_value = false,
             .accumulate_op =
                 [](bool first, bool init, bool new_input) -> bool {
                 return first ? new_input : init | new_input;
@@ -165,7 +165,7 @@ public:
         });
         node.addOUT<bool>({
             .name = "OUT",
-            .behaviour = [this](ImFlow::NodeRef node) -> int {
+            .behaviour = [](ImFlow::NodeRef node) -> int {
                 return !node.inPin<bool>("IN")->value();
             },
         });
@@ -173,14 +173,14 @@ public:
 
     void draw(ImFlow::NodeRef node) override
     {
-        auto& inPin = *node.inPin<bool>("IN");
-        auto& outPin = *node.outPin<bool>("OUT");
+        auto inPin = *node.inPin<bool>("IN");
+        auto outPin = *node.outPin<bool>("OUT");
         if (inPin.value()) {
-            inPin.getStyle() = ImFlow::PinStyles::green;
-            outPin.getStyle() = ImFlow::PinStyles::red;
+            inPin.setStyle(ImFlow::PinStyles::green);
+            outPin.setStyle(ImFlow::PinStyles::red);
         } else {
-            inPin.getStyle() = ImFlow::PinStyles::red;
-            outPin.getStyle() = ImFlow::PinStyles::green;
+            inPin.setStyle(ImFlow::PinStyles::red);
+            outPin.setStyle(ImFlow::PinStyles::green);
         }
     }
 
