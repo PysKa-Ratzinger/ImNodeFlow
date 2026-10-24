@@ -303,7 +303,7 @@ ImVec2 PinRef<TIsConst>::pinPoint() const
 {
     auto& base = m_pin.get().toBase();
 
-    if (base.type == PinType_Input) {
+    if (base.type == PinType::Input) {
         return base.pos + ImVec2(-base.style.extra.socket_padding, base.size.y / 2);
     }
     return base.pos + ImVec2(base.size.x + base.style.extra.socket_padding, base.size.y / 2);
@@ -1041,8 +1041,8 @@ ImNodeFlow::grid2screen(const ImVec2& p)
 
 void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
 {
-    if (source_pin.getType() == PinType_Input
-        && target_pin.getType() == PinType_Output) {
+    if (source_pin.getType() == PinType::Input
+        && target_pin.getType() == PinType::Output) {
         createLink(target_pin, source_pin);
         return;
     }
@@ -1051,8 +1051,8 @@ void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
         return;
     }
 
-    if (source_pin.getType() != PinType_Output
-        || target_pin.getType() != PinType_Input) {
+    if (source_pin.getType() != PinType::Output
+        || target_pin.getType() != PinType::Input) {
         return;
     }
 
@@ -1329,7 +1329,7 @@ void ImNodeFlow::update()
         }
 
         // Links drag-out
-        if (dragOut.getType() == PinType_Output)
+        if (dragOut.getType() == PinType::Output)
             detail::smart_bezier(
                 dragOut.pinPoint(),
                 ImGui::GetMousePos(),

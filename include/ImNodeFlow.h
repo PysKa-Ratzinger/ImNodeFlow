@@ -7,6 +7,7 @@
 #include "ImNodeFlow/NodeStyle.h"
 #include "ImNodeFlow/NodeUID.h"
 #include "ImNodeFlow/PinStyle.h"
+#include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/PinUID.h"
 #include "ImNodeFlow/Style.h"
 #include "ImNodeFlow/fwd.h"
@@ -49,14 +50,6 @@ using right_click_popup_handler_t = std::function<void(std::optional<NodeRef> no
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
-
-/**
- * @brief Pins type identifier
- */
-enum PinType {
-    PinType_Input,
-    PinType_Output,
-};
 
 /**
  * @brief Strategy to use for input pins regarding multiple connections

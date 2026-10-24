@@ -2,6 +2,8 @@
 
 #include "ImNodeFlow.h"
 
+#include "ImNodeFlow/PinType.h"
+
 // FIXME: Remove this header
 // These public API inline utilities are included by the public API file,
 // and including the internal data structures introduces compile-time
@@ -46,7 +48,7 @@ template <typename T>
 in_pin_t<T>& IPin::toIn()
 {
     auto& base = this->toBase();
-    assert(base.type == PinType_Input && get_type_id<T>() == this->getTypeID());
+    assert(base.type == PinType::Input && get_type_id<T>() == this->getTypeID());
     return static_cast<in_pin_t<T>&>(*this);
 }
 
@@ -54,7 +56,7 @@ template <typename T>
 in_pin_t<T> const& IPin::toIn() const
 {
     auto const& base = this->toBase();
-    assert(base.type == PinType_Input && get_type_id<T>() == this->getTypeID());
+    assert(base.type == PinType::Input && get_type_id<T>() == this->getTypeID());
     return static_cast<in_pin_t<T> const&>(*this);
 }
 
@@ -62,7 +64,7 @@ template <typename T>
 out_pin_t<T>& IPin::toOut()
 {
     auto const& base = this->toBase();
-    assert(base.type == PinType_Output && get_type_id<T>() == this->getTypeID());
+    assert(base.type == PinType::Output && get_type_id<T>() == this->getTypeID());
     return static_cast<out_pin_t<T>&>(*this);
 }
 
@@ -70,7 +72,7 @@ template <typename T>
 out_pin_t<T> const& IPin::toOut() const
 {
     auto const& base = this->toBase();
-    assert(base.type == PinType_Output && get_type_id<T>() == this->getTypeID());
+    assert(base.type == PinType::Output && get_type_id<T>() == this->getTypeID());
     return static_cast<out_pin_t<T> const&>(*this);
 }
 
@@ -87,7 +89,7 @@ in_pin_t<T>::in_pin_t(
         .ctx = ctx,
         .uid = uid,
         .name = std::move(info.name),
-        .type = PinType_Input,
+        .type = PinType::Input,
         .parent = &parent,
         .style = std::move(info.style),
         .strat = info.strat,
@@ -132,7 +134,7 @@ out_pin_t<T>::out_pin_t(
         .ctx = ctx,
         .uid = uid,
         .name = std::move(info.name),
-        .type = PinType_Output,
+        .type = PinType::Output,
         .parent = &parent,
         .style = std::move(info.style),
         .strat = info.strat,
