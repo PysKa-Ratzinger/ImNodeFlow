@@ -804,7 +804,7 @@ void NodeRefImpl<TIsConst>::update()
     auto& ctx = m_node.get().ctx.get();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    ImGui::PushID(this);
+    ImGui::PushID(&m_node.get());
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
     ImVec2 paddingTL = { m_node.get().style.padding.x, m_node.get().style.padding.y };
     ImVec2 paddingBR = { m_node.get().style.padding.z, m_node.get().style.padding.w };
