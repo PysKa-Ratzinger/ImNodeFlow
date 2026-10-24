@@ -1,6 +1,7 @@
 #include "ImNodeFlow.h"
 
 #include "./INodeBehaviour.impl"
+#include "./Link.impl"
 
 #include "./ImNodeFlow_internals.h"
 #include "ImNodeFlow/IContainedContext.h"
@@ -1533,78 +1534,7 @@ bool DynamicPin::isStale() const
 }
 
 // -----------------------------------------------------------------------------------------------------------------
-// LINK
-
-Link::Link(IPin& out_pin, IPin& in_pin) noexcept
-    : m_out_pin(&out_pin)
-    , m_in_pin(&in_pin)
-{
-    assert(m_out_pin != m_in_pin && "Links cannot be created starting and ending in the same node");
-
-    PinRef<> { *m_out_pin }.addLink(this);
-    PinRef<> { *m_in_pin }.addLink(this);
-}
-
-Link::~Link() noexcept
-{
-    this->destroy();
-}
-
-void Link::destroy() noexcept
-{
-    if (m_out_pin != nullptr) {
-        PinRef<> { *m_out_pin }.removeLink(this);
-        m_out_pin = nullptr;
-    }
-    if (m_in_pin != nullptr) {
-        PinRef<> { *m_in_pin }.removeLink(this);
-        m_in_pin = nullptr;
-    }
-    m_marked_for_deletion = true;
-}
-
-void Link::update(ImNodeFlow& ctx)
-{
-    PinRef<> in_pin { *m_in_pin };
-    PinRef<> out_pin { *m_out_pin };
-
-    ImVec2 start = out_pin.pinPoint();
-    ImVec2 end = in_pin.pinPoint();
-    float thickness = out_pin.getStyle().extra.link_thickness;
-
-    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-        m_selected = false;
-
-    if (detail::smart_bezier_collider(
-            ImGui::GetMousePos(), start, end, 2.5)) {
-        m_hovered = true;
-        thickness = out_pin.getStyle().extra.link_hovered_thickness;
-        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
-            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
-            m_selected = true;
-        }
-    } else {
-        m_hovered = false;
-    }
-
-    if (m_selected)
-        detail::smart_bezier(
-            start,
-            end,
-            out_pin.getStyle().extra.outline_color,
-            thickness + out_pin.getStyle().extra.link_selected_outline_thickness);
-    detail::smart_bezier_gradient(
-        start,
-        end,
-        out_pin.getStyle().color,
-        in_pin.getStyle().color,
-        thickness,
-        ctx.getStyle().link_gradient_blend);
-
-    if (m_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
-        this->destroy();
-    }
-}
+// PIN CONNECTION HOLDER
 
 PinConnectionHolder::PinConnectionHolder(Link* link) noexcept
     : m_link_ptr(link)

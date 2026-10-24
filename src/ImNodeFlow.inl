@@ -7,6 +7,7 @@
 // and including the internal data structures introduces compile-time
 // overhead for the users of the library
 #include "./ImNodeFlow_internals.h"
+#include "./Link.h"
 
 #include <cassert>
 #include <cstdint>
