@@ -10,6 +10,7 @@
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/PinUID.h"
 #include "ImNodeFlow/Style.h"
+#include "ImNodeFlow/callback_types.h"
 #include "ImNodeFlow/fwd.h"
 
 #include <imgui.h>
@@ -42,11 +43,6 @@ struct out_pin_t;
 } // namespace ImFlow::detail
 
 namespace ImFlow {
-
-// -----------------------------------------------------------------------------------------------------------------
-// CLASSES PRE-DEFINITIONS
-
-using right_click_popup_handler_t = std::function<void(std::optional<NodeRef> node)>;
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN'S PROPERTIES
