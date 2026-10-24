@@ -2,10 +2,12 @@
 #define IM_NODE_FLOW_INTERNALS
 #pragma once
 
+#include "ImNodeFlow.h"
+
 #include <cstdint>
 #include <memory>
-
-#include "ImNodeFlow.h"
+#include <unordered_map>
+#include <vector>
 
 namespace ImFlow::detail {
 
