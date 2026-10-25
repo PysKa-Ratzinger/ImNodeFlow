@@ -84,12 +84,11 @@ out_pin_t<T> const& IPin::toOut() const
 template <typename T>
 in_pin_t<T>::in_pin_t(
     ImNodeFlow& ctx,
-    PinUID uid,
     detail::node_t& parent,
     InPinInfo<T> info)
     : base {
         .ctx = ctx,
-        .uid = uid,
+        .uid = detail::generate_pin_uid(),
         .name = std::move(info.name),
         .type = PinType::Input,
         .parent = &parent,
@@ -129,12 +128,11 @@ in_pin_t<T>::in_pin_t(
 template <typename T>
 out_pin_t<T>::out_pin_t(
     ImNodeFlow& ctx,
-    PinUID uid,
     detail::node_t& parent,
     OutPinInfo<T> info)
     : base {
         .ctx = ctx,
-        .uid = uid,
+        .uid = detail::generate_pin_uid(),
         .name = std::move(info.name),
         .type = PinType::Output,
         .parent = &parent,
@@ -235,17 +233,10 @@ InPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addIN(InPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    return addIN(detail::generate_pin_uid(), std::move(pin_info));
-}
-
-template <bool TIsConst>
-template <typename T>
-InPinRef<T, TIsConst>
-NodeRefImpl<TIsConst>::addIN(const PinUID& uid, InPinInfo<T> pin_info)
-    requires(!TIsConst)
-{
     m_node.get().ins.emplace_back(std::make_unique<detail::in_pin_t<T>>(
-        m_node.get().ctx, uid, *this, std::move(pin_info)));
+        m_node.get().ctx,
+        *this,
+        std::move(pin_info)));
     return PinRef<TIsConst> { *m_node.get().ins.back() }.template toIn<T>();
 }
 
@@ -265,27 +256,7 @@ NodeRefImpl<TIsConst>::showIN(InPinInfo<T> pin_info)
 
     m_node.get().dynamicIns.emplace_back(
         std::make_unique<detail::in_pin_t<T>>(
-            m_node.get().ctx, detail::generate_pin_uid(), *this, std::move(pin_info)));
-    return m_node.get().dynamicIns.back().pin().template toIn<T>().val();
-}
-
-template <bool TIsConst>
-template <typename T>
-const T&
-NodeRefImpl<TIsConst>::showIN(const PinUID& uid, InPinInfo<T> pin_info)
-    requires(!TIsConst)
-{
-    for (auto& dyn_pin : m_node.get().dynamicIns) {
-        if (dyn_pin.pin().getUid() == uid) {
-            dyn_pin.refresh();
-            // TODO: Update pin with new styles from pin_info
-            return dyn_pin.pin().template toIn<T>().val();
-        }
-    }
-
-    m_node.get().dynamicIns.emplace_back(
-        std::make_unique<detail::in_pin_t<T>>(
-            m_node.get().ctx, uid, *this, std::move(pin_info)));
+            m_node.get().ctx, *this, std::move(pin_info)));
     return m_node.get().dynamicIns.back().pin().template toIn<T>().val();
 }
 
@@ -295,18 +266,9 @@ OutPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addOUT(OutPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    return addOUT<T>(detail::generate_pin_uid(), std::move(pin_info));
-}
-
-template <bool TIsConst>
-template <typename T>
-OutPinRef<T, TIsConst>
-NodeRefImpl<TIsConst>::addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
-    requires(!TIsConst)
-{
     m_node.get().outs.emplace_back(
         std::make_unique<detail::out_pin_t<T>>(
-            m_node.get().ctx, uid, *this, std::move(pin_info)));
+            m_node.get().ctx, *this, std::move(pin_info)));
     return OutPinRef<T, TIsConst> {
         m_node.get().outs.back()->template toOut<T>()
     };
@@ -329,29 +291,7 @@ void NodeRefImpl<TIsConst>::showOUT(OutPinInfo<T> pin_info)
 
     m_node.get().dynamicOuts.emplace_back(
         std::make_unique<detail::out_pin_t<T>>(
-            m_node.get().ctx, detail::generate_pin_uid(), *this, std::move(pin_info)));
-}
-
-template <bool TIsConst>
-template <typename T>
-void NodeRefImpl<TIsConst>::showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
-    requires(!TIsConst)
-{
-    for (auto& dyn_pin : m_node.get().dynamicOuts) {
-        if (dyn_pin.pin().getUid() == uid) {
-            dyn_pin.refresh();
-            // TODO: Update pin with new styles from pin_info
-            dyn_pin.pin().template toOut<T>().behaviour(
-                std::move(pin_info.behaviour));
-            return;
-        }
-    }
-
-    m_node.get().dynamicOuts.emplace_back(
-        std::make_unique<detail::out_pin_t<T>>(
-            m_node.get().ctx, uid, *this, std::move(pin_info)));
-    m_node.get().dynamicOuts.back().pin().template toOut<T>().behaviour(
-        std::move(pin_info.behaviour));
+            m_node.get().ctx, *this, std::move(pin_info)));
 }
 
 template <bool TIsConst>

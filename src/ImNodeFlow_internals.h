@@ -202,7 +202,6 @@ struct in_pin_t final : public IPin {
 
     in_pin_t(
         ImNodeFlow& ctx,
-        PinUID uid,
         detail::node_t& parent,
         InPinInfo<T> pin_info);
 
@@ -222,7 +221,6 @@ struct out_pin_t final : public IPin {
 
     out_pin_t(
         ImNodeFlow& ctx,
-        PinUID uid,
         detail::node_t& parent,
         OutPinInfo<T> pin_info);
 

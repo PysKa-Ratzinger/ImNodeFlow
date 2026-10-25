@@ -51,22 +51,6 @@ public:
         requires(!TIsConst);
 
     /**
-     * @brief Add an Input to the node
-     * @details Will add an Input pin to the node with the given name and data type.
-     * The UID must be unique only in the context of the current node's inputs.
-     *
-     * @tparam T Type of the data the pin will handle
-     * @param uid Unique identifier of the pin
-     * @param pin_info User given options to the InPin during construction
-     * @return Reference to the newly added pin. Do not save this
-     * reference. Use the reference to query the pin's UID and save that
-     * instead.
-     */
-    template <typename T>
-    InPinRef<T, TIsConst> addIN(const PinUID& uid, InPinInfo<T> pin_info)
-        requires(!TIsConst);
-
-    /**
      * @brief Remove input pin
      * @param uid Unique identifier of the pin
      */
@@ -96,21 +80,6 @@ public:
         requires(!TIsConst);
 
     /**
-     * @brief Show a temporary input pin
-     * @details Will show an input pin with the given name and UID.
-     * The pin is created the first time showIN_uid is called and kept alive as long as showIN_uid is called each frame.
-     * The UID must be unique only in the context of the current node's inputs.
-     *
-     * @tparam T Type of the data the pin will handle
-     * @param uid Unique identifier of the pin
-     * @param pin_info User given options to the InPin during construction
-     * @return Const reference to the value of the connected link for the current frame of defReturn
-     */
-    template <typename T>
-    const T& showIN(const PinUID& uid, InPinInfo<T> pin_info)
-        requires(!TIsConst);
-
-    /**
      * @brief Add an Output to the node
      * @details Must be called in the node constructor. WIll add an Output pin to the node with the given name and data type.
      * In this case the name of the pin will also be its UID.
@@ -124,22 +93,6 @@ public:
      */
     template <typename T>
     OutPinRef<T, TIsConst> addOUT(OutPinInfo<T> pin_info)
-        requires(!TIsConst);
-
-    /**
-     * @brief Add an Output to the node
-     * @details Must be called in the node constructor. WIll add an Output pin to the node with the given name and data type.
-     * The UID must be unique only in the context of the current node's outputs.
-     *
-     * @tparam T Type of the data the pin will handle
-     * @param uid Unique identifier of the pin
-     * @param pin_info User given options to the InPin during construction
-     * @return Reference to the newly added pin. Do not save this
-     * reference. Use the reference to query the pin's UID and save that
-     * instead.
-     */
-    template <typename T>
-    OutPinRef<T, TIsConst> addOUT(const PinUID& uid, OutPinInfo<T> pin_info)
         requires(!TIsConst);
 
     /**
@@ -168,20 +121,6 @@ public:
      */
     template <typename T>
     void showOUT(OutPinInfo<T> pin_info)
-        requires(!TIsConst);
-
-    /**
-     * @brief Show a temporary output pin
-     * @details Will show an output pin with the given name.
-     * The pin is created the first time showOUT_uid is called and kept alive as long as showOUT_uid is called each frame.
-     * The UID must be unique only in the context of the current node's outputs.
-     *
-     * @tparam T Type of the data the pin will handle
-     * @param uid Unique identifier of the pin
-     * @param pin_info User given options to the InPin during construction
-     */
-    template <typename T>
-    void showOUT(const PinUID& uid, OutPinInfo<T> pin_info)
         requires(!TIsConst);
 
     /**
