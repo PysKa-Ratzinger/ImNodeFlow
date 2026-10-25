@@ -1,6 +1,7 @@
 #include "ImNodeFlow.h"
 
 #include "./Context.impl"
+#include "./DynamicPin.impl"
 #include "./INodeBehaviour.impl"
 #include "./Link.impl"
 #include "./NodeRef.impl"
@@ -26,42 +27,6 @@ IContainedContext::~IContainedContext() = default;
 } // namespace ImFlow
 
 namespace ImFlow::detail {
-
-// -----------------------------------------------------------------------------------------------------------------
-// DYNAMIC PIN
-
-DynamicPin::DynamicPin(std::unique_ptr<IPin> pin)
-    : m_pin(std::move(pin))
-{
-    this->refresh();
-}
-
-void DynamicPin::refresh()
-{
-    this->m_ttl = 1;
-}
-
-void DynamicPin::update(bool* out_hovering)
-{
-    m_ttl = m_ttl > 0 ? m_ttl - 1 : m_ttl;
-    PinRef<> { this->pin() }.update(out_hovering);
-}
-
-IPin& DynamicPin::pin()
-{
-    return *m_pin;
-}
-
-const IPin&
-DynamicPin::pin() const
-{
-    return *m_pin;
-}
-
-bool DynamicPin::isStale() const
-{
-    return m_ttl == 0;
-}
 
 // -----------------------------------------------------------------------------------------------------------------
 // PIN CONNECTION HOLDER
