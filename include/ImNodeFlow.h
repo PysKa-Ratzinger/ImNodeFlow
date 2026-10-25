@@ -3,7 +3,7 @@
 #pragma once
 
 #include "ImNodeFlow/IContainedContext.h"
-#include "ImNodeFlow/INodeBehaviour.h"
+#include "ImNodeFlow/NodeInfo.h"
 #include "ImNodeFlow/NodeStyle.h"
 #include "ImNodeFlow/NodeUID.h"
 #include "ImNodeFlow/PinInfo.h"
@@ -44,19 +44,6 @@ struct out_pin_t;
 } // namespace ImFlow::detail
 
 namespace ImFlow {
-
-// -----------------------------------------------------------------------------------------------------------------
-// NODE'S PROPERTIES
-
-/**
- * @brief User customizable options when creating a new Node
- */
-struct NodeInfo {
-    /// Node strategy for initialization and rendering
-    std::unique_ptr<INodeBehaviour> behaviour;
-    /// Style to apply to the node
-    NodeStyle style = NodeStyles::default_style;
-};
 
 // -----------------------------------------------------------------------------------------------------------------
 // NODE FLOW CONTEXT
