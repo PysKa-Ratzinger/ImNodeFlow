@@ -1,5 +1,11 @@
 #include "ImNodeFlow/Context.h"
 
+#include "ImNodeFlow/NodeRef.h"
+
+#include "./ImNodeFlow_internals.h"
+#include "./Link.h"
+#include "./uid_helpers.h"
+
 #include "imgui_bezier_items.h"
 
 namespace ImFlow {
