@@ -6,6 +6,8 @@
 
 #include "ImNodeFlow/NodeUID.h"
 #include "ImNodeFlow/PinUID.h"
+#include "ImNodeFlow/Style.h"
+#include "ImNodeFlow/callback_types.h"
 
 #include "./context_wrapper.h"
 

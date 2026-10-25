@@ -1,0 +1,311 @@
+#ifndef IMNODEFLOW_CONTEXT_H
+#define IMNODEFLOW_CONTEXT_H
+#pragma once
+
+#include "ImNodeFlow/NodeInfo.h"
+#include "ImNodeFlow/Style.h"
+#include "ImNodeFlow/callback_types.h"
+#include "ImNodeFlow/detail/fwd.h"
+#include "ImNodeFlow/fwd.h"
+
+#include "imgui.h"
+
+#include <functional>
+#include <string>
+
+namespace ImFlow {
+
+/**
+ * @brief Main node editor
+ * @details Handles the infinite grid, nodes and links. Also handles all the logic.
+ */
+class ImNodeFlow {
+private:
+    static int m_instances;
+
+public:
+    /**
+     * @brief Instantiate a new editor with default name.
+     * Editor name will be "FlowGrid + the number of editors"
+     */
+    ImNodeFlow();
+
+    /**
+     * @brief Instantiate a new editor with given name
+     * @details Creates a new Node Editor with the given name.
+     * @param name Name of the editor
+     */
+    explicit ImNodeFlow(std::string name);
+
+    // delete copy-ctor
+    ImNodeFlow(const ImNodeFlow&) = delete;
+    // delete copy-operator
+    ImNodeFlow& operator=(const ImNodeFlow&) = delete;
+
+    // move-ctor
+    ImNodeFlow(ImNodeFlow&&) noexcept;
+    // move-operator
+    ImNodeFlow& operator=(ImNodeFlow&&);
+
+    ~ImNodeFlow();
+
+    /**
+     * @brief Handler loop
+     * @details Main update function. Refreshes all the logic and draws everything. Must be called every frame.
+     */
+    void update();
+
+    /**
+     * @brief Add a node to the grid
+     * @param grid_coords Position of the Node in grid coordinates
+     * @param node_info Node behaviour customization options
+     * @return Reference to the newly added node. Do not save this
+     * reference.
+     */
+    NodeRef addNode(const ImVec2& grid_coords, NodeInfo node_info = { });
+
+    /**
+     * @brief Add a node to the grid
+     * @param screen_coords Position of the Node in screen coordinates
+     * @param node_info Node behaviour customization options
+     * @return Reference to the newly added node. Do not save this
+     * reference.
+     */
+    NodeRef placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info = { });
+
+    /**
+     * @brief Add a node to the grid using mouse position
+     * @param args Optional arguments to be forwarded to derived class ctor
+     * @param node_info Node behaviour customization options
+     * @return Reference to the newly added node. Do not save this
+     * reference.
+     */
+    NodeRef placeNode(NodeInfo node_info = { });
+
+    /**
+     * @brief Add a node whos operation can be defined within a lambda.
+     * @tparam L the type of the lambda
+     * @param grid_coords the position at which to place the node
+     * @param draw_func the draw_func that defines the nodes operation
+     * @return Reference to the newly added node. Do not save this
+     * reference.
+     */
+    NodeRef addNodeLambda(
+        const ImVec2& grid_coords,
+        std::function<void(NodeRef)> draw_func);
+
+    /**
+     * @brief Add a node to the grid
+     * @tparam T Derived class of <INodeBehaviour> to be added
+     * @tparam Params types of optional args to forward to derived class ctor
+     * @param grid_coords Position of the Node in grid coordinates
+     * @param args Arguments to be forwarded to derived class ctor
+     * @return Reference to the newly added node. Do not save this
+     * reference.
+     */
+    template <typename T, typename... Params>
+    NodeRef emplaceNode(const ImVec2& grid_coords, Params&&... args);
+
+    /**
+     * @brief Add a node to the grid
+     * @tparam T Derived class of <INodeBehaviour> to be added
+     * @tparam Params types of optional args to forward to derived class ctor
+     * @param screen_coords Position of the Node in screen coordinates
+     * @param args Arguments to be forwarded to derived class ctor
+     * @return Reference to the newly added node. Do not save this
+     * reference.
+     */
+    template <typename T, typename... Params>
+    NodeRef emplaceNodeAt(const ImVec2& screen_coords, Params&&... args);
+
+    /**
+     * @brief Add a node to the grid using mouse position
+     * @tparam T Derived class of <Node> to be added
+     * @tparam Params types of optional args to forward to derived class ctor
+     * @param args Arguments to be forwarded to derived class ctor
+     * @return Reference to the newly added node. Do not save this
+     * reference.
+     */
+    template <typename T, typename... Params>
+    NodeRef emplaceNodeOnMouse(Params&&... args);
+
+    /**
+     * @brief Creates a link between two pins
+     * @param source_pin Reference to the input pin
+     * @param target_pint Reference to the output pin
+     */
+    void createLink(PinRef<> source_pin, PinRef<> target_pin);
+
+    /**
+     * @brief Pop-up when link is "dropped"
+     * @details Sets the content of a pop-up that can be displayed when dragging a link in the open instead of onto another pin.
+     * @details If "key = ImGuiKey_None" the pop-up will always open when a link is dropped.
+     * @param content Function or Lambda containing only the contents of the pop-up and the subsequent logic
+     * @param key Optional key required in order to open the pop-up
+     */
+    void droppedLinkPopUpContent(
+        std::function<void(PinRef<> dragged)> content,
+        ImGuiKey key = ImGuiKey_None);
+
+    /**
+     * @brief Pop-up when right-clicking
+     * @details Sets the content of a pop-up that can be displayed when right-clicking on the grid.
+     * @param content Function or Lambda containing only the contents of the pop-up and the subsequent logic
+     */
+    void rightClickPopUpContent(right_click_popup_handler_t content);
+
+    /**
+     * @brief <BR>Pop-up when drag_dropping
+     * @details Sets the node pos when drag dropping a node to the grid
+     * @param content Function or Lambda containing only the pos of the mouse when clicked
+     */
+    void dragDropTarget(std::function<void(const ImVec2&)> content);
+
+    /**
+     * @brief Get mouse clicking status
+     * @param The mouse button to query
+     * @return [TRUE] if mouse is clicked and click hasn't been consumed
+     */
+    [[nodiscard]] bool getSingleUseClick(ImGuiMouseButton button) const;
+
+    /**
+     * @brief Consume the click for the given frame
+     * @param button The mouse button to query
+     */
+    void consumeSingleUseClick(ImGuiMouseButton button);
+
+    /**
+     * @brief Get editor's name
+     * @return Const reference to editor's name
+     */
+    [[nodiscard]] const std::string& getName() const;
+
+    /**
+     * @brief Get editor's position
+     * @return Const reference to editor's position in screen coordinates
+     */
+    [[nodiscard]] const ImVec2& getPos() const;
+
+    /**
+     * @brief Get editor's grid scroll
+     * @details Scroll is the offset from the origin of the grid, changes while navigating the grid.
+     * @return Const reference to editor's grid scroll
+     */
+    const ImVec2& getScroll() const;
+
+    /**
+     * @brief Sets the context's scroll to a user specified value
+     */
+    void setScroll(ImVec2 scroll);
+
+    /**
+     * @brief Sets the context's scale to a user specified value
+     */
+    void setScale(float scale);
+
+    /**
+     * @brief Get the scale adjusted screen space mouse delta, needed for dragging
+     *
+     * @return scale adjusted mouse delta.
+     */
+    ImVec2 getScreenSpaceDelta() const;
+
+    /**
+     * @brief Get nodes count
+     * @return Number of nodes present in the editor
+     */
+    uint64_t getNodesCount() const;
+
+    /**
+     * @brief Get zooming viewport
+     * @return Const reference to editor's internal viewport for zoom support
+     */
+    IContainedContext& getGrid();
+
+    /**
+     * @brief Get dragging status
+     * @return [TRUE] if a Node is being dragged around the grid
+     */
+    [[nodiscard]] bool isNodeDragged() const;
+
+    /**
+     * @brief Get current style
+     * @return Reference to style variables
+     */
+    const InfStyler& getStyle() const;
+
+    /**
+     * @brief Modify current style
+     */
+    void setStyle(InfStyler style);
+
+    /**
+     * @brief Set editor's size
+     * @param size Editor's size. Set to (0, 0) to auto-fit.
+     */
+    void setSize(const ImVec2& size);
+
+    /**
+     * @brief Set dragging status
+     * @param state New dragging state
+     *
+     * The new state will only be updated one at the start of each frame.
+     */
+    void draggingNode(bool state);
+
+    /**
+     * @brief Set what pin is being hovered
+     * @param hovering Pointer to the hovered pin
+     * @internal For internal use only
+     */
+    void hovering(detail::IPin* hovering);
+
+    /**
+     * @brief Set what pin is being dragged
+     * @param dragged Pointer to the dragged pin
+     * @internal For internal use only
+     */
+    void dragging(detail::IPin* dragged);
+
+    /**
+     * @brief Set what node is being hovered
+     * @param hovering Pointer to the hovered node
+     * @internal For internal use only
+     */
+    void hoveredNode(detail::node_t* hovering);
+
+    /**
+     * @brief Convert coordinates from screen to grid
+     * @param p Point in screen coordinates to be converted
+     * @return Point in grid's coordinates
+     */
+    ImVec2 screen2grid(const ImVec2& p);
+
+    /**
+     * @brief Convert coordinates from grid to screen
+     * @param p Point in grid's coordinates to be converted
+     * @return Point in screen coordinates
+     */
+    ImVec2 grid2screen(const ImVec2& p);
+
+    /**
+     * @brief Check if mouse is on selected node
+     * @return [TRUE] if the mouse is hovering a selected node
+     */
+    bool mouse_on_selected_node();
+
+    /**
+     * @brief Check if mouse is on a free point on the grid
+     * @return [TRUE] if the mouse is not hovering a node or a link
+     */
+    bool mouse_on_free_space();
+
+private:
+    std::unique_ptr<detail::editor_context_t> m_impl;
+};
+
+} // namespace ImFlow
+
+#include "./Context.inl"
+
+#endif // IMNODEFLOW_CONTEXT_H

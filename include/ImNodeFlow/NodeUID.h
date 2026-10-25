@@ -2,6 +2,8 @@
 #define IMNODEFLOW_NODEUID_H
 #pragma once
 
+#include <cstdint>
+
 namespace ImFlow {
 
 struct NodeUID {
