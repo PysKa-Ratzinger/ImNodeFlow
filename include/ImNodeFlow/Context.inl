@@ -1,3 +1,4 @@
+#include "ImNodeFlow/NodeRef.h"
 #include "ImNodeFlow/fwd.h"
 
 #include "imgui.h"
