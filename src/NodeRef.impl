@@ -3,12 +3,14 @@
 #include "ImNodeFlow/NodeStyle.h"
 #include "ImNodeFlow/NodeUID.h"
 #include "ImNodeFlow/PinRef.h"
+#include "ImNodeFlow/PinType.h"
 
 #include "imgui.h"
 
 #include "./pin_base.h"
 
 #include <string_view>
+#include <utility>
 
 namespace ImFlow {
 
@@ -635,6 +637,74 @@ void NodeRefImpl<TIsConst>::update()
         }
     }
     ImGui::PopID();
+}
+
+template <bool TIsConst>
+PinRef<TIsConst>
+NodeRefImpl<TIsConst>::addIN_impl(
+    BasePinInfo info,
+    std::unique_ptr<detail::IPin> pin_impl)
+    requires(!TIsConst)
+{
+    m_node.get().ins.emplace_back(std::make_unique<detail::pin_base_t>(
+        m_node.get().ctx,
+        *this,
+        PinType::Input,
+        std::move(info),
+        std::move(pin_impl)));
+
+    return PinRef<TIsConst> { *m_node.get().ins.back() };
+}
+
+template <bool TIsConst>
+PinRef<TIsConst>
+NodeRefImpl<TIsConst>::showIN_impl(
+    BasePinInfo info,
+    std::unique_ptr<detail::IPin> pin_impl)
+    requires(!TIsConst)
+{
+    m_node.get().dynamicIns.emplace_back(std::make_unique<detail::pin_base_t>(
+        m_node.get().ctx,
+        *this,
+        PinType::Input,
+        std::move(info),
+        std::move(pin_impl)));
+
+    return PinRef<TIsConst> { m_node.get().dynamicIns.back().pin() };
+}
+
+template <bool TIsConst>
+PinRef<TIsConst>
+NodeRefImpl<TIsConst>::addOUT_impl(
+    BasePinInfo info,
+    std::unique_ptr<detail::IPin> pin_impl)
+    requires(!TIsConst)
+{
+    m_node.get().outs.emplace_back(std::make_unique<detail::pin_base_t>(
+        m_node.get().ctx,
+        *this,
+        PinType::Output,
+        std::move(info),
+        std::move(pin_impl)));
+
+    return PinRef<TIsConst> { *m_node.get().outs.back() };
+}
+
+template <bool TIsConst>
+PinRef<TIsConst>
+NodeRefImpl<TIsConst>::showOUT_impl(
+    BasePinInfo info,
+    std::unique_ptr<detail::IPin> pin_impl)
+    requires(!TIsConst)
+{
+    m_node.get().dynamicOuts.emplace_back(std::make_unique<detail::pin_base_t>(
+        m_node.get().ctx,
+        *this,
+        PinType::Output,
+        std::move(info),
+        std::move(pin_impl)));
+
+    return PinRef<TIsConst> { m_node.get().dynamicOuts.back().pin() };
 }
 
 template class NodeRefImpl<false>;

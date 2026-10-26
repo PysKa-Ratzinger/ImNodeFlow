@@ -364,6 +364,22 @@ public:
     }
 
 private:
+    PinRef<TIsConst>
+    addIN_impl(BasePinInfo info, std::unique_ptr<detail::IPin> pin_impl)
+        requires(!TIsConst);
+
+    PinRef<TIsConst>
+    showIN_impl(BasePinInfo info, std::unique_ptr<detail::IPin> pin_impl)
+        requires(!TIsConst);
+
+    PinRef<TIsConst>
+    addOUT_impl(BasePinInfo info, std::unique_ptr<detail::IPin> pin_impl)
+        requires(!TIsConst);
+
+    PinRef<TIsConst>
+    showOUT_impl(BasePinInfo info, std::unique_ptr<detail::IPin> pin_impl)
+        requires(!TIsConst);
+
     std::reference_wrapper<underlying_type> m_node;
 };
 

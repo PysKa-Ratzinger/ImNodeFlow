@@ -4,9 +4,6 @@
 #include "ImNodeFlow/detail/in_pin.h"
 #include "ImNodeFlow/detail/out_pin.h"
 
-#include "../../src/node.h"
-#include "../../src/pin_base.h"
-
 namespace ImFlow {
 
 template <bool TIsConst>
@@ -15,10 +12,7 @@ InPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addIN(InPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    m_node.get().ins.emplace_back(std::make_unique<detail::pin_base_t>(
-        m_node.get().ctx,
-        *this,
-        PinType::Input,
+    auto new_pin = this->addIN_impl(
         BasePinInfo {
             .name = std::move(pin_info.name),
             .allow_same_node_connections = pin_info.allow_same_node_connections,
@@ -26,9 +20,9 @@ NodeRefImpl<TIsConst>::addIN(InPinInfo<T> pin_info)
             .strat = pin_info.strat,
             .renderer = std::move(pin_info.renderer),
         },
-        std::make_unique<detail::in_pin_t<T>>(pin_info)));
+        std::make_unique<detail::in_pin_t<T>>(pin_info));
 
-    return PinRef<TIsConst> { *m_node.get().ins.back() }.template toIn<T>();
+    return new_pin.template toIn<T>();
 }
 
 template <bool TIsConst>
@@ -43,7 +37,7 @@ NodeRefImpl<TIsConst>::showIN(InPinInfo<T> pin_info)
         return pin->template toIn<T>().value();
     }
 
-    m_node.get().dynamicIns.emplace_back(std::make_unique<detail::pin_base_t>(
+    auto new_pin = this->showIN_impl(
         m_node.get().ctx,
         *this,
         PinType::Input,
@@ -54,8 +48,9 @@ NodeRefImpl<TIsConst>::showIN(InPinInfo<T> pin_info)
             .strat = pin_info.strat,
             .renderer = std::move(pin_info.renderer),
         },
-        std::make_unique<detail::in_pin_t<T>>(pin_info)));
-    return PinRef<TIsConst> { m_node.get().dynamicIns.back().pin() }.template toIn<T>().value();
+        std::make_unique<detail::in_pin_t<T>>(pin_info));
+
+    return new_pin.template toIn<T>().value();
 }
 
 template <bool TIsConst>
@@ -64,10 +59,7 @@ OutPinRef<T, TIsConst>
 NodeRefImpl<TIsConst>::addOUT(OutPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    m_node.get().outs.emplace_back(std::make_unique<detail::pin_base_t>(
-        m_node.get().ctx,
-        *this,
-        PinType::Output,
+    auto new_pin = this->addOUT_impl(
         BasePinInfo {
             .name = std::move(pin_info.name),
             .allow_same_node_connections = pin_info.allow_same_node_connections,
@@ -75,10 +67,9 @@ NodeRefImpl<TIsConst>::addOUT(OutPinInfo<T> pin_info)
             .strat = pin_info.strat,
             .renderer = std::move(pin_info.renderer),
         },
-        std::make_unique<detail::out_pin_t<T>>(pin_info)));
-    return OutPinRef<T, TIsConst> {
-        PinRef<TIsConst> { *m_node.get().outs.back() }.template toOut<T>()
-    };
+        std::make_unique<detail::out_pin_t<T>>(pin_info));
+
+    return new_pin.template toOut<T>();
 }
 
 template <bool TIsConst>
@@ -93,10 +84,7 @@ void NodeRefImpl<TIsConst>::showOUT(OutPinInfo<T> pin_info)
         return;
     }
 
-    m_node.get().dynamicOuts.emplace_back(std::make_unique<detail::pin_base_t>(
-        m_node.get().ctx,
-        *this,
-        PinType::Output,
+    auto new_pin = this->showOUT_impl(
         BasePinInfo {
             .name = std::move(pin_info.name),
             .allow_same_node_connections = pin_info.allow_same_node_connections,
@@ -104,7 +92,7 @@ void NodeRefImpl<TIsConst>::showOUT(OutPinInfo<T> pin_info)
             .strat = pin_info.strat,
             .renderer = std::move(pin_info.renderer),
         },
-        std::make_unique<detail::out_pin_t<T>>(pin_info)));
+        std::make_unique<detail::out_pin_t<T>>(pin_info));
 }
 
 template <bool TIsConst>
