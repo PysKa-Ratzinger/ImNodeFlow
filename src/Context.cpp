@@ -388,11 +388,10 @@ void ImNodeFlow::update()
     }
 
     // Update and draw nodes
-    // TODO: I don't like this
-    draw_list->ChannelsSplit(2);
     for (auto& node : m_impl->nodes) {
         NodeRef { node.second }.update();
     }
+
     // Remove "toDelete" nodes
     for (auto iter = m_impl->nodes.begin(); iter != m_impl->nodes.end();) {
         if (NodeRef { iter->second }.toDestroy())
@@ -400,7 +399,6 @@ void ImNodeFlow::update()
         else
             ++iter;
     }
-    draw_list->ChannelsMerge();
     for (auto& node : m_impl->nodes) {
         NodeRef { node.second }.updatePublicStatus();
     }

@@ -452,6 +452,7 @@ void NodeRefImpl<TIsConst>::update()
     ImVec2 paddingTL = { node.style.padding.x, node.style.padding.y };
     ImVec2 paddingBR = { node.style.padding.z, node.style.padding.w };
 
+    draw_list->ChannelsSplit(2);
     draw_list->ChannelsSetCurrent(1); // Foreground
     ImGui::SetCursorScreenPos(offset + node.pos);
 
@@ -659,6 +660,8 @@ void NodeRefImpl<TIsConst>::update()
             node.posTarget = node.pos;
         }
     }
+
+    draw_list->ChannelsMerge();
     ImGui::PopID();
 }
 
