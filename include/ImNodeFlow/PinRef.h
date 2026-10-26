@@ -5,6 +5,7 @@
 #include "ImNodeFlow/PinStyle.h"
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/PinUID.h"
+#include "ImNodeFlow/callback_types.h"
 #include "ImNodeFlow/detail/fwd.h"
 #include "ImNodeFlow/fwd.h"
 
@@ -78,7 +79,7 @@ public:
      * @brief Custom render function to override Pin appearance
      * @param r Function or lambda expression with new ImGui rendering
      */
-    PinRef& renderer(std::function<void(PinRef<> p)> r)
+    PinRef& renderer(pin_rendering_handler_t r)
         requires(!TIsConst);
 
     /**
@@ -323,7 +324,7 @@ public:
      * @details Used to define the pin behaviour. This is what gets the data from the parent's inputs, and applies the needed logic.
      * @param func Function or lambda expression used to calculate output value
      */
-    OutPinRef<T, TIsConst>& behaviour(std::function<T(NodeRef)> func)
+    OutPinRef<T, TIsConst>& behaviour(out_pin_behaviour_t<T> func)
         requires(!TIsConst);
 
 private:

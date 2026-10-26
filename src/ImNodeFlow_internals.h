@@ -14,7 +14,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 
 namespace ImFlow::detail {
 
@@ -24,8 +23,7 @@ struct in_pin_t final : public IPin {
     T emptyVal;
     T val;
     T valNext;
-    std::function<T(bool first_pin, T init, T const& incoming_value)>
-        accumulatorOp;
+    in_pin_accumulator_t<T> accumulatorOp;
 
     in_pin_t(
         ImNodeFlow& ctx,
@@ -42,7 +40,7 @@ struct in_pin_t final : public IPin {
 template <typename T>
 struct out_pin_t final : public IPin {
     pin_base_t base;
-    std::function<T(NodeRef)> behaviour;
+    out_pin_behaviour_t<T> behaviour;
     T val;
     T valNext;
 

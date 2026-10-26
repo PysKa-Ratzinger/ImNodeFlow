@@ -4,6 +4,7 @@
 
 #include "ImNodeFlow/PinConnStrat.h"
 #include "ImNodeFlow/PinStyle.h"
+#include "ImNodeFlow/callback_types.h"
 #include "ImNodeFlow/fwd.h"
 
 #include <functional>
@@ -25,7 +26,7 @@ struct InPinInfo {
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat::AllowOnlySingleConnection;
     /// Custom render function
-    std::function<void(PinRef<> p)> renderer { };
+    pin_rendering_handler_t renderer { };
     /// Default value the input pin will return when not connected
     /// to any output pin
     T default_value { };
@@ -33,8 +34,7 @@ struct InPinInfo {
     /// be calculated by first initializing it to the default value, and
     /// then calling this accumulator function for every connected pin
     /// (from oldest to newest).
-    std::function<T(bool first_pin, T init, T const& incoming_value)>
-        accumulate_op { };
+    in_pin_accumulator_t<T> accumulate_op { };
 };
 
 /**
@@ -51,12 +51,12 @@ struct OutPinInfo {
     /// Strategy to use regarding multiple link connections
     PinConnStrat strat = PinConnStrat::AllowMultiplePreferOldest;
     /// Custom render function
-    std::function<void(PinRef<> p)> renderer { };
+    pin_rendering_handler_t renderer { };
     /// Default value the output pin will return before the behaviour has a
     /// chance to change it.
     T default_value { };
     /// Behaviour of the pin when a value update is requested
-    std::function<T(NodeRef)> behaviour;
+    out_pin_behaviour_t<T> behaviour;
 };
 
 } // namespace ImFlow

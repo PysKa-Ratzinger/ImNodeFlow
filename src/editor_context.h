@@ -36,11 +36,11 @@ struct editor_context_t {
     std::unordered_map<NodeUID, node_t> nodes;
     std::vector<std::unique_ptr<Link>> links;
 
-    std::function<void(PinRef<> dragged)> droppedLinkPopUp;
+    dropped_link_popup_handler_t droppedLinkPopUp;
     ImGuiKey droppedLinkPupUpComboKey = ImGuiKey_None;
     IPin* droppedLinkLeft = nullptr;
     right_click_popup_handler_t rightClickPopUp;
-    std::function<void(const ImVec2&)> dragdropTarget;
+    drag_drop_target_handler_t dragdropTarget;
     node_t* hoveredNodeAux = nullptr;
 
     node_t* hoveredNode = nullptr;

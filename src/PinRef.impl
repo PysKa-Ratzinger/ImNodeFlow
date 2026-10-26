@@ -126,7 +126,7 @@ PinRef<TIsConst>::drawDecoration()
 
 template <bool TIsConst>
 PinRef<TIsConst>&
-PinRef<TIsConst>::renderer(std::function<void(PinRef<> p)> r)
+PinRef<TIsConst>::renderer(pin_rendering_handler_t r)
     requires(!TIsConst)
 {
     auto& base = m_pin.get().toBase();

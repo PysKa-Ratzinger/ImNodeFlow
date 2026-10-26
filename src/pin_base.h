@@ -31,7 +31,7 @@ struct pin_base_t {
     PinConnStrat strat;
     bool allowSelfConnection = false;
     bool socketHitboxEnabled = true;
-    std::function<void(PinRef<> p)> renderer;
+    pin_rendering_handler_t renderer;
     std::vector<PinConnectionHolder> links { };
 };
 

@@ -17,9 +17,9 @@ namespace {
      * @brief Helper struct for creating a node from a lambda
      */
     struct NodeWrapper : public INodeBehaviour {
-        std::function<void(NodeRef)> m_draw_func;
+        lambda_draw_func_t m_draw_func;
 
-        NodeWrapper(std::function<void(NodeRef)> draw_func)
+        NodeWrapper(lambda_draw_func_t draw_func)
             : m_draw_func(std::move(draw_func))
         {
         }
@@ -65,9 +65,7 @@ NodeRef ImNodeFlow::placeNode(NodeInfo node_info)
     return placeNodeAt(ImGui::GetMousePos(), std::move(node_info));
 }
 
-NodeRef ImNodeFlow::addNodeLambda(
-    const ImVec2& grid_coords,
-    std::function<void(NodeRef)> draw_func)
+NodeRef ImNodeFlow::addNodeLambda(const ImVec2& grid_coords, lambda_draw_func_t draw_func)
 {
     return addNode(
         grid_coords,
@@ -187,10 +185,10 @@ void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
 }
 
 void ImNodeFlow::droppedLinkPopUpContent(
-    std::function<void(PinRef<> dragged)> content,
+    dropped_link_popup_handler_t handler,
     ImGuiKey key)
 {
-    m_impl->droppedLinkPopUp = std::move(content);
+    m_impl->droppedLinkPopUp = std::move(handler);
     m_impl->droppedLinkPupUpComboKey = key;
 }
 
@@ -199,7 +197,7 @@ void ImNodeFlow::rightClickPopUpContent(right_click_popup_handler_t content)
     m_impl->rightClickPopUp = std::move(content);
 }
 
-void ImNodeFlow::dragDropTarget(std::function<void(const ImVec2&)> content)
+void ImNodeFlow::dragDropTarget(drag_drop_target_handler_t content)
 {
     m_impl->dragdropTarget = std::move(content);
 }

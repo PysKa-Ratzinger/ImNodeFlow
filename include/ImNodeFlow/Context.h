@@ -92,7 +92,7 @@ public:
      */
     NodeRef addNodeLambda(
         const ImVec2& grid_coords,
-        std::function<void(NodeRef)> draw_func);
+        lambda_draw_func_t draw_func);
 
     /**
      * @brief Add a node to the grid
@@ -144,7 +144,7 @@ public:
      * @param key Optional key required in order to open the pop-up
      */
     void droppedLinkPopUpContent(
-        std::function<void(PinRef<> dragged)> content,
+        dropped_link_popup_handler_t handler,
         ImGuiKey key = ImGuiKey_None);
 
     /**
@@ -159,7 +159,7 @@ public:
      * @details Sets the node pos when drag dropping a node to the grid
      * @param content Function or Lambda containing only the pos of the mouse when clicked
      */
-    void dragDropTarget(std::function<void(const ImVec2&)> content);
+    void dragDropTarget(drag_drop_target_handler_t handler);
 
     /**
      * @brief Get mouse clicking status

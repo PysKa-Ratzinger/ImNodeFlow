@@ -39,7 +39,7 @@ OutPinRef<T, TIsConst>::value() const
 }
 
 template <typename T, bool TIsConst>
-OutPinRef<T, TIsConst>& OutPinRef<T, TIsConst>::behaviour(std::function<T(NodeRef)> func)
+OutPinRef<T, TIsConst>& OutPinRef<T, TIsConst>::behaviour(out_pin_behaviour_t<T> func)
     requires(!TIsConst)
 {
     auto& pin = m_out_pin.get();
