@@ -1,4 +1,4 @@
-#include "NodeEditor.hpp"
+#include "example_node_editor.hpp"
 
 #include "ImNodeFlow.h"
 

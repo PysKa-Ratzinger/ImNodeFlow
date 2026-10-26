@@ -6,15 +6,18 @@ option(USE_SYSTEM_IMGUI "Use system Imgui instead of automatic download" OFF)
 add_compile_options(-Werror=return-type)
 
 set(IMNODEFLOW_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
-list(APPEND imnode_flow_sources
-  ${IMNODEFLOW_DIR}/src/ImNodeFlow.cpp)
+
+set(SOURCES
+  example_main.cpp
+  example_imnodeflow_single_file.cpp
+  example_node_editor.cpp)
 
 if(USE_SYSTEM_IMGUI)
   # Make sure you have the Findimgui.cmake scripts
   # available to CMake using correct path
   find_package(imgui)
   # Make sure the target imgui::imgui is setup in your scripts
-  add_executable(example example.cpp NodeEditor.cpp ${imnode_flow_sources})
+  add_executable(example ${SOURCES})
   target_link_libraries(ImNodeFlow imgui::imgui)
 else()
   # Location to download Imgui sources
@@ -36,7 +39,7 @@ else()
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
-  add_executable(example example.cpp NodeEditor.cpp ${imgui_sources} ${imnode_flow_sources})
+  add_executable(example ${SOURCES} ${imgui_sources})
   target_include_directories(example PRIVATE ${IMGUI_DIR} ${IMGUI_DIR}/backends)
 endif()
 
