@@ -12,6 +12,7 @@
 #include "./PinConnectionHolder.h"
 #include "./context_wrapper.h"
 #include "./node.h"
+#include "./pin_base.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -91,22 +92,6 @@ struct editor_context_t {
     SelectionBox box;
 
     bool draggingCanvas = false;
-};
-
-struct pin_base_t {
-    std::reference_wrapper<ImNodeFlow> ctx;
-    PinUID uid;
-    std::string name;
-    ImVec2 pos = ImVec2(0.f, 0.f);
-    ImVec2 size = ImVec2(0.f, 0.f);
-    PinType type;
-    detail::node_t* parent = nullptr;
-    PinStyle style;
-    PinConnStrat strat;
-    bool allowSelfConnection = false;
-    bool socketHitboxEnabled = true;
-    std::function<void(PinRef<> p)> renderer;
-    std::vector<PinConnectionHolder> links { };
 };
 
 template <typename T>
