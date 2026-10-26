@@ -8,6 +8,7 @@
 #include "ImNodeFlow/PinUID.h"
 #include "ImNodeFlow/Style.h"
 #include "ImNodeFlow/callback_types.h"
+#include "ImNodeFlow/detail/IPin.h"
 
 #include "./PinConnectionHolder.h"
 #include "./context_wrapper.h"
@@ -30,30 +31,6 @@ struct std::hash<ImFlow::NodeUID> {
 };
 
 namespace ImFlow::detail {
-
-// -----------------------------------------------------------------------------------------------------------------
-// PIN INTERFACE
-
-class IPin {
-public:
-    virtual ~IPin() = default;
-
-    [[nodiscard]] virtual uint64_t getTypeID() const = 0;
-    virtual pin_base_t& toBase() = 0;
-    [[nodiscard]] virtual pin_base_t const& toBase() const = 0;
-    virtual void calculate() = 0;
-    virtual void prime() = 0;
-
-    template <typename T>
-    in_pin_t<T>& toIn();
-    template <typename T>
-    in_pin_t<T> const& toIn() const;
-
-    template <typename T>
-    out_pin_t<T>& toOut();
-    template <typename T>
-    out_pin_t<T> const& toOut() const;
-};
 
 struct editor_context_t {
     std::string name;

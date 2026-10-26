@@ -26,38 +26,6 @@ namespace ImFlow::detail {
 // -----------------------------------------------------------------------------------------------------------------
 // IPIN TYPE CONVERSIONS
 
-template <typename T>
-in_pin_t<T>& IPin::toIn()
-{
-    auto& base = this->toBase();
-    assert(base.type == PinType::Input && get_type_id<T>() == this->getTypeID());
-    return static_cast<in_pin_t<T>&>(*this);
-}
-
-template <typename T>
-in_pin_t<T> const& IPin::toIn() const
-{
-    auto const& base = this->toBase();
-    assert(base.type == PinType::Input && get_type_id<T>() == this->getTypeID());
-    return static_cast<in_pin_t<T> const&>(*this);
-}
-
-template <typename T>
-out_pin_t<T>& IPin::toOut()
-{
-    auto const& base = this->toBase();
-    assert(base.type == PinType::Output && get_type_id<T>() == this->getTypeID());
-    return static_cast<out_pin_t<T>&>(*this);
-}
-
-template <typename T>
-out_pin_t<T> const& IPin::toOut() const
-{
-    auto const& base = this->toBase();
-    assert(base.type == PinType::Output && get_type_id<T>() == this->getTypeID());
-    return static_cast<out_pin_t<T> const&>(*this);
-}
-
 // -----------------------------------------------------------------------------------------------------------------
 // PIN UTILS
 
