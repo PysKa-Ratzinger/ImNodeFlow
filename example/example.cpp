@@ -15,7 +15,7 @@
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
 
-#include "example.hpp"
+#include "NodeEditor.hpp"
 
 // Main code
 int main(int, char**)

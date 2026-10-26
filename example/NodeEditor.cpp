@@ -1,6 +1,8 @@
-#pragma once
+#include "NodeEditor.hpp"
 
 #include "ImNodeFlow.h"
+
+#include "imgui.h"
 
 class SimpleSum : public ImFlow::INodeBehaviour {
 public:
@@ -190,108 +192,103 @@ public:
     }
 };
 
-/* Node editor that sets up the grid to place nodes */
-struct NodeEditor {
-    ImFlow::ImNodeFlow mINF;
-
-    NodeEditor(float width, float height)
-    {
-        mINF.setSize({ width, height });
-        mINF.setSize({ width, height });
-        mINF.rightClickPopUpContent([this](std::optional<ImFlow::NodeRef> node) -> void {
-            if (node.has_value()) {
-                ImGui::Text(
-                    "you have right-clicked on [%s]",
-                    node->getName().c_str());
-            } else {
-                bool should_close = false;
-                ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
-                if (ImGui::Button("SimpleSum")) {
-                    mINF.emplaceNodeAt<SimpleSum>(mouse_screen_pos);
-                    should_close = true;
-                }
-                if (ImGui::Button("ResultNode")) {
-                    mINF.emplaceNodeAt<ResultNode>(mouse_screen_pos);
-                    should_close = true;
-                }
-                if (ImGui::Button("MultipleInputAdder")) {
-                    mINF.emplaceNodeAt<MultipleInputAdder>(mouse_screen_pos);
-                    should_close = true;
-                }
-                if (ImGui::Button("CollapsingNode")) {
-                    mINF.emplaceNodeAt<CollapsingNode>(mouse_screen_pos);
-                    should_close = true;
-                }
-                if (ImGui::Button("Not Gate")) {
-                    mINF.emplaceNodeAt<NotGate>(mouse_screen_pos);
-                    should_close = true;
-                }
-
-                if (should_close) {
-                    ImGui::CloseCurrentPopup();
-                }
+NodeEditor::NodeEditor(float width, float height)
+{
+    mINF.setSize({ width, height });
+    mINF.setSize({ width, height });
+    mINF.rightClickPopUpContent([this](std::optional<ImFlow::NodeRef> node) -> void {
+        if (node.has_value()) {
+            ImGui::Text(
+                "you have right-clicked on [%s]",
+                node->getName().c_str());
+        } else {
+            bool should_close = false;
+            ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+            if (ImGui::Button("SimpleSum")) {
+                mINF.emplaceNodeAt<SimpleSum>(mouse_screen_pos);
+                should_close = true;
             }
-        });
+            if (ImGui::Button("ResultNode")) {
+                mINF.emplaceNodeAt<ResultNode>(mouse_screen_pos);
+                should_close = true;
+            }
+            if (ImGui::Button("MultipleInputAdder")) {
+                mINF.emplaceNodeAt<MultipleInputAdder>(mouse_screen_pos);
+                should_close = true;
+            }
+            if (ImGui::Button("CollapsingNode")) {
+                mINF.emplaceNodeAt<CollapsingNode>(mouse_screen_pos);
+                should_close = true;
+            }
+            if (ImGui::Button("Not Gate")) {
+                mINF.emplaceNodeAt<NotGate>(mouse_screen_pos);
+                should_close = true;
+            }
 
-        auto n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
-        auto n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
-        auto result = mINF.emplaceNode<ResultNode>({ 340, 20 });
-        auto multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
-
-        result.setIndestructable(true);
-
-        // Add links between nodes
-        n1.outPin("Out")->linkTo(*result.inPin("A"));
-        n2.outPin("Out")->linkTo(*result.inPin("B"));
-
-        n1.outPin("Out")->linkTo(*multi_adder.inPin("In"));
-        n2.outPin("Out")->linkTo(*multi_adder.inPin("In"));
-
-        // Add a collapsing node
-        auto collapsingNode = mINF.emplaceNode<CollapsingNode>({ 330, 230 });
-
-        n1.outPin("Out")->linkTo(*collapsingNode.inPin("A"));
-        n2.outPin("Out")->linkTo(*collapsingNode.inPin("B"));
-
-        // An example of how to make a digital circuit for a clock using only
-        // not gates.
-        // If this flashes too fast, the frame rate may be too high. Check you
-        // have VSync enabled, or as a last resource, add more gates to slow
-        // down the clock.
-        std::vector<ImFlow::NodeRef> notGateChain;
-
-        for (int y = 0; y < 3; y++) {
-            for (int x = 0; x < 3; x++) {
-                notGateChain.emplace_back(mINF.emplaceNode<NotGate>({
-                    float(50 + x * 90),
-                    float(350 + y * 50),
-                }));
+            if (should_close) {
+                ImGui::CloseCurrentPopup();
             }
         }
+    });
 
-        for (int i = 0; i < notGateChain.size(); i++) {
-            auto& curr_gate = notGateChain.at(i);
-            auto& next_gate = notGateChain.at((i + 1) % notGateChain.size());
+    auto n1 = mINF.emplaceNode<SimpleSum>({ 40, 40 });
+    auto n2 = mINF.emplaceNode<SimpleSum>({ 40, 150 });
+    auto result = mINF.emplaceNode<ResultNode>({ 340, 20 });
+    auto multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
 
-            curr_gate.outPin("OUT")->linkTo(*next_gate.inPin("IN"));
+    result.setIndestructable(true);
 
-            // This is required pre-processing to stabilize the clock. Because
-            // each gate only has influence on the next gate on each iteration,
-            // if they all start in their default state, they will all flip
-            // into an ON state, and the next iteration, they will all flip
-            // into an OFF state.
-            //
-            // So, when we create a connection between pins, we can
-            // programmatically propagate the signal just to stabilize the
-            // clock. This only needs to be done once, here.
-            curr_gate.calculate();
-            curr_gate.prime();
-            next_gate.calculate();
-            next_gate.prime();
+    // Add links between nodes
+    n1.outPin("Out")->linkTo(*result.inPin("A"));
+    n2.outPin("Out")->linkTo(*result.inPin("B"));
+
+    n1.outPin("Out")->linkTo(*multi_adder.inPin("In"));
+    n2.outPin("Out")->linkTo(*multi_adder.inPin("In"));
+
+    // Add a collapsing node
+    auto collapsingNode = mINF.emplaceNode<CollapsingNode>({ 330, 230 });
+
+    n1.outPin("Out")->linkTo(*collapsingNode.inPin("A"));
+    n2.outPin("Out")->linkTo(*collapsingNode.inPin("B"));
+
+    // An example of how to make a digital circuit for a clock using only
+    // not gates.
+    // If this flashes too fast, the frame rate may be too high. Check you
+    // have VSync enabled, or as a last resource, add more gates to slow
+    // down the clock.
+    std::vector<ImFlow::NodeRef> notGateChain;
+
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 3; x++) {
+            notGateChain.emplace_back(mINF.emplaceNode<NotGate>({
+                float(50 + x * 90),
+                float(350 + y * 50),
+            }));
         }
     }
 
-    void set_size(ImVec2 d) { mINF.setSize(d); }
+    for (int i = 0; i < notGateChain.size(); i++) {
+        auto& curr_gate = notGateChain.at(i);
+        auto& next_gate = notGateChain.at((i + 1) % notGateChain.size());
 
-    void draw() { mINF.update(); }
-};
+        curr_gate.outPin("OUT")->linkTo(*next_gate.inPin("IN"));
+
+        // This is required pre-processing to stabilize the clock. Because
+        // each gate only has influence on the next gate on each iteration,
+        // if they all start in their default state, they will all flip
+        // into an ON state, and the next iteration, they will all flip
+        // into an OFF state.
+        //
+        // So, when we create a connection between pins, we can
+        // programmatically propagate the signal just to stabilize the
+        // clock. This only needs to be done once, here.
+        curr_gate.calculate();
+        curr_gate.prime();
+        next_gate.calculate();
+        next_gate.prime();
+    }
+}
+
+void NodeEditor::set_size(ImVec2 d) { mINF.setSize(d); }
+
+void NodeEditor::draw() { mINF.update(); }
