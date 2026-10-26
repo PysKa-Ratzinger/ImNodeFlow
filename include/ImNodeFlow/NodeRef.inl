@@ -37,12 +37,10 @@ const T&
 NodeRefImpl<TIsConst>::showIN(InPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    for (auto& dyn_pin : m_node.get().dynamicIns) {
-        if (PinRef<TIsConst> { dyn_pin.pin() }.getName() == pin_info.common.name) {
-            dyn_pin.refresh();
-            // TODO: Update pin with new styles from pin_info
-            return PinRef<TIsConst> { dyn_pin.pin() }.template toIn<T>().value();
-        }
+    auto pin = tempInPin(pin_info.name);
+    if (pin.has_value()) {
+        // TODO: Update pin with new styles from pin_info
+        return pin->template toIn<T>().value();
     }
 
     m_node.get().dynamicIns.emplace_back(std::make_unique<detail::pin_base_t>(
@@ -88,14 +86,11 @@ template <typename T>
 void NodeRefImpl<TIsConst>::showOUT(OutPinInfo<T> pin_info)
     requires(!TIsConst)
 {
-    for (auto& dyn_pin : m_node.get().dynamicOuts) {
-        if (PinRef<TIsConst> { dyn_pin.pin() }.getName() == pin_info.name) {
-            dyn_pin.refresh();
-            // TODO: Update pin with new styles from pin_info
-            PinRef<TIsConst> { dyn_pin.pin() }.template toOut<T>().behaviour(
-                std::move(pin_info.behaviour));
-            return;
-        }
+    auto pin = this->tempOutPin(pin_info.name);
+    if (pin.has_value()) {
+        // TODO: Update pin with new styles from pin_info
+        pin->template toOut<T>().behaviour(std::move(pin_info.behaviour));
+        return;
     }
 
     m_node.get().dynamicOuts.emplace_back(std::make_unique<detail::pin_base_t>(
@@ -128,7 +123,7 @@ NodeRefImpl<TIsConst>::inPin(const PinUID& uid)
 template <bool TIsConst>
 template <typename T>
 std::optional<InPinRef<T, TIsConst>>
-NodeRefImpl<TIsConst>::inPin(const char* name)
+NodeRefImpl<TIsConst>::inPin(std::string_view name)
 {
     auto pin = this->inPin(name);
     if (!pin.has_value()) {
@@ -154,7 +149,7 @@ NodeRefImpl<TIsConst>::outPin(const PinUID& uid)
 template <bool TIsConst>
 template <typename T>
 std::optional<OutPinRef<T, TIsConst>>
-NodeRefImpl<TIsConst>::outPin(const char* name)
+NodeRefImpl<TIsConst>::outPin(std::string_view name)
 {
     auto pin = this->outPin(name);
     if (!pin.has_value()) {

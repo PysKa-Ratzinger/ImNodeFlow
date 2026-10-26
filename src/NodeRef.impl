@@ -8,6 +8,8 @@
 
 #include "./pin_base.h"
 
+#include <string_view>
+
 namespace ImFlow {
 
 template <bool TIsConst>
@@ -185,7 +187,7 @@ void NodeRefImpl<TIsConst>::dropIN(const PinUID& uid)
 }
 
 template <bool TIsConst>
-void NodeRefImpl<TIsConst>::dropIN(const char* name)
+void NodeRefImpl<TIsConst>::dropIN(std::string_view name)
     requires(!TIsConst)
 {
     m_node.get().ins.erase(
@@ -216,7 +218,7 @@ void NodeRefImpl<TIsConst>::dropOUT(const PinUID& uid)
 
 template <bool TIsConst>
 inline void
-NodeRefImpl<TIsConst>::dropOUT(const char* name)
+NodeRefImpl<TIsConst>::dropOUT(std::string_view name)
     requires(!TIsConst)
 {
     m_node.get().outs.erase(
@@ -248,7 +250,7 @@ NodeRefImpl<TIsConst>::inPin(const PinUID& uid)
 
 template <bool TIsConst>
 std::optional<PinRef<TIsConst>>
-NodeRefImpl<TIsConst>::inPin(const char* name)
+NodeRefImpl<TIsConst>::inPin(std::string_view name)
 {
     auto it = std::find_if(
         m_node.get().ins.begin(),
@@ -259,6 +261,46 @@ NodeRefImpl<TIsConst>::inPin(const char* name)
     std::optional<PinRef<TIsConst>> result;
     if (it != m_node.get().ins.end()) {
         result.emplace(**it);
+    }
+    return result;
+}
+
+template <bool TIsConst>
+std::optional<PinRef<TIsConst>>
+NodeRefImpl<TIsConst>::tempInPin(const PinUID& uid)
+{
+    auto it = std::find_if(
+        m_node.get().dynamicIns.begin(),
+        m_node.get().dynamicIns.end(),
+        [&uid](const auto& p) {
+            return p.pin().uid == uid;
+        });
+    std::optional<PinRef<TIsConst>> result;
+    if (it != m_node.get().dynamicIns.end()) {
+        if constexpr (!TIsConst) {
+            it->refresh();
+        }
+        result.emplace(it->pin());
+    }
+    return result;
+}
+
+template <bool TIsConst>
+std::optional<PinRef<TIsConst>>
+NodeRefImpl<TIsConst>::tempInPin(std::string_view name)
+{
+    auto it = std::find_if(
+        m_node.get().dynamicIns.begin(),
+        m_node.get().dynamicIns.end(),
+        [&name](const auto& p) {
+            return p.pin().name == name;
+        });
+    std::optional<PinRef<TIsConst>> result;
+    if (it != m_node.get().dynamicIns.end()) {
+        if constexpr (!TIsConst) {
+            it->refresh();
+        }
+        result.emplace(it->pin());
     }
     return result;
 }
@@ -282,7 +324,7 @@ NodeRefImpl<TIsConst>::outPin(const PinUID& uid)
 
 template <bool TIsConst>
 std::optional<PinRef<TIsConst>>
-NodeRefImpl<TIsConst>::outPin(const char* name)
+NodeRefImpl<TIsConst>::outPin(std::string_view name)
 {
     auto it = std::find_if(
         m_node.get().outs.begin(),
@@ -293,6 +335,46 @@ NodeRefImpl<TIsConst>::outPin(const char* name)
     std::optional<PinRef<TIsConst>> result;
     if (it != m_node.get().outs.end()) {
         result.emplace(**it);
+    }
+    return result;
+}
+
+template <bool TIsConst>
+std::optional<PinRef<TIsConst>>
+NodeRefImpl<TIsConst>::tempOutPin(const PinUID& uid)
+{
+    auto it = std::find_if(
+        m_node.get().dynamicOuts.begin(),
+        m_node.get().dynamicOuts.end(),
+        [&uid](const auto& p) {
+            return p.pin().uid == uid;
+        });
+    std::optional<PinRef<TIsConst>> result;
+    if (it != m_node.get().dynamicOuts.end()) {
+        if constexpr (!TIsConst) {
+            it->refresh();
+        }
+        result.emplace(it->pin());
+    }
+    return result;
+}
+
+template <bool TIsConst>
+std::optional<PinRef<TIsConst>>
+NodeRefImpl<TIsConst>::tempOutPin(std::string_view name)
+{
+    auto it = std::find_if(
+        m_node.get().dynamicOuts.begin(),
+        m_node.get().dynamicOuts.end(),
+        [&name](const auto& p) {
+            return p.pin().name == name;
+        });
+    std::optional<PinRef<TIsConst>> result;
+    if (it != m_node.get().dynamicOuts.end()) {
+        if constexpr (!TIsConst) {
+            it->refresh();
+        }
+        result.emplace(it->pin());
     }
     return result;
 }

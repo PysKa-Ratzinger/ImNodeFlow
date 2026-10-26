@@ -10,6 +10,8 @@
 
 #include <type_traits>
 
+#include <string_view>
+
 namespace ImFlow {
 
 /**
@@ -61,7 +63,7 @@ public:
      * @brief Remove all input pin's with the associated name
      * @param name Pin's name filter
      */
-    void dropIN(const char* name)
+    void dropIN(std::string_view name)
         requires(!TIsConst);
 
     /**
@@ -106,7 +108,7 @@ public:
      * @brief Remove all output pins with a matching name
      * @param name The name to filter for
      */
-    void dropOUT(const char* name)
+    void dropOUT(std::string_view name)
         requires(!TIsConst);
 
     /**
@@ -135,7 +137,11 @@ public:
      * @param uid Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    std::optional<PinRef<TIsConst>> inPin(const char* name);
+    std::optional<PinRef<TIsConst>> inPin(std::string_view name);
+
+    std::optional<PinRef<TIsConst>> tempInPin(const PinUID& uid);
+
+    std::optional<PinRef<TIsConst>> tempInPin(std::string_view name);
 
     /**
      * @brief Get generic reference to output pin
@@ -149,7 +155,11 @@ public:
      * @param name Unique identifier of the pin
      * @return Pointer to the pin, if it exists
      */
-    std::optional<PinRef<TIsConst>> outPin(const char* name);
+    std::optional<PinRef<TIsConst>> outPin(std::string_view name);
+
+    std::optional<PinRef<TIsConst>> tempOutPin(const PinUID& uid);
+
+    std::optional<PinRef<TIsConst>> tempOutPin(std::string_view name);
 
     /**
      * @brief Get generic reference to input pin
@@ -169,7 +179,7 @@ public:
      */
     template <typename T>
     std::optional<InPinRef<T, TIsConst>>
-    inPin(const char* name);
+    inPin(std::string_view name);
 
     /**
      * @brief Get generic reference to output pin
@@ -189,7 +199,7 @@ public:
      */
     template <typename T>
     std::optional<OutPinRef<T, TIsConst>>
-    outPin(const char* name);
+    outPin(std::string_view name);
 
     /**
      * @brief Delete itself

@@ -18,7 +18,7 @@ struct in_pin_t final : public IPin {
     T valNext;
     in_pin_accumulator_t<T> accumulatorOp;
 
-    explicit in_pin_t(InPinInfo<T> info) noexcept
+    explicit in_pin_t(InPinInfo<T>& info) noexcept
         : emptyVal { info.default_value }
         , val { info.default_value }
         , accumulatorOp {

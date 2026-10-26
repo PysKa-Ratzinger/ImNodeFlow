@@ -21,7 +21,7 @@ struct out_pin_t final : public IPin {
     T valNext;
 
     explicit out_pin_t(
-        OutPinInfo<T> info) noexcept
+        OutPinInfo<T>& info) noexcept
         : behaviour { std::move(info.behaviour) }
         , val { info.default_value }
         , valNext { info.default_value }
