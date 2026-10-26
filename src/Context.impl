@@ -4,6 +4,7 @@
 
 #include "./ImNodeFlow_internals.h"
 #include "./Link.h"
+#include "./editor_context.h"
 #include "./uid_helpers.h"
 
 #include "imgui_bezier_items.h"
