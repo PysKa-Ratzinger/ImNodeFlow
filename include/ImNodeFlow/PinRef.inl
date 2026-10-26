@@ -1,8 +1,7 @@
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/detail/fwd.h"
-
-#include "./pin_base.h"
 #include "ImNodeFlow/detail/type_id.h"
+
 #include <cassert>
 
 namespace ImFlow {
@@ -16,7 +15,7 @@ PinRef<TIsConst>::toIn()
 
     return InPinRef<T, TIsConst> {
         *this,
-        static_cast<detail::in_pin_t<T>&>(*m_pin.get().underlying_pin)
+        static_cast<detail::in_pin_t<T>&>(this->getDetail())
     };
 }
 
@@ -29,7 +28,7 @@ PinRef<TIsConst>::toOut()
 
     return OutPinRef<T, TIsConst> {
         *this,
-        static_cast<detail::out_pin_t<T>&>(*m_pin.get().underlying_pin)
+        static_cast<detail::out_pin_t<T>&>(this->getDetail())
     };
 }
 

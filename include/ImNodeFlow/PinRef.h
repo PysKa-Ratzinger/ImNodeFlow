@@ -23,12 +23,12 @@ namespace ImFlow {
 template <bool TIsConst>
 class PinRef {
 public:
-    using underlying_type = std::conditional_t<
+    using value_type = std::conditional_t<
         TIsConst,
         const detail::pin_base_t,
         detail::pin_base_t>;
 
-    explicit PinRef(underlying_type& pin)
+    explicit PinRef(value_type& pin)
         : m_pin(pin)
     {
     }
@@ -248,10 +248,15 @@ public:
     /**
      * @internal For internal use only
      */
-    operator underlying_type&()
+    operator value_type&()
     {
         return m_pin.get();
     }
+
+    detail::IPin& getDetail() const
+        requires(!TIsConst);
+
+    detail::IPin const& getDetail() const;
 
     template <bool TIsConst2>
     [[nodiscard]] constexpr bool operator==(PinRef<TIsConst2> const& other) const noexcept
@@ -260,7 +265,7 @@ public:
     }
 
 protected:
-    std::reference_wrapper<underlying_type> m_pin;
+    std::reference_wrapper<value_type> m_pin;
 };
 
 /**
@@ -344,6 +349,6 @@ extern template class PinRef<true>;
 
 } // namespace ImFlow
 
-#include "../src/PinRef.inl"
+#include "./PinRef.inl"
 
 #endif // IMNODEFLOW_PINREF_H

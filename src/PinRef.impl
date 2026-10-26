@@ -1,6 +1,7 @@
 #include "ImNodeFlow/PinRef.h"
 
 #include "ImNodeFlow/PinType.h"
+#include "ImNodeFlow/detail/IPin.h"
 
 #include "./PinConnectionHolder.h"
 #include "./pin_base.h"
@@ -372,6 +373,21 @@ void PinRef<TIsConst>::prime()
     requires(!TIsConst)
 {
     m_pin.get().underlying_pin->prime();
+}
+
+template <bool TIsConst>
+detail::IPin&
+PinRef<TIsConst>::getDetail() const
+    requires(!TIsConst)
+{
+    return *m_pin.get().underlying_pin;
+}
+
+template <bool TIsConst>
+detail::IPin const&
+PinRef<TIsConst>::getDetail() const
+{
+    return *m_pin.get().underlying_pin;
 }
 
 template class PinRef<false>;
