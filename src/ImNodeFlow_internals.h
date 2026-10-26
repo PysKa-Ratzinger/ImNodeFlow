@@ -9,9 +9,9 @@
 #include "ImNodeFlow/Style.h"
 #include "ImNodeFlow/callback_types.h"
 
-#include "./DynamicPin.h"
 #include "./PinConnectionHolder.h"
 #include "./context_wrapper.h"
+#include "./node.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -91,32 +91,6 @@ struct editor_context_t {
     SelectionBox box;
 
     bool draggingCanvas = false;
-};
-
-struct node_t {
-    std::reference_wrapper<ImNodeFlow> ctx;
-
-    NodeUID uid;
-    std::string title;
-    ImVec2 pos;
-    ImVec2 posTarget;
-    ImVec2 size;
-    ImVec2 fullSize;
-    NodeStyle style;
-    bool selected = false;
-    bool selectedNext = false;
-    bool provisionallySelected = false;
-    bool provisionallySelectedNext = false;
-    bool dragged = false;
-    bool destroyed = false;
-    bool indestructable = false;
-
-    std::unique_ptr<INodeBehaviour> behaviour;
-
-    std::vector<std::unique_ptr<IPin>> ins;
-    std::vector<DynamicPin> dynamicIns;
-    std::vector<std::unique_ptr<IPin>> outs;
-    std::vector<DynamicPin> dynamicOuts;
 };
 
 struct pin_base_t {
