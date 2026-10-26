@@ -1,12 +1,19 @@
 #include "ImNodeFlow/PinRef.h"
 
+#include "ImNodeFlow/PinType.h"
+
+#include "./PinConnectionHolder.h"
+#include "./pin_base.h"
+
+#include <cassert>
+
 namespace ImFlow {
 
 template <bool TIsConst>
 void PinRef<TIsConst>::update(bool* out_hovering)
     requires(!TIsConst)
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
 
     if (!base.renderer) {
         ImGui::SetCursorPos(base.pos);
@@ -47,7 +54,7 @@ void PinRef<TIsConst>::update(bool* out_hovering)
 template <bool TIsConst>
 void PinRef<TIsConst>::drawSocket(bool* out_hovering_socket)
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto [tl, br] = getSocketHitBounds();
@@ -94,7 +101,7 @@ PinRef<TIsConst>::drawDecoration()
     bool itemHovered = ImGui::IsItemHovered();
     bool socketHovered = false;
 
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
 
     if (base.socketHitboxEnabled) {
         auto [socket_tl, socket_br] = getSocketHitBounds();
@@ -129,7 +136,7 @@ PinRef<TIsConst>&
 PinRef<TIsConst>::renderer(pin_rendering_handler_t r)
     requires(!TIsConst)
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
     base.renderer = std::move(r);
     return *this;
 }
@@ -138,8 +145,8 @@ template <bool TIsConst>
 void PinRef<TIsConst>::linkTo(PinRef<TIsConst> other)
     requires(!TIsConst)
 {
-    auto& base = m_pin.get().toBase();
-    auto& other_base = other.m_pin.get().toBase();
+    auto& base = m_pin.get();
+    auto& other_base = other.m_pin.get();
 
     if (&base.ctx.get() != &other_base.ctx.get()) {
         // Cannot link pins across different contexts
@@ -154,7 +161,7 @@ template <bool TIsConst>
 void PinRef<TIsConst>::deleteAllLinks()
     requires(!TIsConst)
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
     auto links = std::move(base.links);
 }
 
@@ -162,7 +169,7 @@ template <bool TIsConst>
 void PinRef<TIsConst>::addLink(detail::Link* link)
     requires(!TIsConst)
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
 
     auto iter = std::find(base.links.begin(), base.links.end(), link);
 
@@ -181,7 +188,7 @@ template <bool TIsConst>
 void PinRef<TIsConst>::removeLink(detail::Link* link)
     requires(!TIsConst)
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
 
     auto iter = std::find_if(
         base.links.begin(),
@@ -198,82 +205,117 @@ void PinRef<TIsConst>::removeLink(detail::Link* link)
 template <bool TIsConst>
 bool PinRef<TIsConst>::isConnected() const
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
     return !base.links.empty();
+}
+
+template <bool TIsConst>
+std::vector<PinRef<TIsConst>>
+PinRef<TIsConst>::getConnections() const
+{
+    std::vector<PinRef<TIsConst>> result;
+
+    detail::pin_base_t const& base = this->m_pin.get();
+    result.reserve(base.links.size());
+
+    for (const detail::PinConnectionHolder& connection : base.links) {
+        auto* link = connection.link();
+
+        // Not connected for some reason?
+        if (link == nullptr) {
+            continue;
+        }
+
+        switch (base.type) {
+        case PinType::Input:
+            result.emplace_back(link->outPin());
+            break;
+
+        case PinType::Output:
+            result.emplace_back(link->inPin());
+            break;
+
+        default:
+            assert(false && "Detected memory corruption");
+            break;
+        }
+    }
+
+    return result;
 }
 
 template <bool TIsConst>
 PinUID PinRef<TIsConst>::getUid() const
 {
-    return m_pin.get().toBase().uid;
+    return m_pin.get().uid;
 }
 
 template <bool TIsConst>
 const std::string& PinRef<TIsConst>::getName() const
 {
-    return m_pin.get().toBase().name;
+    return m_pin.get().name;
 }
 
 template <bool TIsConst>
 const ImVec2& PinRef<TIsConst>::getPos() const
 {
-    return m_pin.get().toBase().pos;
+    return m_pin.get().pos;
 }
 
 template <bool TIsConst>
 const ImVec2& PinRef<TIsConst>::getSize() const
 {
-    return m_pin.get().toBase().size;
+    return m_pin.get().size;
 }
 
 template <bool TIsConst>
 NodeRefImpl<TIsConst> PinRef<TIsConst>::getParent() const
 {
-    return NodeRefImpl<TIsConst>(*m_pin.get().toBase().parent);
+    return NodeRefImpl<TIsConst>(*m_pin.get().parent);
 }
 
 template <bool TIsConst>
 PinType PinRef<TIsConst>::getType() const
 {
-    return m_pin.get().toBase().type;
+    return m_pin.get().type;
 }
 
 template <bool TIsConst>
 uint64_t PinRef<TIsConst>::getTypeID() const
 {
-    return m_pin.get().getTypeID();
+    return m_pin.get().underlying_pin->getTypeID();
 }
 
 template <bool TIsConst>
 const PinStyle& PinRef<TIsConst>::getStyle() const
 {
-    return m_pin.get().toBase().style;
+    return m_pin.get().style;
 }
 
 template <bool TIsConst>
 void PinRef<TIsConst>::setStyle(PinStyle style)
     requires(!TIsConst)
 {
-    m_pin.get().toBase().style = std::move(style);
+    m_pin.get().style = std::move(style);
 }
 
 template <bool TIsConst>
 void PinRef<TIsConst>::allowSameNodeConnections(bool state)
     requires(!TIsConst)
 {
-    m_pin.get().toBase().allowSelfConnection = state;
+    m_pin.get().allowSelfConnection = state;
 }
 
 template <bool TIsConst>
 bool PinRef<TIsConst>::allowsSameNodeConnections() const
 {
-    return m_pin.get().toBase().allowSelfConnection;
+    return m_pin.get().allowSelfConnection;
 }
 
 template <bool TIsConst>
 ImVec2 PinRef<TIsConst>::pinPoint() const
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
 
     if (base.type == PinType::Input) {
         return base.pos + ImVec2(-base.style.extra.socket_padding, base.size.y / 2);
@@ -284,21 +326,21 @@ ImVec2 PinRef<TIsConst>::pinPoint() const
 template <bool TIsConst>
 float PinRef<TIsConst>::calcWidth() const
 {
-    return ImGui::CalcTextSize(m_pin.get().toBase().name.c_str()).x;
+    return ImGui::CalcTextSize(m_pin.get().name.c_str()).x;
 }
 
 template <bool TIsConst>
 void PinRef<TIsConst>::setPos(ImVec2 pos)
     requires(!TIsConst)
 {
-    m_pin.get().toBase().pos = pos;
+    m_pin.get().pos = pos;
 }
 
 template <bool TIsConst>
 inline std::pair<ImVec2, ImVec2>
 PinRef<TIsConst>::getSocketHitBounds(float expand_radius)
 {
-    auto& base = m_pin.get().toBase();
+    auto& base = m_pin.get();
 
     if (expand_radius < 0.0f) {
         expand_radius = base.style.socket_hovered_radius;
@@ -315,21 +357,21 @@ template <bool TIsConst>
 void PinRef<TIsConst>::setSocketHitboxEnabled(bool enabled)
     requires(!TIsConst)
 {
-    m_pin.get().toBase().socketHitboxEnabled = enabled;
+    m_pin.get().socketHitboxEnabled = enabled;
 }
 
 template <bool TIsConst>
 void PinRef<TIsConst>::calculate()
     requires(!TIsConst)
 {
-    m_pin.get().calculate();
+    m_pin.get().underlying_pin->calculate(PinRef { m_pin.get() });
 }
 
 template <bool TIsConst>
 void PinRef<TIsConst>::prime()
     requires(!TIsConst)
 {
-    m_pin.get().prime();
+    m_pin.get().underlying_pin->prime();
 }
 
 template class PinRef<false>;

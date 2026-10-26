@@ -2,9 +2,8 @@
 #define IMNODEFLOW_SRC_LINK_H
 #pragma once
 
+#include "ImNodeFlow/detail/fwd.h"
 #include "ImNodeFlow/fwd.h"
-
-#include "./ImNodeFlow_internals.h"
 
 namespace ImFlow::detail {
 
@@ -18,7 +17,7 @@ public:
      * @param out_pin Pointer to the output Pin of the Link
      * @param in_pin Pointer to the input Pin of the Link
      */
-    explicit Link(IPin& out_pin, IPin& in_pin) noexcept;
+    explicit Link(detail::pin_base_t& out_pin, detail::pin_base_t& in_pin) noexcept;
 
     /**
      * @brief Destruction of a link
@@ -37,13 +36,13 @@ public:
      * @brief Get output pin of the link
      * @return Reference to the Pin
      */
-    [[nodiscard]] IPin& outPin() const { return *m_out_pin; }
+    [[nodiscard]] detail::pin_base_t& outPin() const { return *m_out_pin; }
 
     /**
      * @brief Get input pin of the link
      * @return Reference to the Pin
      */
-    [[nodiscard]] IPin& inPin() const { return *m_in_pin; }
+    [[nodiscard]] detail::pin_base_t& inPin() const { return *m_in_pin; }
 
     /**
      * @brief Get hovering status
@@ -72,12 +71,12 @@ public:
 
 private:
     bool m_marked_for_deletion = false;
-    IPin* m_out_pin;
-    IPin* m_in_pin;
+    detail::pin_base_t* m_out_pin;
+    detail::pin_base_t* m_in_pin;
     bool m_hovered = false;
     bool m_selected = false;
 };
 
 } // namespace ImFlow::detail
 
-#endif  // IMNODEFLOW_SRC_LINK_H
+#endif // IMNODEFLOW_SRC_LINK_H

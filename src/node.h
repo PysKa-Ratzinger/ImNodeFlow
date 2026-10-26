@@ -38,9 +38,9 @@ struct node_t {
 
     std::unique_ptr<INodeBehaviour> behaviour;
 
-    std::vector<std::unique_ptr<IPin>> ins;
+    std::vector<std::unique_ptr<detail::pin_base_t>> ins;
     std::vector<DynamicPin> dynamicIns;
-    std::vector<std::unique_ptr<IPin>> outs;
+    std::vector<std::unique_ptr<detail::pin_base_t>> outs;
     std::vector<DynamicPin> dynamicOuts;
 };
 

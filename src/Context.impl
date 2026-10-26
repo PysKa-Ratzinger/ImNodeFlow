@@ -1,13 +1,16 @@
 #include "ImNodeFlow/Context.h"
 
 #include "ImNodeFlow/NodeRef.h"
+#include "ImNodeFlow/PinRef.h"
+#include "ImNodeFlow/PinType.h"
 
-#include "./ImNodeFlow_internals.h"
 #include "./Link.h"
 #include "./editor_context.h"
+#include "./imgui_bezier_items.h"
+#include "./pin_base.h"
 #include "./uid_helpers.h"
 
-#include "imgui_bezier_items.h"
+#include <memory>
 
 namespace ImFlow {
 
@@ -132,18 +135,12 @@ ImNodeFlow::grid2screen(const ImVec2& p)
 
 void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
 {
-    if (source_pin.getType() == PinType::Input
-        && target_pin.getType() == PinType::Output) {
-        createLink(target_pin, source_pin);
+    if (source_pin == target_pin) {
         return;
     }
 
-    if (&source_pin == &target_pin) {
-        return;
-    }
-
-    if (source_pin.getType() != PinType::Output
-        || target_pin.getType() != PinType::Input) {
+    if (source_pin.getType() == target_pin.getType()) {
+        // Cannot link inputs to inputs nor outputs to outputs
         return;
     }
 
@@ -153,8 +150,8 @@ void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
         return;
     }
 
-    for (const auto& link : static_cast<detail::IPin&>(source_pin).toBase().links) {
-        if (&link.link()->inPin() == &static_cast<detail::IPin&>(target_pin)) {
+    for (const auto& pin_ref : source_pin.getConnections()) {
+        if (pin_ref == target_pin) {
             // Connection already exists
             return;
         }
@@ -181,7 +178,22 @@ void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
         return;
     }
 
-    m_impl->links.emplace_back(std::make_unique<detail::Link>(source_pin, target_pin));
+    if (source_pin.getType() == PinType::Output
+        && target_pin.getType() == PinType::Input) {
+
+        m_impl->links.emplace_back(
+            std::make_unique<detail::Link>(
+                source_pin,
+                target_pin));
+
+    } else if (source_pin.getType() == PinType::Input
+        && target_pin.getType() == PinType::Output) {
+
+        m_impl->links.emplace_back(
+            std::make_unique<detail::Link>(
+                target_pin,
+                source_pin));
+    }
 }
 
 void ImNodeFlow::droppedLinkPopUpContent(
@@ -301,12 +313,12 @@ void ImNodeFlow::draggingNode(bool state)
     m_impl->draggingNodeNext = state;
 }
 
-void ImNodeFlow::hovering(detail::IPin* hovering)
+void ImNodeFlow::hovering(detail::pin_base_t* hovering)
 {
     m_impl->hovering = hovering;
 }
 
-void ImNodeFlow::dragging(detail::IPin* dragged)
+void ImNodeFlow::dragging(detail::pin_base_t* dragged)
 {
     m_impl->dragOut = dragged;
 }

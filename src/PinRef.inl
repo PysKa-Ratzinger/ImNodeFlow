@@ -1,4 +1,9 @@
-#include "./ImNodeFlow_internals.h"
+#include "ImNodeFlow/PinType.h"
+#include "ImNodeFlow/detail/fwd.h"
+
+#include "./pin_base.h"
+#include "ImNodeFlow/detail/type_id.h"
+#include <cassert>
 
 namespace ImFlow {
 
@@ -7,7 +12,12 @@ template <typename T>
 InPinRef<T, TIsConst>
 PinRef<TIsConst>::toIn()
 {
-    return InPinRef<T, TIsConst> { m_pin.get().template toIn<T>() };
+    assert(this->getType() == PinType::Input && this->getTypeID() == detail::get_type_id<T>());
+
+    return InPinRef<T, TIsConst> {
+        *this,
+        static_cast<detail::in_pin_t<T>&>(*m_pin.get().underlying_pin)
+    };
 }
 
 template <bool TIsConst>
@@ -15,7 +25,12 @@ template <typename T>
 OutPinRef<T, TIsConst>
 PinRef<TIsConst>::toOut()
 {
-    return OutPinRef<T, TIsConst> { m_pin.get().template toOut<T>() };
+    assert(this->getType() == PinType::Output && this->getTypeID() == detail::get_type_id<T>());
+
+    return OutPinRef<T, TIsConst> {
+        *this,
+        static_cast<detail::out_pin_t<T>&>(*m_pin.get().underlying_pin)
+    };
 }
 
 // -----------------------------------------------------------------------------------------------------------------

@@ -1,10 +1,12 @@
 #include "./Link.h"
 
+#include "ImNodeFlow/PinRef.h"
+
 #include "./imgui_bezier_items.h"
 
 namespace ImFlow::detail {
 
-Link::Link(IPin& out_pin, IPin& in_pin) noexcept
+Link::Link(pin_base_t& out_pin, pin_base_t& in_pin) noexcept
     : m_out_pin(&out_pin)
     , m_in_pin(&in_pin)
 {

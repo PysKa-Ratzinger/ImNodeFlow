@@ -13,6 +13,7 @@
 
 #include <functional>
 #include <type_traits>
+#include <vector>
 
 namespace ImFlow {
 
@@ -24,8 +25,8 @@ class PinRef {
 public:
     using underlying_type = std::conditional_t<
         TIsConst,
-        const detail::IPin,
-        detail::IPin>;
+        const detail::pin_base_t,
+        detail::pin_base_t>;
 
     explicit PinRef(underlying_type& pin)
         : m_pin(pin)
@@ -119,6 +120,8 @@ public:
      * @return [TRUE] if the pin is connected
      */
     [[nodiscard]] bool isConnected() const;
+
+    [[nodiscard]] std::vector<PinRef<TIsConst>> getConnections() const;
 
     /**
      * @brief Get pin's UID
@@ -250,6 +253,12 @@ public:
         return m_pin.get();
     }
 
+    template <bool TIsConst2>
+    [[nodiscard]] constexpr bool operator==(PinRef<TIsConst2> const& other) const noexcept
+    {
+        return &m_pin.get() == &other.m_pin.get();
+    }
+
 protected:
     std::reference_wrapper<underlying_type> m_pin;
 };
@@ -275,8 +284,8 @@ public:
      * @param defReturn Default return value when the pin is not connected
      * @param style Style of the pin
      */
-    explicit InPinRef(underlyin_type& pin)
-        : PinRef<TIsConst>(pin)
+    explicit InPinRef(PinRef<TIsConst> pin_ref, underlyin_type& pin)
+        : PinRef<TIsConst>(pin_ref)
         , m_in_pin(pin)
     {
     }
@@ -304,9 +313,8 @@ public:
         const detail::out_pin_t<T>,
         detail::out_pin_t<T>>;
 
-    explicit OutPinRef(
-        underlying_type& out_pin)
-        : PinRef<TIsConst>(out_pin)
+    explicit OutPinRef(PinRef<TIsConst> pin_ref, underlying_type& out_pin)
+        : PinRef<TIsConst>(pin_ref)
         , m_out_pin(out_pin)
     {
     }

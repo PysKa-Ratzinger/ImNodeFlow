@@ -4,6 +4,9 @@
 
 #include "imgui.h"
 
+#include <memory>
+#include <optional>
+
 class SimpleSum : public ImFlow::INodeBehaviour {
 public:
     void setup(ImFlow::NodeRef node) override
@@ -38,7 +41,7 @@ public:
         node.setStyle(ImFlow::NodeStyles::cyan);
         node.addIN<int>({
             .name = "In",
-            .strat = ImFlow::PinConnStrat::AllowMultiplePreferOldest,
+            .strat = ImFlow::PinConnStrat::AllowMultipleConnections,
             .default_value = 0,
             .accumulate_op =
                 [](bool first, int init, int new_input) -> int {
@@ -158,7 +161,7 @@ public:
         node.setStyle(ImFlow::NodeStyles::red);
         node.addIN<bool>({
             .name = "IN",
-            .strat = ImFlow::PinConnStrat::AllowMultiplePreferOldest,
+            .strat = ImFlow::PinConnStrat::AllowMultipleConnections,
             .default_value = false,
             .accumulate_op =
                 [](bool first, bool init, bool new_input) -> bool {

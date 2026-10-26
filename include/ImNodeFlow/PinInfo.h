@@ -12,6 +12,19 @@
 
 namespace ImFlow {
 
+struct BasePinInfo {
+    /// Name of the pin
+    std::string name;
+    /// Whether links coming from the same node are allowed
+    bool allow_same_node_connections = false;
+    /// Style to apply to the pin
+    PinStyle style = PinStyles::default_style;
+    /// Strategy to use regarding multiple link connections
+    PinConnStrat strat = PinConnStrat::AllowOnlySingleConnection;
+    /// Custom render function
+    pin_rendering_handler_t renderer { };
+};
+
 /**
  * @brief Description of parameters customizable during pin creation
  */
@@ -49,7 +62,7 @@ struct OutPinInfo {
     /// Style to apply to the pin
     PinStyle style = PinStyles::default_style;
     /// Strategy to use regarding multiple link connections
-    PinConnStrat strat = PinConnStrat::AllowMultiplePreferOldest;
+    PinConnStrat strat = PinConnStrat::AllowMultipleConnections;
     /// Custom render function
     pin_rendering_handler_t renderer { };
     /// Default value the output pin will return before the behaviour has a

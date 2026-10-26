@@ -3,9 +3,11 @@
 #pragma once
 
 #include "ImNodeFlow/PinConnStrat.h"
+#include "ImNodeFlow/PinInfo.h"
 #include "ImNodeFlow/PinStyle.h"
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/PinUID.h"
+#include "ImNodeFlow/callback_types.h"
 #include "ImNodeFlow/detail/fwd.h"
 #include "ImNodeFlow/fwd.h"
 
@@ -14,12 +16,20 @@
 #include "imgui.h"
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace ImFlow::detail {
 
 struct pin_base_t {
+    pin_base_t(
+        ImNodeFlow& ctx,
+        detail::node_t& parent,
+        PinType pin_type,
+        BasePinInfo info,
+        std::unique_ptr<IPin> impl) noexcept;
+
     std::reference_wrapper<ImNodeFlow> ctx;
     PinUID uid;
     std::string name;
@@ -33,6 +43,7 @@ struct pin_base_t {
     bool socketHitboxEnabled = true;
     pin_rendering_handler_t renderer;
     std::vector<PinConnectionHolder> links { };
+    std::unique_ptr<IPin> underlying_pin;
 };
 
 } // namespace ImFlow::detail

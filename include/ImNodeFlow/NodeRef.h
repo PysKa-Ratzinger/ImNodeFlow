@@ -362,4 +362,6 @@ extern template class NodeRefImpl<true>;
 
 } // namespace ImFlow
 
+#include "./NodeRef.inl"
+
 #endif // IMNODEFLOW_NODEREF_H

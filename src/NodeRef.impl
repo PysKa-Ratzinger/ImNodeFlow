@@ -2,7 +2,11 @@
 
 #include "ImNodeFlow/NodeStyle.h"
 #include "ImNodeFlow/NodeUID.h"
+#include "ImNodeFlow/PinRef.h"
+
 #include "imgui.h"
+
+#include "./pin_base.h"
 
 namespace ImFlow {
 
@@ -169,8 +173,10 @@ void NodeRefImpl<TIsConst>::dropIN(const PinUID& uid)
     requires(!TIsConst)
 {
     auto iter = std::find_if(
-        m_node.get().ins.begin(), m_node.get().ins.end(), [&](auto const& pin) -> bool {
-            return pin->toBase().uid == uid;
+        m_node.get().ins.begin(),
+        m_node.get().ins.end(),
+        [&](auto const& pin) -> bool {
+            return pin->uid == uid;
         });
 
     if (iter != m_node.get().ins.end()) {
@@ -187,7 +193,7 @@ void NodeRefImpl<TIsConst>::dropIN(const char* name)
             m_node.get().ins.begin(),
             m_node.get().ins.end(),
             [&](auto const& pin) -> bool {
-                return pin->toBase().name == name;
+                return pin->name == name;
             }),
         m_node.get().ins.end());
 }
@@ -200,7 +206,7 @@ void NodeRefImpl<TIsConst>::dropOUT(const PinUID& uid)
         m_node.get().outs.begin(),
         m_node.get().outs.end(),
         [&uid](auto const& pin) -> bool {
-            return pin->toBase().uid == uid;
+            return pin->uid == uid;
         });
 
     if (iter != m_node.get().outs.end()) {
@@ -218,7 +224,7 @@ NodeRefImpl<TIsConst>::dropOUT(const char* name)
             m_node.get().outs.begin(),
             m_node.get().outs.end(),
             [&name](auto const& pin) -> bool {
-                return pin->toBase().name == name;
+                return pin->name == name;
             }),
         m_node.get().outs.end());
 }
@@ -231,7 +237,7 @@ NodeRefImpl<TIsConst>::inPin(const PinUID& uid)
         m_node.get().ins.begin(),
         m_node.get().ins.end(),
         [&uid](const auto& p) {
-            return p->toBase().uid == uid;
+            return p->uid == uid;
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != m_node.get().ins.end()) {
@@ -248,7 +254,7 @@ NodeRefImpl<TIsConst>::inPin(const char* name)
         m_node.get().ins.begin(),
         m_node.get().ins.end(),
         [&name](const auto& p) {
-            return p->toBase().name == name;
+            return p->name == name;
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != m_node.get().ins.end()) {
@@ -265,7 +271,7 @@ NodeRefImpl<TIsConst>::outPin(const PinUID& uid)
         m_node.get().outs.begin(),
         m_node.get().outs.end(),
         [&uid](const auto& p) {
-            return p->toBase().uid == uid;
+            return p->uid == uid;
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != m_node.get().outs.end()) {
@@ -282,7 +288,7 @@ NodeRefImpl<TIsConst>::outPin(const char* name)
         m_node.get().outs.begin(),
         m_node.get().outs.end(),
         [&name](const auto& p) {
-            return p->toBase().name == name;
+            return p->name == name;
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != m_node.get().outs.end()) {
@@ -296,16 +302,16 @@ void NodeRefImpl<TIsConst>::calculate()
     requires(!TIsConst)
 {
     for (auto& pin : m_node.get().outs) {
-        pin->calculate();
+        pin->underlying_pin->calculate(PinRef { *pin });
     }
     for (auto& pin : m_node.get().dynamicOuts) {
-        pin.pin().calculate();
+        pin.pin().underlying_pin->calculate(PinRef { pin.pin() });
     }
     for (auto& pin : m_node.get().ins) {
-        pin->calculate();
+        pin->underlying_pin->calculate(PinRef { *pin });
     }
     for (auto& pin : m_node.get().dynamicIns) {
-        pin.pin().calculate();
+        pin.pin().underlying_pin->calculate(PinRef { pin.pin() });
     }
 }
 
@@ -314,16 +320,16 @@ void NodeRefImpl<TIsConst>::prime()
     requires(!TIsConst)
 {
     for (auto& pin : m_node.get().outs) {
-        pin->prime();
+        pin->underlying_pin->prime();
     }
     for (auto& pin : m_node.get().dynamicOuts) {
-        pin.pin().prime();
+        pin.pin().underlying_pin->prime();
     }
     for (auto& pin : m_node.get().ins) {
-        pin->prime();
+        pin->underlying_pin->prime();
     }
     for (auto& pin : m_node.get().dynamicIns) {
-        pin.pin().prime();
+        pin.pin().underlying_pin->prime();
     }
 }
 
@@ -352,7 +358,7 @@ void NodeRefImpl<TIsConst>::update()
     float headerH = ImGui::GetItemRectSize().y;
     float titleW = ImGui::GetItemRectSize().x;
 
-    detail::IPin* hovered_pin = nullptr;
+    detail::pin_base_t* hovered_pin = nullptr;
 
     // Inputs
     if (!m_node.get().ins.empty() || !m_node.get().dynamicIns.empty()) {

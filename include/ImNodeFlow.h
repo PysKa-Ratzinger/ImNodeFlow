@@ -2,23 +2,21 @@
 #define IM_NODE_FLOW
 #pragma once
 
-#include "ImNodeFlow/Context.h"
-#include "ImNodeFlow/IContainedContext.h"
-#include "ImNodeFlow/INodeBehaviour.h"
-#include "ImNodeFlow/NodeInfo.h"
-#include "ImNodeFlow/NodeRef.h"
-#include "ImNodeFlow/NodeStyle.h"
-#include "ImNodeFlow/NodeUID.h"
-#include "ImNodeFlow/PinConnStrat.h"
-#include "ImNodeFlow/PinInfo.h"
-#include "ImNodeFlow/PinRef.h"
-#include "ImNodeFlow/PinStyle.h"
-#include "ImNodeFlow/PinType.h"
-#include "ImNodeFlow/PinUID.h"
-#include "ImNodeFlow/Style.h"
-#include "ImNodeFlow/callback_types.h"
-#include "ImNodeFlow/fwd.h"
-
-#include "../src/ImNodeFlow.inl"
+#include "ImNodeFlow/Context.h" // IWYU pragma: export
+#include "ImNodeFlow/IContainedContext.h" // IWYU pragma: export
+#include "ImNodeFlow/INodeBehaviour.h" // IWYU pragma: export
+#include "ImNodeFlow/NodeInfo.h" // IWYU pragma: export
+#include "ImNodeFlow/NodeRef.h" // IWYU pragma: export
+#include "ImNodeFlow/NodeStyle.h" // IWYU pragma: export
+#include "ImNodeFlow/NodeUID.h" // IWYU pragma: export
+#include "ImNodeFlow/PinConnStrat.h" // IWYU pragma: export
+#include "ImNodeFlow/PinInfo.h" // IWYU pragma: export
+#include "ImNodeFlow/PinRef.h" // IWYU pragma: export
+#include "ImNodeFlow/PinStyle.h" // IWYU pragma: export
+#include "ImNodeFlow/PinType.h" // IWYU pragma: export
+#include "ImNodeFlow/PinUID.h" // IWYU pragma: export
+#include "ImNodeFlow/Style.h" // IWYU pragma: export
+#include "ImNodeFlow/callback_types.h" // IWYU pragma: export
+#include "ImNodeFlow/fwd.h" // IWYU pragma: export
 
 #endif

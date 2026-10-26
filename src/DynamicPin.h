@@ -15,15 +15,15 @@ namespace ImFlow::detail {
  */
 class DynamicPin {
 public:
-    explicit DynamicPin(std::unique_ptr<IPin> pin);
+    explicit DynamicPin(std::unique_ptr<detail::pin_base_t> pin);
 
     void refresh();
     void update(bool* out_hovering);
-    IPin& pin();
-    const IPin& pin() const;
+    detail::pin_base_t& pin();
+    const detail::pin_base_t& pin() const;
     [[nodiscard]] bool isStale() const;
 
-    std::unique_ptr<IPin> m_pin;
+    std::unique_ptr<detail::pin_base_t> m_pin;
     uint32_t m_ttl = 1;
 };
 

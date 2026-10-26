@@ -22,17 +22,7 @@ enum class PinConnStrat : uint8_t {
     ///
     /// The behaviour for an output pin does not change besides allowing
     /// the creation of multiple links.
-    AllowMultiplePreferOldest,
-
-    /// Multiple links are allowed.
-    ///
-    /// When applied to an input pin, if an accumulate operation is not
-    /// provided, it will be set to fetch the value from the newest
-    /// connected link.
-    ///
-    /// The behaviour for an output pin does not change besides allowing
-    /// the creation of multiple links.
-    AllowMultiplePreferNewest,
+    AllowMultipleConnections,
 };
 
 } // namespace ImFlow

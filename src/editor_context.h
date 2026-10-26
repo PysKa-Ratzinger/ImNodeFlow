@@ -38,15 +38,15 @@ struct editor_context_t {
 
     dropped_link_popup_handler_t droppedLinkPopUp;
     ImGuiKey droppedLinkPupUpComboKey = ImGuiKey_None;
-    IPin* droppedLinkLeft = nullptr;
+    pin_base_t* droppedLinkLeft = nullptr;
     right_click_popup_handler_t rightClickPopUp;
     drag_drop_target_handler_t dragdropTarget;
     node_t* hoveredNodeAux = nullptr;
 
     node_t* hoveredNode = nullptr;
     bool draggingNode = false, draggingNodeNext = false;
-    IPin* hovering = nullptr;
-    IPin* dragOut = nullptr;
+    pin_base_t* hovering = nullptr;
+    pin_base_t* dragOut = nullptr;
 
     InfStyler style;
 

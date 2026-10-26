@@ -1,12 +1,12 @@
 #include "./DynamicPin.h"
 
-#include "./ImNodeFlow_internals.h"
+#include "ImNodeFlow/PinRef.h"
 
 #include <memory>
 
 namespace ImFlow::detail {
 
-DynamicPin::DynamicPin(std::unique_ptr<IPin> pin)
+DynamicPin::DynamicPin(std::unique_ptr<detail::pin_base_t> pin)
     : m_pin(std::move(pin))
 {
     this->refresh();
@@ -23,12 +23,12 @@ void DynamicPin::update(bool* out_hovering)
     PinRef<> { this->pin() }.update(out_hovering);
 }
 
-IPin& DynamicPin::pin()
+detail::pin_base_t& DynamicPin::pin()
 {
     return *m_pin;
 }
 
-const IPin&
+const detail::pin_base_t&
 DynamicPin::pin() const
 {
     return *m_pin;
