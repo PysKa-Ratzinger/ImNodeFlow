@@ -16,6 +16,7 @@
 #include <iterator>
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace ImFlow {
 
@@ -393,20 +394,44 @@ void ImNodeFlow::update()
     }
 
     // Update and draw nodes
+    std::vector<std::unique_ptr<detail::node_t>> next_frame_nodes;
+    next_frame_nodes.reserve(m_impl->nodes.size());
+
     for (auto& node : m_impl->nodes) {
         NodeRef { *node }.update();
     }
-
-    // Remove "toDelete" nodes
-    for (auto iter = m_impl->nodes.begin(); iter != m_impl->nodes.end();) {
-        if (NodeRef { **iter }.toDestroy())
-            iter = m_impl->nodes.erase(iter);
-        else
-            ++iter;
-    }
     for (auto& node : m_impl->nodes) {
+        if (node->destroyed) {
+            continue;
+        }
+
+        bool was_selected = node->selected;
         NodeRef { *node }.updatePublicStatus();
+        bool is_selected = node->selected;
+
+        if (!was_selected && is_selected) {
+            next_frame_nodes.emplace_back(std::move(node));
+        }
     }
+
+    for (auto& node : m_impl->nodes) {
+        if (!node || node->destroyed) {
+            continue;
+        }
+
+        if (node->selected) {
+            next_frame_nodes.emplace_back(std::move(node));
+        }
+    }
+
+    for (auto& node : m_impl->nodes) {
+        if (!node || node->destroyed) {
+            continue;
+        }
+
+        next_frame_nodes.emplace_back(std::move(node));
+    }
+    m_impl->nodes = std::move(next_frame_nodes);
 
     // Update and draw links
     for (auto iter = m_impl->links.begin(); iter != m_impl->links.end();) {
