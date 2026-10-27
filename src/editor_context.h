@@ -27,6 +27,8 @@ struct editor_context_t {
     std::string name;
     ContainedContext context;
 
+    bool is_drawing = false;
+
     struct {
         bool left = false;
         bool right = false;
@@ -34,6 +36,7 @@ struct editor_context_t {
     } singleUseClicks;
 
     std::vector<std::unique_ptr<node_t>> nodes;
+    std::vector<std::unique_ptr<node_t>> nodesNext;
     std::vector<std::unique_ptr<Link>> links;
 
     dropped_link_popup_handler_t droppedLinkPopUp;
@@ -44,7 +47,8 @@ struct editor_context_t {
     node_t* hoveredNodeAux = nullptr;
 
     node_t* hoveredNode = nullptr;
-    bool draggingNode = false, draggingNodeNext = false;
+    bool draggingNode = false;
+    bool draggingNodeNext = false;
     pin_base_t* hovering = nullptr;
     pin_base_t* dragOut = nullptr;
 

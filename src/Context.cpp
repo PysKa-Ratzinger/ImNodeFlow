@@ -12,6 +12,8 @@
 #include "./pin_base.h"
 #include "./uid_helpers.h"
 
+#include <algorithm>
+#include <iterator>
 #include <memory>
 #include <utility>
 
@@ -40,7 +42,8 @@ int ImNodeFlow::m_instances = 0;
 NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
     auto uid = detail::generate_node_uid();
-    auto& node = m_impl->nodes.emplace_back(
+    auto& container = m_impl->is_drawing ? m_impl->nodesNext : m_impl->nodes;
+    auto& node = container.emplace_back(
         std::make_unique<detail::node_t>(
             detail::node_t {
                 .ctx = *this,
@@ -330,6 +333,8 @@ void ImNodeFlow::hoveredNode(detail::node_t* hovering)
 
 void ImNodeFlow::update()
 {
+    m_impl->is_drawing = true;
+
     // Updating looping stuff
     m_impl->hovering = nullptr;
     m_impl->hoveredNode = nullptr;
@@ -546,6 +551,16 @@ void ImNodeFlow::update()
         }
 
         ImGui::EndDragDropTarget();
+    }
+
+    m_impl->is_drawing = false;
+
+    if (!m_impl->nodesNext.empty()) {
+        std::move(
+            std::begin(m_impl->nodesNext),
+            std::end(m_impl->nodesNext),
+            std::back_inserter(m_impl->nodes));
+        m_impl->nodesNext.clear();
     }
 }
 
