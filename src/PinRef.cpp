@@ -6,6 +6,8 @@
 #include "./PinConnectionHolder.h"
 #include "./pin_base.h"
 
+#include "imgui_internal.h"
+
 #include <cassert>
 
 namespace ImFlow {
@@ -15,6 +17,8 @@ void PinRef<TIsConst>::update(bool* out_hovering)
     requires(!TIsConst)
 {
     auto& base = m_pin.get();
+
+    this->setPos(ImGui::GetCursorPos());
 
     if (!base.renderer) {
         ImGui::SetCursorPos(base.pos);

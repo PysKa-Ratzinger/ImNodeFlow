@@ -482,7 +482,6 @@ void NodeRefImpl<TIsConst>::update()
         for (auto& p : node.ins) {
             PinRef pin_ref { *p };
 
-            pin_ref.setPos(ImGui::GetCursorPos());
             bool is_hovering = false;
             pin_ref.update(&is_hovering);
             if (is_hovering && hovered_pin == nullptr) {
@@ -492,7 +491,6 @@ void NodeRefImpl<TIsConst>::update()
         for (auto& dyn_pin : node.dynamicIns) {
             PinRef pin_ref { dyn_pin.pin() };
 
-            pin_ref.setPos(ImGui::GetCursorPos());
             bool is_hovering = false;
             pin_ref.update(&is_hovering);
             if (is_hovering && hovered_pin == nullptr) {
@@ -548,14 +546,6 @@ void NodeRefImpl<TIsConst>::update()
         PinRef pin { *p };
 
         // FIXME: This looks horrible
-        if ((node.pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
-            pin.setPos(
-                ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - pin.calcWidth(), 0.f));
-        else
-            pin.setPos(ImVec2(
-                (node.pos + ImVec2(titleW - pin.calcWidth(), 0) + ctx.getGrid().scroll())
-                    .x,
-                ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         bool is_hovering = false;
         pin.update(&is_hovering);
         if (is_hovering && hovered_pin == nullptr) {
@@ -566,14 +556,6 @@ void NodeRefImpl<TIsConst>::update()
         PinRef pin { dyn_pin.pin() };
 
         // FIXME: This looks horrible
-        if ((node.pos + ImVec2(titleW, 0) + ctx.getGrid().scroll()).x < ImGui::GetCursorPos().x + ImGui::GetWindowPos().x + maxW)
-            pin.setPos(
-                ImGui::GetCursorPos() + ImGui::GetWindowPos() + ImVec2(maxW - pin.calcWidth(), 0.f));
-        else
-            pin.setPos(ImVec2(
-                (node.pos + ImVec2(titleW - pin.calcWidth(), 0) + ctx.getGrid().scroll())
-                    .x,
-                ImGui::GetCursorPos().y + ImGui::GetWindowPos().y));
         bool is_hovering = false;
         dyn_pin.update(&is_hovering);
         if (is_hovering && hovered_pin == nullptr) {
