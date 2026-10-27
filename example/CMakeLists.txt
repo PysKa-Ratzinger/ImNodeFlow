@@ -8,8 +8,8 @@ add_compile_options(-Werror=return-type)
 set(IMNODEFLOW_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 
 set(SOURCES
+  ${IMNODEFLOW_DIR}/src/ImNodeFlow.cpp
   example_main.cpp
-  example_imnodeflow_single_file.cpp
   example_node_editor.cpp)
 
 if(USE_SYSTEM_IMGUI)
