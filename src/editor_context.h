@@ -33,7 +33,7 @@ struct editor_context_t {
         bool middle = false;
     } singleUseClicks;
 
-    std::unordered_map<NodeUID, node_t> nodes;
+    std::vector<std::unique_ptr<node_t>> nodes;
     std::vector<std::unique_ptr<Link>> links;
 
     dropped_link_popup_handler_t droppedLinkPopUp;

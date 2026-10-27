@@ -3,14 +3,17 @@
 #include "ImNodeFlow/NodeRef.h"
 #include "ImNodeFlow/PinRef.h"
 #include "ImNodeFlow/PinType.h"
+#include "ImNodeFlow/fwd.h"
 
 #include "./Link.h"
 #include "./editor_context.h"
 #include "./imgui_bezier_items.h"
+#include "./node.h"
 #include "./pin_base.h"
 #include "./uid_helpers.h"
 
 #include <memory>
+#include <utility>
 
 namespace ImFlow {
 
@@ -37,25 +40,22 @@ int ImNodeFlow::m_instances = 0;
 NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
     auto uid = detail::generate_node_uid();
-    auto res = m_impl->nodes.emplace(
-        uid,
-        detail::node_t {
-            .ctx = *this,
-            .uid = uid,
-            .pos = grid_coords,
-            .posTarget = grid_coords,
-            .style = std::move(node_info.style),
-            .behaviour = std::move(node_info.behaviour),
-        });
+    auto& node = m_impl->nodes.emplace_back(
+        std::make_unique<detail::node_t>(
+            detail::node_t {
+                .ctx = *this,
+                .uid = uid,
+                .pos = grid_coords,
+                .posTarget = grid_coords,
+                .style = std::move(node_info.style),
+                .behaviour = std::move(node_info.behaviour),
+            }));
 
-    assert(res.second && "Failed to create new Node");
-    detail::node_t& node = res.first->second;
-
-    if (node.behaviour) {
-        node.behaviour->setup(NodeRef { node });
+    if (node->behaviour) {
+        node->behaviour->setup(NodeRef { *node });
     }
 
-    return NodeRef { node };
+    return NodeRef { *node };
 }
 
 NodeRef ImNodeFlow::placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info)
@@ -101,7 +101,7 @@ ImNodeFlow::~ImNodeFlow() = default;
 bool ImNodeFlow::mouse_on_selected_node()
 {
     return std::any_of(m_impl->nodes.begin(), m_impl->nodes.end(), [](const auto& n) {
-        ConstNodeRef node { n.second };
+        ConstNodeRef node { *n };
         return node.isSelected() && node.isHovered();
     });
 }
@@ -111,7 +111,7 @@ bool ImNodeFlow::mouse_on_free_space()
     return std::all_of(
                m_impl->nodes.begin(),
                m_impl->nodes.end(),
-               [](const auto& n) { return !ConstNodeRef { n.second }.isHovered(); })
+               [](const auto& n) { return !ConstNodeRef { *n }.isHovered(); })
         && std::all_of(m_impl->links.begin(), m_impl->links.end(), [](const auto& l) {
                return !l->isHovered();
            });
@@ -381,26 +381,26 @@ void ImNodeFlow::update()
 
     // Propagate pin values
     for (auto& node : m_impl->nodes) {
-        NodeRef { node.second }.calculate();
+        NodeRef { *node }.calculate();
     }
     for (auto& node : m_impl->nodes) {
-        NodeRef { node.second }.prime();
+        NodeRef { *node }.prime();
     }
 
     // Update and draw nodes
     for (auto& node : m_impl->nodes) {
-        NodeRef { node.second }.update();
+        NodeRef { *node }.update();
     }
 
     // Remove "toDelete" nodes
     for (auto iter = m_impl->nodes.begin(); iter != m_impl->nodes.end();) {
-        if (NodeRef { iter->second }.toDestroy())
+        if (NodeRef { **iter }.toDestroy())
             iter = m_impl->nodes.erase(iter);
         else
             ++iter;
     }
     for (auto& node : m_impl->nodes) {
-        NodeRef { node.second }.updatePublicStatus();
+        NodeRef { *node }.updatePublicStatus();
     }
 
     // Update and draw links
@@ -455,7 +455,7 @@ void ImNodeFlow::update()
         // Deselect all nodes if not holding down CTRL
         if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
             for (auto& node : m_impl->nodes) {
-                NodeRef { node.second }.setSelected(false);
+                NodeRef { *node }.setSelected(false);
             }
         }
     }
@@ -487,7 +487,7 @@ void ImNodeFlow::update()
         }
 
         for (auto& elem : m_impl->nodes) {
-            NodeRef node { elem.second };
+            NodeRef node { *elem };
 
             ImVec2 nodePos = grid2screen(node.getTLPos());
             ImVec2 nodeSize = node.getFullSize();
