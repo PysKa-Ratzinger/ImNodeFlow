@@ -10,6 +10,7 @@
 
 #include "./node.h"
 #include "./pin_base.h"
+#include "imgui_internal.h"
 
 #include <string_view>
 #include <utility>
@@ -447,6 +448,13 @@ void NodeRefImpl<TIsConst>::update()
     auto& ctx = node.ctx.get();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    auto* imgui_context = ImGui::GetCurrentContext();
+    auto* backup_hovered_window = imgui_context->HoveredWindow;
+
+    if (!node.selected) {
+        imgui_context->HoveredWindow = nullptr;
+    }
+
     ImGui::PushID(&node);
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
     ImVec2 paddingTL = { node.style.padding.x, node.style.padding.y };
@@ -663,6 +671,9 @@ void NodeRefImpl<TIsConst>::update()
 
     node.drawListSplitter.Merge(draw_list);
     ImGui::PopID();
+
+    // Restore hovered window
+    imgui_context->HoveredWindow = backup_hovered_window;
 }
 
 template <bool TIsConst>
