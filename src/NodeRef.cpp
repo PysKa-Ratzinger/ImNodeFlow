@@ -443,7 +443,7 @@ template <bool TIsConst>
 void NodeRefImpl<TIsConst>::update()
     requires(!TIsConst)
 {
-    auto& node = m_node.get();
+    detail::node_t& node = m_node.get();
     auto& ctx = node.ctx.get();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -452,8 +452,8 @@ void NodeRefImpl<TIsConst>::update()
     ImVec2 paddingTL = { node.style.padding.x, node.style.padding.y };
     ImVec2 paddingBR = { node.style.padding.z, node.style.padding.w };
 
-    draw_list->ChannelsSplit(2);
-    draw_list->ChannelsSetCurrent(1); // Foreground
+    node.drawListSplitter.Split(draw_list, 2);
+    node.drawListSplitter.SetCurrentChannel(draw_list, 1); // Foreground
     ImGui::SetCursorScreenPos(offset + node.pos);
 
     ImGui::BeginGroup();
@@ -580,7 +580,7 @@ void NodeRefImpl<TIsConst>::update()
     ImVec2 headerSize = ImVec2(node.size.x + paddingBR.x, headerH);
 
     // Background
-    draw_list->ChannelsSetCurrent(0);
+    node.drawListSplitter.SetCurrentChannel(draw_list, 0);
     draw_list->AddRectFilled(
         offset + node.pos - paddingTL,
         offset + node.pos + node.size + paddingBR,
@@ -661,7 +661,7 @@ void NodeRefImpl<TIsConst>::update()
         }
     }
 
-    draw_list->ChannelsMerge();
+    node.drawListSplitter.Merge(draw_list);
     ImGui::PopID();
 }
 

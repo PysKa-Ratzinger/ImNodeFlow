@@ -36,6 +36,9 @@ struct node_t {
     bool destroyed = false;
     bool indestructable = false;
 
+    // Used to render each node's foreground and background out of order
+    ImDrawListSplitter drawListSplitter;
+
     std::unique_ptr<INodeBehaviour> behaviour;
 
     std::vector<std::unique_ptr<detail::pin_base_t>> ins;
