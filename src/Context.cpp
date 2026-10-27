@@ -397,9 +397,17 @@ void ImNodeFlow::update()
     std::vector<std::unique_ptr<detail::node_t>> next_frame_nodes;
     next_frame_nodes.reserve(m_impl->nodes.size());
 
-    for (auto& node : m_impl->nodes) {
-        NodeRef { *node }.update();
+    {
+        // We need this in order to render the nodes front to back
+        ImDrawListSplitter splitter;
+        splitter.Split(draw_list, m_impl->nodes.size());
+        for (size_t i = 0; i < m_impl->nodes.size(); i++) {
+            splitter.SetCurrentChannel(draw_list, m_impl->nodes.size() - i - 1);
+            NodeRef { *m_impl->nodes[i] }.update();
+        }
+        splitter.Merge(draw_list);
     }
+
     for (auto& node : m_impl->nodes) {
         if (node->destroyed) {
             continue;
