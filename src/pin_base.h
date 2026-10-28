@@ -35,12 +35,14 @@ struct pin_base_t {
     std::string name;
     ImVec2 pos = ImVec2(0.f, 0.f);
     ImVec2 size = ImVec2(0.f, 0.f);
+    ImVec2 pinPoint { 0.f, 0.f };
     PinType type;
     detail::node_t* parent = nullptr;
     PinStyle style;
     PinConnStrat strat;
     bool allowSelfConnection = false;
     bool socketHitboxEnabled = true;
+    bool isHovered = false;
     pin_rendering_handler_t renderer;
     std::vector<PinConnectionHolder> links { };
     std::unique_ptr<IPin> underlying_pin;

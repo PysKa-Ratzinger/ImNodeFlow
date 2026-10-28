@@ -23,7 +23,7 @@ public:
     ImU32 border_selected_color = IM_COL32(170, 190, 205, 230);
 
     /// @brief Body's content padding (Left Top Right Bottom)
-    ImVec4 padding = ImVec4(13.7f, 6.f, 13.7f, 2.f);
+    ImVec4 padding = ImVec4(6.0f, 6.f, 6.0f, 2.f);
     /// @brief Edges rounding
     float radius = 6.5f;
     /// @brief Border thickness

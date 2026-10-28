@@ -448,12 +448,6 @@ void NodeRefImpl<TIsConst>::update()
     auto& ctx = node.ctx.get();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    auto* imgui_context = ImGui::GetCurrentContext();
-    auto* backup_hovered_window = imgui_context->HoveredWindow;
-
-    if (!node.selected) {
-        imgui_context->HoveredWindow = nullptr;
-    }
 
     ImGui::PushID(&node);
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
@@ -474,28 +468,14 @@ void NodeRefImpl<TIsConst>::update()
     float headerH = ImGui::GetItemRectSize().y;
     float titleW = ImGui::GetItemRectSize().x;
 
-    detail::pin_base_t* hovered_pin = nullptr;
-
     // Inputs
     if (!node.ins.empty() || !node.dynamicIns.empty()) {
         ImGui::BeginGroup();
         for (auto& p : node.ins) {
-            PinRef pin_ref { *p };
-
-            bool is_hovering = false;
-            pin_ref.update(&is_hovering);
-            if (is_hovering && hovered_pin == nullptr) {
-                hovered_pin = &*p;
-            }
+            PinRef { *p }.update();
         }
         for (auto& dyn_pin : node.dynamicIns) {
-            PinRef pin_ref { dyn_pin.pin() };
-
-            bool is_hovering = false;
-            pin_ref.update(&is_hovering);
-            if (is_hovering && hovered_pin == nullptr) {
-                hovered_pin = &dyn_pin.pin();
-            }
+            PinRef { dyn_pin.pin() }.update();
         }
         ImGui::EndGroup();
         ImGui::SameLine();
@@ -543,24 +523,10 @@ void NodeRefImpl<TIsConst>::update()
     }
     ImGui::BeginGroup();
     for (auto& p : node.outs) {
-        PinRef pin { *p };
-
-        // FIXME: This looks horrible
-        bool is_hovering = false;
-        pin.update(&is_hovering);
-        if (is_hovering && hovered_pin == nullptr) {
-            hovered_pin = &*p;
-        }
+        PinRef { *p }.update();
     }
     for (auto& dyn_pin : node.dynamicOuts) {
-        PinRef pin { dyn_pin.pin() };
-
-        // FIXME: This looks horrible
-        bool is_hovering = false;
-        dyn_pin.update(&is_hovering);
-        if (is_hovering && hovered_pin == nullptr) {
-            hovered_pin = &dyn_pin.pin();
-        }
+        PinRef { dyn_pin.pin() }.update();
     }
 
     ImGui::EndGroup();
@@ -606,14 +572,6 @@ void NodeRefImpl<TIsConst>::update()
         0,
         thickness);
 
-    if (hovered_pin != nullptr) {
-        ctx.hovering(hovered_pin);
-        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
-            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
-            ctx.dragging(hovered_pin);
-        }
-    }
-
     if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {
         setSelected(false);
     }
@@ -622,15 +580,38 @@ void NodeRefImpl<TIsConst>::update()
         destroy();
     }
 
-    if (isHovered()) {
-        bool onHeader = ImGui::IsMouseHoveringRect(
-            offset + node.pos - paddingTL, offset + node.pos + headerSize);
+    ImRect header_bb {
+        ctx.grid2screen(node.pos - paddingTL),
+        ctx.grid2screen(node.pos + headerSize),
+    };
 
+    ImRect node_bb {
+        ctx.grid2screen(node.pos - paddingTL),
+        ctx.grid2screen(node.pos + node.size + paddingBR),
+    };
+
+    bool header_hovered = false;
+    bool node_hovered = false;
+
+    bool header_pressed = ImGui::ButtonBehavior(
+        header_bb,
+        ImGui::GetID("##node_header"),
+        &header_hovered,
+        nullptr,
+        ImGuiButtonFlags_PressedOnClick);
+
+    bool node_pressed = ImGui::ButtonBehavior(
+        node_bb,
+        ImGui::GetID("##node_body"),
+        &node_hovered,
+        nullptr,
+        ImGuiButtonFlags_PressedOnClick);
+
+    if (header_hovered || node_hovered) {
         ctx.hoveredNode(&node);
-        if (ctx.getSingleUseClick(ImGuiMouseButton_Left)) {
-            ctx.consumeSingleUseClick(ImGuiMouseButton_Left);
+        if (node_pressed || header_pressed) {
             setSelected(true);
-            if (onHeader) {
+            if (header_pressed) {
                 node.dragged = true;
                 ctx.draggingNode(true);
             }
@@ -653,9 +634,6 @@ void NodeRefImpl<TIsConst>::update()
 
     node.drawListSplitter.Merge(draw_list);
     ImGui::PopID();
-
-    // Restore hovered window
-    imgui_context->HoveredWindow = backup_hovered_window;
 }
 
 template <bool TIsConst>

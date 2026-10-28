@@ -7,6 +7,8 @@
 
 #include "./uid_helpers.h"
 
+#include "imgui.h"
+
 #include <memory>
 #include <utility>
 
@@ -29,6 +31,11 @@ pin_base_t::pin_base_t(
     , renderer { std::move(info.renderer) }
     , underlying_pin { std::move(impl) }
 {
+    if (!renderer) {
+        renderer = [](PinRef<> pin) -> void {
+            ImGui::Text("%s", pin.getName().c_str());
+        };
+    }
 }
 
 } // namespace ImFlow::detail

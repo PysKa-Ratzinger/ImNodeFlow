@@ -18,7 +18,7 @@ public:
     explicit DynamicPin(std::unique_ptr<detail::pin_base_t> pin);
 
     void refresh();
-    void update(bool* out_hovering);
+    void update();
     detail::pin_base_t& pin();
     const detail::pin_base_t& pin() const;
     [[nodiscard]] bool isStale() const;

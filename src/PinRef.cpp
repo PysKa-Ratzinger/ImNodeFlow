@@ -1,139 +1,182 @@
 #include "ImNodeFlow/PinRef.h"
 
+#include "ImNodeFlow/Context.h"
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/detail/IPin.h"
 
 #include "./PinConnectionHolder.h"
 #include "./pin_base.h"
 
+#include "imgui.h"
 #include "imgui_internal.h"
 
+#include <algorithm>
 #include <cassert>
 
 namespace ImFlow {
 
+namespace {
+
+    ImRect
+    getSocketHitBounds(detail::pin_base_t const& pin, float expand_radius = -1.0F)
+    {
+        if (expand_radius < 0.0f) {
+            expand_radius = pin.style.socket_hovered_radius;
+        }
+
+        ImVec2 center = PinRef<true> { pin }.pinPoint();
+        ImVec2 tl = center - ImVec2(expand_radius, expand_radius);
+        ImVec2 br = center + ImVec2(expand_radius, expand_radius);
+
+        return { tl, br };
+    }
+
+    bool drawSocket(
+        detail::pin_base_t const& pin,
+        bool* hovered = nullptr,
+        ImVec2* socketPos = nullptr)
+    {
+        float text_height = ImGui::GetTextLineHeight();
+        float radius = pin.style.socket_radius;
+        float maxRadius = std::max(
+            pin.style.socket_radius,
+            std::max(
+                pin.style.socket_hovered_radius,
+                pin.style.socket_connected_radius));
+        ImU32 color = pin.style.color;
+        int shape = pin.style.socket_shape;
+        float thickness = pin.style.socket_thickness;
+        bool circle_filled = false;
+
+        if (PinRef<true> { pin }.isConnected()) {
+            circle_filled = true;
+            radius = pin.style.socket_connected_radius;
+        } else if (pin.isHovered) {
+            radius = pin.style.socket_hovered_radius;
+        }
+
+        ImVec2 socket_size { maxRadius * 2.0F, maxRadius * 2.0F };
+        ImVec2 item_size { maxRadius * 2.0F, text_height };
+        ImVec2 point = ImGui::GetCursorPos() + item_size / 2.0F;
+
+        // advance cursor
+        ImGui::ItemSize(item_size);
+
+        ImRect bb {
+            point - socket_size / 2.0F,
+            point + socket_size / 2.0F,
+        };
+
+        bool is_hovered = false;
+        bool is_pressed = ImGui::ButtonBehavior(
+            bb,
+            ImGui::GetID("##pinSocket"),
+            &is_hovered,
+            nullptr,
+            ImGuiButtonFlags_PressedOnClick);
+
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        if (circle_filled) {
+            draw_list->AddCircleFilled(point, radius, color, shape);
+        } else {
+            draw_list->AddCircle(point, radius, color, shape, thickness);
+        }
+
+        if (hovered != nullptr) {
+            *hovered = is_hovered;
+        }
+        if (socketPos != nullptr) {
+            *socketPos = point;
+        }
+
+        return is_pressed;
+    }
+
+    void
+    drawDecoration(detail::pin_base_t const& pin)
+    {
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        if (pin.isHovered) {
+            draw_list->AddRectFilled(
+                pin.pos - pin.style.extra.padding,
+                pin.pos + pin.size + pin.style.extra.padding,
+                pin.style.extra.bg_hover_color,
+                pin.style.extra.bg_radius);
+        } else {
+            draw_list->AddRectFilled(
+                pin.pos - pin.style.extra.padding,
+                pin.pos + pin.size + pin.style.extra.padding,
+                pin.style.extra.bg_color,
+                pin.style.extra.bg_radius);
+        }
+
+        draw_list->AddRect(
+            pin.pos - pin.style.extra.padding,
+            pin.pos + pin.size + pin.style.extra.padding,
+            pin.style.extra.border_color,
+            pin.style.extra.bg_radius,
+            0,
+            pin.style.extra.border_thickness);
+    }
+
+} // anonymous namespace
+
 template <bool TIsConst>
-void PinRef<TIsConst>::update(bool* out_hovering)
+void PinRef<TIsConst>::update()
     requires(!TIsConst)
 {
-    auto& base = m_pin.get();
+    detail::pin_base_t& pin = m_pin.get();
 
-    this->setPos(ImGui::GetCursorPos());
+    ImGui::PushID(&pin);
 
-    if (!base.renderer) {
-        ImGui::SetCursorPos(base.pos);
-        ImGui::Text("%s", base.name.c_str());
-    } else {
+    bool hovered_socket = false;
+    bool pressed_socket = false;
+
+    if (this->getType() == PinType::Output) {
+        this->setPos(ImGui::GetCursorPos());
         ImGui::BeginGroup();
-        base.renderer(*this);
+        pin.renderer(*this);
         ImGui::EndGroup();
+        pin.size = ImGui::GetItemRectSize();
+        drawDecoration(pin);
+        ImGui::SameLine(0.f, 0.f);
+        pressed_socket = drawSocket(m_pin, &hovered_socket, &pin.pinPoint);
+    } else if (this->getType() == PinType::Input) {
+        pressed_socket = drawSocket(m_pin, &hovered_socket, &pin.pinPoint);
+        ImGui::SameLine(0.f, 0.f);
+        this->setPos(ImGui::GetCursorPos());
+        ImGui::BeginGroup();
+        pin.renderer(*this);
+        ImGui::EndGroup();
+        pin.size = ImGui::GetItemRectSize();
+        drawDecoration(pin);
     }
 
-    base.size = ImGui::GetItemRectSize();
+    // here, decoration is everything except the pin's socket
+    bool hovered_decoration = false;
+    bool pressed_decoration = ImGui::ButtonBehavior(
+        ImRect { pin.pos, pin.pos + pin.size },
+        ImGui::GetID("##pinDecor"),
+        &hovered_decoration,
+        nullptr,
+        ImGuiButtonFlags_PressedOnClick);
 
-    bool is_hovering = false;
+    bool is_hovering = hovered_decoration || hovered_socket;
+    bool is_pressed = pressed_decoration || pressed_socket;
 
-    if (!base.renderer) {
-        drawDecoration();
-        drawSocket(&is_hovering);
-    }
+    ImNodeFlow& flow = pin.ctx.get();
 
-    // Calculate the combined hitbox if activated
-    bool item_hovered = ImGui::IsItemHovered();
-    bool socket_hovered = false;
-
-    if (base.socketHitboxEnabled) {
-        auto [socket_tl, socket_br] = getSocketHitBounds();
-        socket_hovered = ImGui::IsMouseHoveringRect(socket_tl, socket_br);
-    }
-
-    if (item_hovered || socket_hovered) {
-        is_hovering = true;
-    }
-
-    if (out_hovering != nullptr) {
-        *out_hovering = is_hovering;
-    }
-}
-
-template <bool TIsConst>
-void PinRef<TIsConst>::drawSocket(bool* out_hovering_socket)
-{
-    auto& base = m_pin.get();
-
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    auto [tl, br] = getSocketHitBounds();
-
-    // Determine if we are in hover (checked now in update())
-    bool socketHovered = ImGui::IsMouseHoveringRect(tl, br);
-
-    if (isConnected())
-        draw_list->AddCircleFilled(
-            pinPoint(),
-            base.style.socket_connected_radius,
-            base.style.color,
-            base.style.socket_shape);
-    else {
-        if (socketHovered) {
-            draw_list->AddCircle(
-                pinPoint(),
-                base.style.socket_hovered_radius,
-                base.style.color,
-                base.style.socket_shape,
-                base.style.socket_thickness);
-        } else {
-            draw_list->AddCircle(
-                pinPoint(),
-                base.style.socket_radius,
-                base.style.color,
-                base.style.socket_shape,
-                base.style.socket_thickness);
+    if (is_hovering) {
+        flow.hovering(&pin);
+        if (is_pressed) {
+            flow.dragging(&pin);
         }
     }
 
-    if (out_hovering_socket != nullptr) {
-        *out_hovering_socket = socketHovered;
-    }
-}
+    pin.isHovered = is_hovering;
 
-template <bool TIsConst>
-inline void
-PinRef<TIsConst>::drawDecoration()
-{
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-    // Check hover on text OR socket
-    bool itemHovered = ImGui::IsItemHovered();
-    bool socketHovered = false;
-
-    auto& base = m_pin.get();
-
-    if (base.socketHitboxEnabled) {
-        auto [socket_tl, socket_br] = getSocketHitBounds();
-        socketHovered = ImGui::IsMouseHoveringRect(socket_tl, socket_br);
-    }
-
-    if (itemHovered || socketHovered) {
-        draw_list->AddRectFilled(
-            base.pos - base.style.extra.padding,
-            base.pos + base.size + base.style.extra.padding,
-            base.style.extra.bg_hover_color,
-            base.style.extra.bg_radius);
-    } else {
-        draw_list->AddRectFilled(
-            base.pos - base.style.extra.padding,
-            base.pos + base.size + base.style.extra.padding,
-            base.style.extra.bg_color,
-            base.style.extra.bg_radius);
-    }
-
-    draw_list->AddRect(
-        base.pos - base.style.extra.padding,
-        base.pos + base.size + base.style.extra.padding,
-        base.style.extra.border_color,
-        base.style.extra.bg_radius,
-        0,
-        base.style.extra.border_thickness);
+    ImGui::PopID();
 }
 
 template <bool TIsConst>
@@ -339,23 +382,6 @@ void PinRef<TIsConst>::setPos(ImVec2 pos)
     requires(!TIsConst)
 {
     m_pin.get().pos = pos;
-}
-
-template <bool TIsConst>
-inline std::pair<ImVec2, ImVec2>
-PinRef<TIsConst>::getSocketHitBounds(float expand_radius)
-{
-    auto& base = m_pin.get();
-
-    if (expand_radius < 0.0f) {
-        expand_radius = base.style.socket_hovered_radius;
-    }
-
-    ImVec2 center = pinPoint();
-    ImVec2 tl = center - ImVec2(expand_radius, expand_radius);
-    ImVec2 br = center + ImVec2(expand_radius, expand_radius);
-
-    return { tl, br };
 }
 
 template <bool TIsConst>

@@ -17,10 +17,10 @@ void DynamicPin::refresh()
     this->m_ttl = 1;
 }
 
-void DynamicPin::update(bool* out_hovering)
+void DynamicPin::update()
 {
     m_ttl = m_ttl > 0 ? m_ttl - 1 : m_ttl;
-    PinRef<> { this->pin() }.update(out_hovering);
+    PinRef<> { this->pin() }.update();
 }
 
 detail::pin_base_t& DynamicPin::pin()
