@@ -6,11 +6,16 @@
 #include "ImNodeFlow/fwd.h"
 
 #include "./Link.h"
+#include "./NodeWrapper.h"
 #include "./editor_context.h"
 #include "./imgui_bezier_items.h"
+#include "./imgui_button_flags_helper.h"
 #include "./node.h"
 #include "./pin_base.h"
 #include "./uid_helpers.h"
+
+#include "imgui.h"
+#include "imgui_internal.h"
 
 #include <algorithm>
 #include <iterator>
@@ -19,24 +24,6 @@
 #include <vector>
 
 namespace ImFlow {
-
-namespace {
-
-    /**
-     * @brief Helper struct for creating a node from a lambda
-     */
-    struct NodeWrapper : public INodeBehaviour {
-        lambda_draw_func_t m_draw_func;
-
-        NodeWrapper(lambda_draw_func_t draw_func)
-            : m_draw_func(std::move(draw_func))
-        {
-        }
-
-        void draw(NodeRef node) override { m_draw_func(node); }
-    };
-
-} // anonymous namespace
 
 int ImNodeFlow::m_instances = 0;
 
@@ -77,7 +64,7 @@ NodeRef ImNodeFlow::addNodeLambda(const ImVec2& grid_coords, lambda_draw_func_t 
     return addNode(
         grid_coords,
         NodeInfo {
-            .behaviour = std::make_unique<NodeWrapper>(std::move(draw_func)),
+            .behaviour = std::make_unique<detail::NodeWrapper>(std::move(draw_func)),
         });
 }
 
@@ -453,6 +440,77 @@ void ImNodeFlow::update()
         ++iter;
     }
 
+    ImRect always_valid_bb {
+        ImGui::GetMousePos() - ImVec2(1.F, 1.F),
+        ImGui::GetMousePos() + ImVec2(1.F, 1.F),
+    };
+
+    int selection_box_button_flags = ImGuiButtonFlags_PressedOnClick
+        | detail::getButtonFlagsForMouseButton(getGrid().config().selection_box_button);
+
+    bool selection_box_hovered = false;
+    bool selection_box_held = false;
+
+    ImGui::ItemAdd(always_valid_bb, ImGui::GetID("##selection_box"));
+    if (ImGui::ButtonBehavior(
+            always_valid_bb,
+            ImGui::GetID("##selection_box"),
+            &selection_box_hovered,
+            &selection_box_held,
+            selection_box_button_flags)) {
+        m_impl->box.active = true;
+        m_impl->box.selectionStart = ImGui::GetMousePos();
+
+        // Deselect all nodes if not holding down CTRL
+        if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
+            for (auto& node : m_impl->nodes) {
+                NodeRef { *node }.setSelected(false);
+            }
+        }
+    }
+
+    if (m_impl->box.active) {
+        ImRect boxClip { m_impl->box.selectionStart, m_impl->box.selectionStart };
+        boxClip.Add(ImGui::GetMousePos());
+
+        draw_list->AddRectFilled(
+            boxClip.GetBL(), boxClip.GetTR(), m_impl->box.selectionColor);
+        draw_list->AddRect(
+            boxClip.GetBL(),
+            boxClip.GetTR(),
+            m_impl->box.borderColor,
+            0.0F,
+            0,
+            1.5F);
+
+        bool shouldMarkSelected = false;
+
+        if (!selection_box_held) {
+            m_impl->box.active = false;
+            shouldMarkSelected = true;
+        } else if (
+            getGrid().config().selection_box_cancel_button != getGrid().config().selection_box_button && ImGui::IsMouseClicked(getGrid().config().selection_box_cancel_button)) {
+            // cancel selection
+            m_impl->box.active = false;
+        }
+
+        for (auto& elem : m_impl->nodes) {
+            NodeRef node { *elem };
+
+            ImVec2 nodePos = grid2screen(node.getTLPos());
+            ImVec2 nodeSize = node.getFullSize();
+
+            ImRect nodeClip { nodePos, nodePos + nodeSize };
+            if (boxClip.Overlaps(nodeClip)) {
+                if (shouldMarkSelected) {
+                    node.setSelected(true);
+                } else {
+                    node.setProvisionallySelected(true);
+                }
+            }
+        }
+    }
+
     if (m_impl->dragOut != nullptr) {
         PinRef<> dragOut { *m_impl->dragOut };
 
@@ -483,62 +541,6 @@ void ImNodeFlow::update()
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             m_impl->dragOut = nullptr;
-    }
-
-    if (this->mouse_on_free_space() && !m_impl->box.active && !m_impl->draggingNode && !m_impl->dragOut && getSingleUseClick(getGrid().config().selection_box_button) && ImGui::IsWindowHovered()) {
-        consumeSingleUseClick(getGrid().config().selection_box_button);
-        m_impl->box.active = true;
-        m_impl->box.selectionStart = ImGui::GetMousePos();
-
-        // Deselect all nodes if not holding down CTRL
-        if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
-            for (auto& node : m_impl->nodes) {
-                NodeRef { *node }.setSelected(false);
-            }
-        }
-    }
-
-    if (m_impl->box.active) {
-        ImRect boxClip { m_impl->box.selectionStart, m_impl->box.selectionStart };
-        boxClip.Add(ImGui::GetMousePos());
-
-        draw_list->AddRectFilled(
-            boxClip.GetBL(), boxClip.GetTR(), m_impl->box.selectionColor);
-        draw_list->AddRect(
-            boxClip.GetBL(),
-            boxClip.GetTR(),
-            m_impl->box.borderColor,
-            0.0F,
-            0,
-            1.5F);
-
-        bool shouldMarkSelected = false;
-
-        if (ImGui::IsMouseReleased(
-                getGrid().config().selection_box_button)) {
-            m_impl->box.active = false;
-            shouldMarkSelected = true;
-        } else if (
-            getGrid().config().selection_box_cancel_button != getGrid().config().selection_box_button && ImGui::IsMouseClicked(getGrid().config().selection_box_cancel_button)) {
-            // cancel selection
-            m_impl->box.active = false;
-        }
-
-        for (auto& elem : m_impl->nodes) {
-            NodeRef node { *elem };
-
-            ImVec2 nodePos = grid2screen(node.getTLPos());
-            ImVec2 nodeSize = node.getFullSize();
-
-            ImRect nodeClip { nodePos, nodePos + nodeSize };
-            if (boxClip.Overlaps(nodeClip)) {
-                if (shouldMarkSelected) {
-                    node.setSelected(true);
-                } else {
-                    node.setProvisionallySelected(true);
-                }
-            }
-        }
     }
 
     // Right-click PopUp

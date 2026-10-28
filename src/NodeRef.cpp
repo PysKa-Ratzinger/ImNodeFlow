@@ -591,21 +591,30 @@ void NodeRefImpl<TIsConst>::update()
     };
 
     bool header_hovered = false;
+    bool header_pressed = false;
     bool node_hovered = false;
+    bool node_pressed = false;
 
-    bool header_pressed = ImGui::ButtonBehavior(
-        header_bb,
-        ImGui::GetID("##node_header"),
-        &header_hovered,
-        nullptr,
-        ImGuiButtonFlags_PressedOnClick);
+    ImGuiID header_id = ImGui::GetID("##node_header");
+    ImGuiID node_id = ImGui::GetID("##node_body");
 
-    bool node_pressed = ImGui::ButtonBehavior(
-        node_bb,
-        ImGui::GetID("##node_body"),
-        &node_hovered,
-        nullptr,
-        ImGuiButtonFlags_PressedOnClick);
+    if (ImGui::ItemAdd(header_bb, header_id)) {
+        header_pressed = ImGui::ButtonBehavior(
+            header_bb,
+            header_id,
+            &header_hovered,
+            nullptr,
+            ImGuiButtonFlags_PressedOnClick);
+    }
+
+    if (ImGui::ItemAdd(node_bb, node_id)) {
+        node_pressed = ImGui::ButtonBehavior(
+            node_bb,
+            node_id,
+            &node_hovered,
+            nullptr,
+            ImGuiButtonFlags_PressedOnClick);
+    }
 
     if (header_hovered || node_hovered) {
         ctx.hoveredNode(&node);

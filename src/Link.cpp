@@ -60,12 +60,15 @@ void Link::update(ImNodeFlow& ctx)
             mouse_pos + ImVec2(1.F, 1.F),
         };
 
-        bool pressed = ImGui::ButtonBehavior(
-            always_valid_bb,
-            ImGui::GetID(this),
-            &m_hovered,
-            nullptr,
-            ImGuiButtonFlags_PressedOnClick);
+        bool pressed = false;
+        if (ImGui::ItemAdd(always_valid_bb, ImGui::GetID(this))) {
+            pressed = ImGui::ButtonBehavior(
+                always_valid_bb,
+                ImGui::GetID(this),
+                &m_hovered,
+                nullptr,
+                ImGuiButtonFlags_PressedOnClick);
+        }
 
         m_selected = m_selected || pressed;
     }

@@ -68,18 +68,22 @@ namespace {
         };
 
         bool is_hovered = false;
-        bool is_pressed = ImGui::ButtonBehavior(
-            bb,
-            ImGui::GetID("##pinSocket"),
-            &is_hovered,
-            nullptr,
-            ImGuiButtonFlags_PressedOnClick);
+        bool is_pressed = false;
 
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        if (circle_filled) {
-            draw_list->AddCircleFilled(point, radius, color, shape);
-        } else {
-            draw_list->AddCircle(point, radius, color, shape, thickness);
+        if (ImGui::ItemAdd(bb, ImGui::GetID("##pinSocket"))) {
+            is_pressed = ImGui::ButtonBehavior(
+                bb,
+                ImGui::GetID("##pinSocket"),
+                &is_hovered,
+                nullptr,
+                ImGuiButtonFlags_PressedOnClick);
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            if (circle_filled) {
+                draw_list->AddCircleFilled(point, radius, color, shape);
+            } else {
+                draw_list->AddCircle(point, radius, color, shape, thickness);
+            }
         }
 
         if (hovered != nullptr) {
@@ -130,8 +134,8 @@ void PinRef<TIsConst>::update()
 
     ImGui::PushID(&pin);
 
-    bool hovered_socket = false;
-    bool pressed_socket = false;
+    bool socket_hovered = false;
+    bool socket_pressed = false;
 
     if (this->getType() == PinType::Output) {
         this->setPos(ImGui::GetCursorPos());
@@ -141,9 +145,9 @@ void PinRef<TIsConst>::update()
         pin.size = ImGui::GetItemRectSize();
         drawDecoration(pin);
         ImGui::SameLine(0.f, 0.f);
-        pressed_socket = drawSocket(m_pin, &hovered_socket, &pin.pinPoint);
+        socket_pressed = drawSocket(m_pin, &socket_hovered, &pin.pinPoint);
     } else if (this->getType() == PinType::Input) {
-        pressed_socket = drawSocket(m_pin, &hovered_socket, &pin.pinPoint);
+        socket_pressed = drawSocket(m_pin, &socket_hovered, &pin.pinPoint);
         ImGui::SameLine(0.f, 0.f);
         this->setPos(ImGui::GetCursorPos());
         ImGui::BeginGroup();
@@ -154,16 +158,22 @@ void PinRef<TIsConst>::update()
     }
 
     // here, decoration is everything except the pin's socket
-    bool hovered_decoration = false;
-    bool pressed_decoration = ImGui::ButtonBehavior(
-        ImRect { pin.pos, pin.pos + pin.size },
-        ImGui::GetID("##pinDecor"),
-        &hovered_decoration,
-        nullptr,
-        ImGuiButtonFlags_PressedOnClick);
+    bool decoration_hovered = false;
+    bool decoration_pressed = false;
 
-    bool is_hovering = hovered_decoration || hovered_socket;
-    bool is_pressed = pressed_decoration || pressed_socket;
+    ImRect decoration_bb { pin.pos, pin.pos + pin.size };
+    ImGuiID decoration_id = ImGui::GetID("##pinDecor");
+    if (ImGui::ItemAdd(decoration_bb, decoration_id)) {
+        decoration_pressed = ImGui::ButtonBehavior(
+            ImRect { pin.pos, pin.pos + pin.size },
+            decoration_id,
+            &decoration_hovered,
+            nullptr,
+            ImGuiButtonFlags_PressedOnClick);
+    }
+
+    bool is_hovering = decoration_hovered || socket_hovered;
+    bool is_pressed = decoration_pressed || socket_pressed;
 
     ImNodeFlow& flow = pin.ctx.get();
 
