@@ -30,7 +30,7 @@ struct PinStyleExtras {
     /// @brief Link thickness when hovered
     float link_hovered_thickness = 3.5f;
     /// @brief Thickness of the outline of a selected link
-    float link_selected_outline_thickness = 0.5f;
+    float link_selected_outline_thickness = 1.f;
     /// @brief Color of the outline of a selected link
     ImU32 outline_color = IM_COL32(80, 20, 255, 200);
 
