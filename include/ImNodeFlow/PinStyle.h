@@ -24,11 +24,11 @@ struct PinStyleExtras {
     ImU32 border_color = IM_COL32(255, 255, 255, 0);
 
     /// @brief Link thickness
-    float link_thickness = 2.6f;
+    float link_thickness = 3.f;
     /// @brief Link thickness when dragged
     float link_dragged_thickness = 2.2f;
     /// @brief Link thickness when hovered
-    float link_hovered_thickness = 3.5f;
+    float link_hovered_thickness = 4.f;
     /// @brief Thickness of the outline of a selected link
     float link_selected_outline_thickness = 1.f;
     /// @brief Color of the outline of a selected link
@@ -62,17 +62,17 @@ public:
 namespace PinStyles {
 
     /// @brief Default cyan style
-    static constexpr PinStyle cyan { IM_COL32(87, 155, 185, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle cyan { IM_COL32(87, 155, 185, 255), 0, 4.5f, 5.f, 4.5f, 2.f };
     /// @brief Default green style
-    static constexpr PinStyle green { IM_COL32(90, 191, 93, 255), 4, 4.f, 4.67f, 4.2f, 1.3f };
+    static constexpr PinStyle green { IM_COL32(90, 191, 93, 255), 4, 4.5f, 5.f, 4.5f, 2.3f };
     /// @brief Default blue style
-    static constexpr PinStyle blue { IM_COL32(90, 117, 191, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle blue { IM_COL32(90, 117, 191, 255), 0, 4.5f, 5.f, 4.5f, 2.f };
     /// @brief Default brown style
-    static constexpr PinStyle brown { IM_COL32(191, 134, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle brown { IM_COL32(191, 134, 90, 255), 0, 4.5f, 5.f, 4.5f, 2.f };
     /// @brief Default red style
-    static constexpr PinStyle red { IM_COL32(191, 90, 90, 255), 0, 4.f, 4.67f, 3.7f, 1.f };
+    static constexpr PinStyle red { IM_COL32(191, 90, 90, 255), 0, 4.5f, 5.f, 4.5f, 2.f };
     /// @brief Default white style
-    static constexpr PinStyle white { IM_COL32(255, 255, 255, 255), 5, 4.f, 4.67f, 4.2f, 1.f };
+    static constexpr PinStyle white { IM_COL32(255, 255, 255, 255), 5, 4.5f, 5.f, 4.5f, 2.f };
 
     static inline constexpr PinStyle default_style = cyan;
 
