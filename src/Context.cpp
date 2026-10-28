@@ -445,28 +445,43 @@ void ImNodeFlow::update()
         ImGui::GetMousePos() + ImVec2(1.F, 1.F),
     };
 
-    int selection_box_button_flags = ImGuiButtonFlags_PressedOnClick
-        | detail::getButtonFlagsForMouseButton(getGrid().config().selection_box_button);
+    auto const& grid_cfg = getGrid().config();
 
-    bool selection_box_hovered = false;
-    bool selection_box_held = false;
+    int mouse_context_button_flags = ImGuiButtonFlags_PressedOnClick
+        | detail::getButtonFlagsForMouseButton(grid_cfg.selection_box_button)
+        | detail::getButtonFlagsForMouseButton(grid_cfg.scroll_button);
 
-    ImGui::ItemAdd(always_valid_bb, ImGui::GetID("##selection_box"));
-    if (ImGui::ButtonBehavior(
-            always_valid_bb,
-            ImGui::GetID("##selection_box"),
-            &selection_box_hovered,
-            &selection_box_held,
-            selection_box_button_flags)) {
-        m_impl->box.active = true;
-        m_impl->box.selectionStart = ImGui::GetMousePos();
+    bool mouse_context_held = false;
+    bool mouse_context_pressed = false;
+    ImGuiID mouse_context_id = ImGui::GetID("##mouse_context");
 
-        // Deselect all nodes if not holding down CTRL
-        if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
-            for (auto& node : m_impl->nodes) {
-                NodeRef { *node }.setSelected(false);
+    ImGui::ItemAdd(always_valid_bb, mouse_context_id);
+    mouse_context_pressed = ImGui::ButtonBehavior(
+        always_valid_bb,
+        mouse_context_id,
+        nullptr,
+        &mouse_context_held,
+        mouse_context_button_flags);
+
+    auto active_id_mouse_button = ImGui::GetCurrentContext()->ActiveIdMouseButton;
+    if (mouse_context_pressed) {
+        if (active_id_mouse_button == grid_cfg.selection_box_button) {
+            m_impl->box.active = true;
+            m_impl->box.selectionStart = ImGui::GetMousePos();
+
+            // Deselect all nodes if not holding down CTRL
+            if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
+                for (auto& node : m_impl->nodes) {
+                    NodeRef { *node }.setSelected(false);
+                }
             }
         }
+    }
+
+    if (mouse_context_held
+        && grid_cfg.selection_box_button != grid_cfg.scroll_button
+        && active_id_mouse_button == grid_cfg.scroll_button) {
+        m_impl->context.updateScroll();
     }
 
     if (m_impl->box.active) {
@@ -485,11 +500,11 @@ void ImNodeFlow::update()
 
         bool shouldMarkSelected = false;
 
-        if (!selection_box_held) {
+        if (!mouse_context_held) {
             m_impl->box.active = false;
             shouldMarkSelected = true;
         } else if (
-            getGrid().config().selection_box_cancel_button != getGrid().config().selection_box_button && ImGui::IsMouseClicked(getGrid().config().selection_box_cancel_button)) {
+            grid_cfg.selection_box_cancel_button != grid_cfg.selection_box_button && ImGui::IsMouseClicked(grid_cfg.selection_box_cancel_button)) {
             // cancel selection
             m_impl->box.active = false;
         }
@@ -561,21 +576,6 @@ void ImNodeFlow::update()
     if (ImGui::BeginPopup("DroppedLinkPopUp")) {
         m_impl->droppedLinkPopUp(PinRef<> { *m_impl->droppedLinkLeft });
         ImGui::EndPopup();
-    }
-
-    if (m_impl->context.hovered() && this->getSingleUseClick(m_impl->context.config().scroll_button)) {
-        this->consumeSingleUseClick(m_impl->context.config().scroll_button);
-        m_impl->draggingCanvas = true;
-    }
-
-    if (m_impl->draggingCanvas) {
-        if (!ImGui::IsMouseDown(m_impl->context.config().scroll_button)) {
-            m_impl->draggingCanvas = false;
-        }
-    }
-
-    if (m_impl->draggingCanvas && ImGui::IsMouseDragging(m_impl->context.config().scroll_button)) {
-        m_impl->context.updateScroll();
     }
 
     m_impl->context.end();
