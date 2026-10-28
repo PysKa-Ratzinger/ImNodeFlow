@@ -205,40 +205,6 @@ void ImNodeFlow::dragDropTarget(drag_drop_target_handler_t content)
     m_impl->dragdropTarget = std::move(content);
 }
 
-bool ImNodeFlow::getSingleUseClick(ImGuiMouseButton button) const
-{
-    switch (button) {
-    case ImGuiMouseButton_Left:
-        return m_impl->singleUseClicks.left;
-    case ImGuiMouseButton_Right:
-        return m_impl->singleUseClicks.right;
-    case ImGuiMouseButton_Middle:
-        return m_impl->singleUseClicks.middle;
-    default:
-        return false;
-    }
-}
-
-void ImNodeFlow::consumeSingleUseClick(ImGuiMouseButton button)
-{
-    switch (button) {
-    case ImGuiMouseButton_Left:
-        m_impl->singleUseClicks.left = false;
-        return;
-
-    case ImGuiMouseButton_Right:
-        m_impl->singleUseClicks.right = false;
-        return;
-
-    case ImGuiMouseButton_Middle:
-        m_impl->singleUseClicks.middle = false;
-        return;
-
-    default:
-        return;
-    }
-}
-
 const std::string& ImNodeFlow::getName() const
 {
     return m_impl->name;
@@ -327,10 +293,6 @@ void ImNodeFlow::update()
     m_impl->hovering = nullptr;
     m_impl->hoveredNode = nullptr;
     m_impl->draggingNode = m_impl->draggingNodeNext;
-
-    m_impl->singleUseClicks.left = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-    m_impl->singleUseClicks.right = ImGui::IsMouseClicked(ImGuiMouseButton_Right);
-    m_impl->singleUseClicks.middle = ImGui::IsMouseClicked(ImGuiMouseButton_Middle);
 
     // Create child canvas
     m_impl->context.begin();

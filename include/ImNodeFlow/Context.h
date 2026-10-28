@@ -161,19 +161,6 @@ public:
     void dragDropTarget(drag_drop_target_handler_t handler);
 
     /**
-     * @brief Get mouse clicking status
-     * @param The mouse button to query
-     * @return [TRUE] if mouse is clicked and click hasn't been consumed
-     */
-    [[nodiscard]] bool getSingleUseClick(ImGuiMouseButton button) const;
-
-    /**
-     * @brief Consume the click for the given frame
-     * @param button The mouse button to query
-     */
-    void consumeSingleUseClick(ImGuiMouseButton button);
-
-    /**
      * @brief Get editor's name
      * @return Const reference to editor's name
      */
