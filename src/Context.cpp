@@ -346,7 +346,7 @@ void ImNodeFlow::update()
     std::vector<std::unique_ptr<detail::node_t>> next_frame_nodes;
     next_frame_nodes.reserve(m_impl->nodes.size());
 
-    {
+    if (!m_impl->nodes.empty()) {
         // We need this in order to render the nodes front to back
         ImDrawListSplitter splitter;
         splitter.Split(draw_list, m_impl->nodes.size());
@@ -500,24 +500,8 @@ void ImNodeFlow::update()
                 m_impl->droppedLinkLeft = m_impl->dragOut;
                 ImGui::OpenPopup("DroppedLinkPopUp");
             }
-        }
-
-        // Links drag-out
-        if (dragOut.getType() == PinType::Output)
-            detail::smart_bezier(
-                dragOut.pinPoint(),
-                ImGui::GetMousePos(),
-                dragOut.getStyle().color,
-                dragOut.getStyle().extra.link_dragged_thickness);
-        else
-            detail::smart_bezier(
-                ImGui::GetMousePos(),
-                dragOut.pinPoint(),
-                dragOut.getStyle().color,
-                dragOut.getStyle().extra.link_dragged_thickness);
-
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             m_impl->dragOut = nullptr;
+        }
     }
 
     // Right-click PopUp

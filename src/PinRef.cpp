@@ -5,6 +5,7 @@
 #include "ImNodeFlow/detail/IPin.h"
 
 #include "./PinConnectionHolder.h"
+#include "./imgui_bezier_items.h"
 #include "./pin_base.h"
 
 #include "imgui.h"
@@ -12,6 +13,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 
 namespace ImFlow {
 
@@ -124,6 +126,40 @@ namespace {
             pin.style.extra.border_thickness);
     }
 
+    void drawDragDropPinSourceAndTarget(
+        detail::pin_base_t& pin,
+        bool* out_source_active = nullptr,
+        bool* out_target_active = nullptr)
+    {
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip)) {
+            detail::pin_base_t* pin_ptr = &pin;
+            ImGui::SetDragDropPayload("PIN_BASE_POINTER", (void*)&pin_ptr, sizeof(detail::pin_base_t*));
+            ImGui::EndDragDropSource();
+
+            if (out_source_active != nullptr) {
+                *out_source_active = true;
+            }
+        }
+
+        if (ImGui::BeginDragDropTarget()) {
+            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PIN_BASE_POINTER", ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
+            if (payload != nullptr) {
+                IM_ASSERT(payload->DataSize == sizeof(detail::pin_base_t*));
+                detail::pin_base_t* source_pin;
+                std::memcpy(&source_pin, payload->Data, sizeof(source_pin));
+                if (source_pin != nullptr) {
+                    PinRef<> { pin }.linkTo(PinRef<> { *source_pin });
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+
+            if (out_target_active != nullptr) {
+                *out_target_active = true;
+            }
+        }
+    }
+
 } // anonymous namespace
 
 template <bool TIsConst>
@@ -136,6 +172,8 @@ void PinRef<TIsConst>::update()
 
     bool socket_hovered = false;
     bool socket_pressed = false;
+    bool drag_drop_source_active = false;
+    bool drag_drop_target_active = false;
 
     if (this->getType() == PinType::Output) {
         this->setPos(ImGui::GetCursorPos());
@@ -146,8 +184,10 @@ void PinRef<TIsConst>::update()
         drawDecoration(pin);
         ImGui::SameLine(0.f, 0.f);
         socket_pressed = drawSocket(m_pin, &socket_hovered, &pin.pinPoint);
+        drawDragDropPinSourceAndTarget(m_pin, &drag_drop_source_active, &drag_drop_target_active);
     } else if (this->getType() == PinType::Input) {
         socket_pressed = drawSocket(m_pin, &socket_hovered, &pin.pinPoint);
+        drawDragDropPinSourceAndTarget(m_pin, &drag_drop_source_active, &drag_drop_target_active);
         ImGui::SameLine(0.f, 0.f);
         this->setPos(ImGui::GetCursorPos());
         ImGui::BeginGroup();
@@ -172,15 +212,36 @@ void PinRef<TIsConst>::update()
             ImGuiButtonFlags_PressedOnClick);
     }
 
-    bool is_hovering = decoration_hovered || socket_hovered;
-    bool is_pressed = decoration_pressed || socket_pressed;
+    drawDragDropPinSourceAndTarget(m_pin, &drag_drop_source_active, &drag_drop_target_active);
+
+    bool is_hovering = decoration_hovered
+        || socket_hovered
+        || drag_drop_target_active;
+    bool is_pressed = decoration_pressed
+        || socket_pressed;
 
     ImNodeFlow& flow = pin.ctx.get();
 
     if (is_hovering) {
         flow.hovering(&pin);
-        if (is_pressed) {
-            flow.dragging(&pin);
+    }
+
+    if (drag_drop_source_active) {
+        flow.dragging(&pin);
+
+        // Links drag-out
+        if (this->getType() == PinType::Output) {
+            detail::smart_bezier(
+                this->pinPoint(),
+                ImGui::GetMousePos(),
+                this->getStyle().color,
+                this->getStyle().extra.link_dragged_thickness);
+        } else {
+            detail::smart_bezier(
+                ImGui::GetMousePos(),
+                this->pinPoint(),
+                this->getStyle().color,
+                this->getStyle().extra.link_dragged_thickness);
         }
     }
 

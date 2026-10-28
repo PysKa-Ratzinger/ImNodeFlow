@@ -7,9 +7,13 @@
 namespace ImFlow::detail {
 
 inline void
-smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness)
+smart_bezier(
+        const ImVec2& p1,
+        const ImVec2& p2,
+        ImU32 color,
+        float thickness)
 {
-    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImDrawList* draw_list = ImGui::GetForegroundDrawList(ImGui::GetCurrentWindow());
     float distance = sqrt(pow((p2.x - p1.x), 2.f) + pow((p2.y - p1.y), 2.f));
     float delta = distance * 0.45f;
     if (p2.x < p1.x) {
@@ -20,7 +24,7 @@ smart_bezier(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness)
     float vert = 0.f;
     ImVec2 p22 = p2 - ImVec2(delta, vert);
     ImVec2 p11 = p1 + ImVec2(delta, vert);
-    dl->AddBezierCubic(p1, p11, p22, p2, color, thickness);
+    draw_list->AddBezierCubic(p1, p11, p22, p2, color, thickness);
 }
 
 inline void

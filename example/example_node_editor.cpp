@@ -7,6 +7,50 @@
 #include <memory>
 #include <optional>
 
+class NumberGenerator final : public ImFlow::INodeBehaviour {
+public:
+    void setup(ImFlow::NodeRef node) final
+    {
+        node.setTitle("Number Generator");
+        node.setStyle(ImFlow::NodeStyles::cyan);
+
+        node.addOUT<int>({
+            .name = "Out",
+            .behaviour = [this](ImFlow::NodeRef node) -> int {
+                return this->m_val;
+            },
+        });
+    }
+
+    void draw([[maybe_unused]] ImFlow::NodeRef node) final
+    {
+        ImGui::SetNextItemWidth(100.f);
+        ImGui::SliderInt("##number", &m_val, 0, 100);
+    }
+
+private:
+    int m_val = 0;
+};
+
+class NumberDisplay final : public ImFlow::INodeBehaviour {
+public:
+    void setup(ImFlow::NodeRef node) final
+    {
+        node.setTitle("Number Display");
+        node.setStyle(ImFlow::NodeStyles::cyan);
+        node.addIN<int>({ .name = "In" });
+    }
+
+    void draw([[maybe_unused]] ImFlow::NodeRef node) final
+    {
+        if (node.inPin("In")->isConnected()) {
+            ImGui::Text("Value: %d", node.inPin<int>("In")->value());
+        } else {
+            ImGui::Text("Disconnected");
+        }
+    }
+};
+
 class SimpleSum : public ImFlow::INodeBehaviour {
 public:
     void setup(ImFlow::NodeRef node) override
@@ -207,6 +251,14 @@ NodeEditor::NodeEditor(float width, float height)
         } else {
             bool should_close = false;
             ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+            if (ImGui::Button("Number Generator")) {
+                mINF.emplaceNodeAt<NumberGenerator>(mouse_screen_pos);
+                should_close = true;
+            }
+            if (ImGui::Button("Number Display")) {
+                mINF.emplaceNodeAt<NumberDisplay>(mouse_screen_pos);
+                should_close = true;
+            }
             if (ImGui::Button("SimpleSum")) {
                 mINF.emplaceNodeAt<SimpleSum>(mouse_screen_pos);
                 should_close = true;
@@ -239,7 +291,7 @@ NodeEditor::NodeEditor(float width, float height)
     auto result = mINF.emplaceNode<ResultNode>({ 340, 20 });
     auto multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
 
-    result.setIndestructable(true);
+    // result.setIndestructable(true);
 
     // Add links between nodes
     n1.outPin("Out")->linkTo(*result.inPin("A"));
