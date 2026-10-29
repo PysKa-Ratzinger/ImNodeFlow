@@ -397,16 +397,10 @@ NodeRefImpl<TIsConst>::tempOutPin(std::string_view name)
 }
 
 template <bool TIsConst>
-void NodeRefImpl<TIsConst>::calculate()
+void NodeRefImpl<TIsConst>::calculate_inputs()
     requires(!TIsConst)
 {
     auto& node = m_node.get();
-    for (auto& pin : node.outs) {
-        pin->underlying_pin->calculate(PinRef { *pin });
-    }
-    for (auto& pin : node.dynamicOuts) {
-        pin.pin().underlying_pin->calculate(PinRef { pin.pin() });
-    }
     for (auto& pin : node.ins) {
         pin->underlying_pin->calculate(PinRef { *pin });
     }
@@ -416,7 +410,33 @@ void NodeRefImpl<TIsConst>::calculate()
 }
 
 template <bool TIsConst>
-void NodeRefImpl<TIsConst>::prime()
+void NodeRefImpl<TIsConst>::calculate_outputs()
+    requires(!TIsConst)
+{
+    auto& node = m_node.get();
+    for (auto& pin : node.outs) {
+        pin->underlying_pin->calculate(PinRef { *pin });
+    }
+    for (auto& pin : node.dynamicOuts) {
+        pin.pin().underlying_pin->calculate(PinRef { pin.pin() });
+    }
+}
+
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::prime_inputs()
+    requires(!TIsConst)
+{
+    auto& node = m_node.get();
+    for (auto& pin : node.ins) {
+        pin->underlying_pin->prime();
+    }
+    for (auto& pin : node.dynamicIns) {
+        pin.pin().underlying_pin->prime();
+    }
+}
+
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::prime_outputs()
     requires(!TIsConst)
 {
     auto& node = m_node.get();
@@ -424,12 +444,6 @@ void NodeRefImpl<TIsConst>::prime()
         pin->underlying_pin->prime();
     }
     for (auto& pin : node.dynamicOuts) {
-        pin.pin().underlying_pin->prime();
-    }
-    for (auto& pin : node.ins) {
-        pin->underlying_pin->prime();
-    }
-    for (auto& pin : node.dynamicIns) {
         pin.pin().underlying_pin->prime();
     }
 }

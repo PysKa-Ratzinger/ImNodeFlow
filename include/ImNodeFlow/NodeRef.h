@@ -334,14 +334,27 @@ public:
     /**
      * @brief Have every pin calculate their next output value
      */
-    void calculate()
+    void calculate_inputs()
+        requires(!TIsConst);
+
+    /**
+     * @brief Have every pin calculate their next output value
+     */
+    void calculate_outputs()
         requires(!TIsConst);
 
     /**
      * @brief Have every pin commit their calculated values as their new
      * output value
      */
-    void prime()
+    void prime_inputs()
+        requires(!TIsConst);
+
+    /**
+     * @brief Have every pin commit their calculated values as their new
+     * output value
+     */
+    void prime_outputs()
         requires(!TIsConst);
 
     /**

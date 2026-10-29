@@ -340,10 +340,10 @@ NodeEditor::NodeEditor(float width, float height)
         // So, when we create a connection between pins, we can
         // programmatically propagate the signal just to stabilize the
         // clock. This only needs to be done once, here.
-        curr_gate.calculate();
-        curr_gate.prime();
-        next_gate.calculate();
-        next_gate.prime();
+        curr_gate.calculate_outputs();
+        curr_gate.prime_outputs();
+        next_gate.calculate_inputs();
+        next_gate.prime_inputs();
     }
 }
 

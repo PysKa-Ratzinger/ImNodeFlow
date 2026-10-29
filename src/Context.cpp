@@ -347,10 +347,16 @@ void ImNodeFlow::update()
 
     // Propagate pin values
     for (auto& node : m_impl->nodes) {
-        NodeRef { *node }.calculate();
+        NodeRef { *node }.calculate_inputs();
     }
     for (auto& node : m_impl->nodes) {
-        NodeRef { *node }.prime();
+        NodeRef { *node }.prime_inputs();
+    }
+    for (auto& node : m_impl->nodes) {
+        NodeRef { *node }.calculate_outputs();
+    }
+    for (auto& node : m_impl->nodes) {
+        NodeRef { *node }.prime_outputs();
     }
 
     // Update and draw nodes
