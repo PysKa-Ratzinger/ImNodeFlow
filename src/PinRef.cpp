@@ -214,6 +214,10 @@ void PinRef<TIsConst>::update()
 
     drawDragDropPinSourceAndTarget(m_pin, &drag_drop_source_active, &drag_drop_target_active);
 
+    if (drag_drop_source_active) {
+        detail::draw_bezier_from_pin_to_pos(pin, ImGui::GetMousePos());
+    }
+
     bool is_hovering = decoration_hovered
         || socket_hovered
         || drag_drop_target_active;
@@ -221,15 +225,6 @@ void PinRef<TIsConst>::update()
         || socket_pressed;
 
     ImNodeFlow& flow = pin.ctx.get();
-
-    if (is_hovering) {
-        flow.hovering(&pin);
-    }
-
-    if (drag_drop_source_active) {
-        flow.dragging(&pin);
-        detail::draw_bezier_from_pin_to_pos(pin, ImGui::GetMousePos());
-    }
 
     pin.isHovered = is_hovering;
 

@@ -240,20 +240,6 @@ public:
     void draggingNode(bool state);
 
     /**
-     * @brief Set what pin is being hovered
-     * @param hovering Pointer to the hovered pin
-     * @internal For internal use only
-     */
-    void hovering(detail::pin_base_t* hovering);
-
-    /**
-     * @brief Set what pin is being dragged
-     * @param dragged Pointer to the dragged pin
-     * @internal For internal use only
-     */
-    void dragging(detail::pin_base_t* dragged);
-
-    /**
      * @brief Set what node is being hovered
      * @param hovering Pointer to the hovered node
      * @internal For internal use only

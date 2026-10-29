@@ -43,8 +43,6 @@ struct editor_context_t {
     node_t* hoveredNode = nullptr;
     bool draggingNode = false;
     bool draggingNodeNext = false;
-    pin_base_t* hovering = nullptr;
-    pin_base_t* dragOut = nullptr;
 
     InfStyler style;
 

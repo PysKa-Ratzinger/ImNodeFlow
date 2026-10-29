@@ -270,16 +270,6 @@ void ImNodeFlow::draggingNode(bool state)
     m_impl->draggingNodeNext = state;
 }
 
-void ImNodeFlow::hovering(detail::pin_base_t* hovering)
-{
-    m_impl->hovering = hovering;
-}
-
-void ImNodeFlow::dragging(detail::pin_base_t* dragged)
-{
-    m_impl->dragOut = dragged;
-}
-
 void ImNodeFlow::hoveredNode(detail::node_t* hovering)
 {
     m_impl->hoveredNode = hovering;
@@ -290,7 +280,6 @@ void ImNodeFlow::update()
     m_impl->is_drawing = true;
 
     // Updating looping stuff
-    m_impl->hovering = nullptr;
     m_impl->hoveredNode = nullptr;
     m_impl->draggingNode = m_impl->draggingNodeNext;
 
