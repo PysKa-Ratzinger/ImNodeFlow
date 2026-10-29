@@ -170,6 +170,7 @@ void NodeRefImpl<TIsConst>::updatePublicStatus()
     requires(!TIsConst)
 {
     auto& node = m_node.get();
+    node.wasSelected = node.selected;
     node.selected = node.selectedNext;
     node.provisionallySelected = node.provisionallySelectedNext;
     node.provisionallySelectedNext = false;

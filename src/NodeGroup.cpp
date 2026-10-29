@@ -97,8 +97,7 @@ void NodeGroup::prime_outputs()
 
 void NodeGroup::update()
 {
-    std::vector<std::unique_ptr<detail::node_t>> next_frame_nodes;
-    next_frame_nodes.reserve(this->nodes.size());
+    std::vector<std::unique_ptr<detail::node_t>> next_iteration_nodes;
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
@@ -113,38 +112,55 @@ void NodeGroup::update()
         splitter.Merge(draw_list);
     }
 
+    size_t count_destroyed = 0;
+    size_t count_activated = 0;
+    size_t count_selected = 0;
+    size_t count_idle = 0;
+
+    for (auto& node : this->nodes) {
+        if (node->destroyed) {
+            ++count_destroyed;
+            continue;
+        }
+
+        NodeRef { *node }.updatePublicStatus();
+        bool is_activated = !node->wasSelected && node->selected;
+
+        if (is_activated) {
+            ++count_activated;
+        } else if (node->selected) {
+            ++count_selected;
+        } else {
+            ++count_idle;
+        }
+    }
+
+    next_iteration_nodes.resize(count_idle + count_selected + count_activated);
+
+    size_t next_idx_activated = 0;
+    size_t next_idx_selected = next_idx_activated + count_activated;
+    size_t next_idx_idle = next_idx_selected + count_selected;
+
     for (auto& node : this->nodes) {
         if (node->destroyed) {
             continue;
         }
 
-        bool was_selected = node->selected;
-        NodeRef { *node }.updatePublicStatus();
-        bool is_selected = node->selected;
+        bool is_activated = !node->wasSelected && node->selected;
 
-        if (!was_selected && is_selected) {
-            next_frame_nodes.emplace_back(std::move(node));
+        if (is_activated) {
+            next_iteration_nodes[next_idx_activated] = std::move(node);
+            ++next_idx_activated;
+        } else if (node->selected) {
+            next_iteration_nodes[next_idx_selected] = std::move(node);
+            ++next_idx_selected;
+        } else {
+            next_iteration_nodes[next_idx_idle] = std::move(node);
+            ++next_idx_idle;
         }
     }
 
-    for (auto& node : this->nodes) {
-        if (!node || node->destroyed) {
-            continue;
-        }
-
-        if (node->selected) {
-            next_frame_nodes.emplace_back(std::move(node));
-        }
-    }
-
-    for (auto& node : this->nodes) {
-        if (!node || node->destroyed) {
-            continue;
-        }
-
-        next_frame_nodes.emplace_back(std::move(node));
-    }
-    this->nodes = std::move(next_frame_nodes);
+    this->nodes = std::move(next_iteration_nodes);
 }
 
 } // namespace ImFlow::detail
