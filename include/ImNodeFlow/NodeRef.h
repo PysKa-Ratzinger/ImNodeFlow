@@ -267,12 +267,6 @@ public:
     [[nodiscard]] bool isSelected() const;
 
     /**
-     * @brief Get dragged status
-     * @return [TRUE] if the node is being dragged
-     */
-    [[nodiscard]] bool isDragged() const;
-
-    /**
      * @brief Get Indestructable status
      * @return [TRUE] if the node is Indestructable
      */

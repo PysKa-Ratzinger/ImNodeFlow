@@ -102,12 +102,6 @@ bool NodeRefImpl<TIsConst>::isSelected() const
 }
 
 template <bool TIsConst>
-bool NodeRefImpl<TIsConst>::isDragged() const
-{
-    return m_node.get().dragged;
-}
-
-template <bool TIsConst>
 bool NodeRefImpl<TIsConst>::isIndestructable() const
 {
     return m_node.get().indestructable;
@@ -591,6 +585,7 @@ void NodeRefImpl<TIsConst>::update()
     };
 
     bool header_hovered = false;
+    bool header_held = false;
     bool header_pressed = false;
     bool node_hovered = false;
     bool node_pressed = false;
@@ -603,7 +598,7 @@ void NodeRefImpl<TIsConst>::update()
             header_bb,
             header_id,
             &header_hovered,
-            nullptr,
+            &header_held,
             ImGuiButtonFlags_PressedOnClick);
     }
 
@@ -618,16 +613,17 @@ void NodeRefImpl<TIsConst>::update()
 
     if (header_hovered || node_hovered) {
         ctx.hoveredNode(&node);
-        if (node_pressed || header_pressed) {
-            setSelected(true);
-            if (header_pressed) {
-                node.dragged = true;
-                ctx.draggingNode(true);
-            }
-        }
     }
 
-    if (node.dragged || (node.selected && ctx.isNodeDragged())) {
+    if (node_pressed || header_pressed) {
+        setSelected(true);
+    }
+
+    if (header_held) {
+        ctx.draggingNode(true);
+    }
+
+    if (header_held || (node.selected && ctx.isNodeDragged())) {
         float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
         node.posTarget += ctx.getScreenSpaceDelta();
         // "Slam" The position
@@ -635,7 +631,6 @@ void NodeRefImpl<TIsConst>::update()
         node.pos.y = round(node.posTarget.y / step) * step;
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            node.dragged = false;
             ctx.draggingNode(false);
             node.posTarget = node.pos;
         }
