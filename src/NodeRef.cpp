@@ -462,8 +462,10 @@ void NodeRefImpl<TIsConst>::update()
     ImVec2 paddingTL = { node.style.padding.x, node.style.padding.y };
     ImVec2 paddingBR = { node.style.padding.z, node.style.padding.w };
 
-    node.drawListSplitter.Split(draw_list, 2);
-    node.drawListSplitter.SetCurrentChannel(draw_list, 1); // Foreground
+    // Used to render each node's foreground and background out of order
+    ImDrawListSplitter drawListSplitter;
+    drawListSplitter.Split(draw_list, 2);
+    drawListSplitter.SetCurrentChannel(draw_list, 1); // Foreground
     ImGui::SetCursorScreenPos(offset + node.pos);
 
     ImGui::BeginGroup();
@@ -556,7 +558,7 @@ void NodeRefImpl<TIsConst>::update()
     ImVec2 headerSize = ImVec2(node.size.x + paddingBR.x, headerH);
 
     // Background
-    node.drawListSplitter.SetCurrentChannel(draw_list, 0);
+    drawListSplitter.SetCurrentChannel(draw_list, 0);
     draw_list->AddRectFilled(
         offset + node.pos - paddingTL,
         offset + node.pos + node.size + paddingBR,
@@ -676,7 +678,7 @@ void NodeRefImpl<TIsConst>::update()
         }
     }
 
-    node.drawListSplitter.Merge(draw_list);
+    drawListSplitter.Merge(draw_list);
     ImGui::PopID();
 }
 
