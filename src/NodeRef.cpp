@@ -506,21 +506,29 @@ void NodeRefImpl<TIsConst>::update()
     // Outputs
     float maxW = 0.0f;
     for (auto& p : node.outs) {
-        float w = PinRef { *p }.calcWidth();
-        if (w > maxW)
-            maxW = w;
+        PinRef pin { *p };
+        float w = pin.pinPoint().x - pin.getPos().x;
+        maxW = std::max(maxW, w);
     }
     for (auto& dyn_pin : node.dynamicOuts) {
-        float w = PinRef { dyn_pin.pin() }.calcWidth();
-        if (w > maxW)
-            maxW = w;
+        PinRef pin { dyn_pin.pin() };
+        float w = pin.pinPoint().x - pin.getPos().x;
+        maxW = std::max(maxW, w);
     }
     ImGui::BeginGroup();
     for (auto& p : node.outs) {
-        PinRef { *p }.update();
+        PinRef pin { *p };
+        float w = pin.pinPoint().x - pin.getPos().x;
+        float align_offset = maxW - w;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + align_offset);
+        pin.update();
     }
     for (auto& dyn_pin : node.dynamicOuts) {
-        PinRef { dyn_pin.pin() }.update();
+        PinRef pin { dyn_pin.pin() };
+        float w = pin.pinPoint().x - pin.getPos().x;
+        float align_offset = maxW - w;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + align_offset);
+        pin.update();
     }
 
     ImGui::EndGroup();
