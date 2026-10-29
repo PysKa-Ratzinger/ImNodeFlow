@@ -2,6 +2,7 @@
 
 #include "ImNodeFlow.h"
 
+#include "ImNodeFlow/detail/type_id.h"
 #include "imgui.h"
 
 #include <memory>
@@ -249,40 +250,42 @@ NodeEditor::NodeEditor(float width, float height)
                 "you have right-clicked on [%s]",
                 node->getName().c_str());
         } else {
-            bool should_close = false;
             ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+            bool should_close = true;
             if (ImGui::Button("Number Generator")) {
                 mINF.emplaceNodeAt<NumberGenerator>(mouse_screen_pos);
-                should_close = true;
-            }
-            if (ImGui::Button("Number Display")) {
+            } else if (ImGui::Button("Number Display")) {
                 mINF.emplaceNodeAt<NumberDisplay>(mouse_screen_pos);
-                should_close = true;
-            }
-            if (ImGui::Button("SimpleSum")) {
+            } else if (ImGui::Button("SimpleSum")) {
                 mINF.emplaceNodeAt<SimpleSum>(mouse_screen_pos);
-                should_close = true;
-            }
-            if (ImGui::Button("ResultNode")) {
+            } else if (ImGui::Button("ResultNode")) {
                 mINF.emplaceNodeAt<ResultNode>(mouse_screen_pos);
-                should_close = true;
-            }
-            if (ImGui::Button("MultipleInputAdder")) {
+            } else if (ImGui::Button("MultipleInputAdder")) {
                 mINF.emplaceNodeAt<MultipleInputAdder>(mouse_screen_pos);
-                should_close = true;
-            }
-            if (ImGui::Button("CollapsingNode")) {
+            } else if (ImGui::Button("CollapsingNode")) {
                 mINF.emplaceNodeAt<CollapsingNode>(mouse_screen_pos);
-                should_close = true;
-            }
-            if (ImGui::Button("Not Gate")) {
+            } else if (ImGui::Button("Not Gate")) {
                 mINF.emplaceNodeAt<NotGate>(mouse_screen_pos);
-                should_close = true;
+            } else {
+                should_close = false;
             }
 
             if (should_close) {
                 ImGui::CloseCurrentPopup();
             }
+        }
+    });
+    mINF.droppedLinkPopUpContent([this](ImFlow::PinRef<> pin) -> void {
+        if (pin.getType() == ImFlow::PinType::Output
+            && pin.getTypeID() == ImFlow::detail::get_type_id<int>()) {
+            ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+            if (ImGui::Button("Number Display")) {
+                auto node = mINF.emplaceNodeAt<NumberDisplay>(mouse_screen_pos);
+                pin.linkTo(*node.inPin("In"));
+                ImGui::CloseCurrentPopup();
+            }
+        } else {
+            ImGui::CloseCurrentPopup();
         }
     });
 
@@ -291,7 +294,7 @@ NodeEditor::NodeEditor(float width, float height)
     auto result = mINF.emplaceNode<ResultNode>({ 340, 20 });
     auto multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
 
-    // result.setIndestructable(true);
+    result.setIndestructable(true);
 
     // Add links between nodes
     n1.outPin("Out")->linkTo(*result.inPin("A"));

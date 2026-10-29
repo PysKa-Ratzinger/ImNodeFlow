@@ -5,8 +5,8 @@
 #include "ImNodeFlow/detail/IPin.h"
 
 #include "./PinConnectionHolder.h"
-#include "./imgui_bezier_items.h"
 #include "./pin_base.h"
+#include "./pin_drawing_utils.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -228,21 +228,7 @@ void PinRef<TIsConst>::update()
 
     if (drag_drop_source_active) {
         flow.dragging(&pin);
-
-        // Links drag-out
-        if (this->getType() == PinType::Output) {
-            detail::smart_bezier(
-                this->pinPoint(),
-                ImGui::GetMousePos(),
-                this->getStyle().color,
-                this->getStyle().extra.link_dragged_thickness);
-        } else {
-            detail::smart_bezier(
-                ImGui::GetMousePos(),
-                this->pinPoint(),
-                this->getStyle().color,
-                this->getStyle().extra.link_dragged_thickness);
-        }
+        detail::draw_bezier_from_pin_to_pos(pin, ImGui::GetMousePos());
     }
 
     pin.isHovered = is_hovering;

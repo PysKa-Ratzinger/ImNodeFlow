@@ -8,10 +8,10 @@
 #include "./Link.h"
 #include "./NodeWrapper.h"
 #include "./editor_context.h"
-#include "./imgui_bezier_items.h"
 #include "./imgui_button_flags_helper.h"
 #include "./node.h"
 #include "./pin_base.h"
+#include "./pin_drawing_utils.h"
 #include "./uid_helpers.h"
 
 #include "imgui.h"
@@ -413,6 +413,7 @@ void ImNodeFlow::update()
         | detail::getButtonFlagsForMouseButton(grid_cfg.selection_box_button)
         | detail::getButtonFlagsForMouseButton(grid_cfg.scroll_button);
 
+    bool mouse_context_hovered = false;
     bool mouse_context_held = false;
     bool mouse_context_pressed = false;
     ImGuiID mouse_context_id = ImGui::GetID("##mouse_context");
@@ -421,7 +422,7 @@ void ImNodeFlow::update()
     mouse_context_pressed = ImGui::ButtonBehavior(
         always_valid_bb,
         mouse_context_id,
-        nullptr,
+        &mouse_context_hovered,
         &mouse_context_held,
         mouse_context_button_flags);
 
@@ -438,6 +439,34 @@ void ImNodeFlow::update()
                 }
             }
         }
+    }
+
+    if (mouse_context_hovered && ImGui::BeginDragDropTarget()) {
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PIN_BASE_POINTER", ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
+        if (payload != nullptr) {
+            IM_ASSERT(payload->DataSize == sizeof(detail::pin_base_t*));
+            detail::pin_base_t* source_pin;
+            std::memcpy(&source_pin, payload->Data, sizeof(source_pin));
+            if (source_pin != nullptr) {
+                // Links drop-off
+                if (m_impl->droppedLinkPopUp
+                    && (m_impl->droppedLinkPupUpComboKey == ImGuiKey_None
+                        || ImGui::IsKeyDown(m_impl->droppedLinkPupUpComboKey))) {
+                    m_impl->droppedLinkLeft = source_pin;
+                    ImGui::OpenPopup("DroppedLinkPopUp");
+                }
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    // Dropped Link PopUp
+    if (ImGui::BeginPopup("DroppedLinkPopUp")) {
+        detail::draw_bezier_from_pin_to_pos(
+            *m_impl->droppedLinkLeft,
+            ImGui::GetMousePosOnOpeningCurrentPopup());
+        m_impl->droppedLinkPopUp(PinRef<> { *m_impl->droppedLinkLeft });
+        ImGui::EndPopup();
     }
 
     if (mouse_context_held
@@ -488,22 +517,6 @@ void ImNodeFlow::update()
         }
     }
 
-    if (m_impl->dragOut != nullptr) {
-        PinRef<> dragOut { *m_impl->dragOut };
-
-        // Links drop-off
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            if (m_impl->hovering != nullptr) {
-                dragOut.linkTo(PinRef<> { *m_impl->hovering });
-            } else if (
-                mouse_on_free_space() && m_impl->droppedLinkPopUp && (m_impl->droppedLinkPupUpComboKey == ImGuiKey_None || ImGui::IsKeyDown(m_impl->droppedLinkPupUpComboKey))) {
-                m_impl->droppedLinkLeft = m_impl->dragOut;
-                ImGui::OpenPopup("DroppedLinkPopUp");
-            }
-            m_impl->dragOut = nullptr;
-        }
-    }
-
     // Right-click PopUp
     if (m_impl->rightClickPopUp && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && ImGui::IsWindowHovered()) {
         m_impl->hoveredNodeAux = m_impl->hoveredNode;
@@ -515,12 +528,6 @@ void ImNodeFlow::update()
             arg.emplace(*m_impl->hoveredNodeAux);
         }
         m_impl->rightClickPopUp(std::move(arg));
-        ImGui::EndPopup();
-    }
-
-    // Dropped Link PopUp
-    if (ImGui::BeginPopup("DroppedLinkPopUp")) {
-        m_impl->droppedLinkPopUp(PinRef<> { *m_impl->droppedLinkLeft });
         ImGui::EndPopup();
     }
 

@@ -1,0 +1,34 @@
+#include "pin_drawing_utils.h"
+
+#include "ImNodeFlow/PinRef.h"
+#include "ImNodeFlow/PinType.h"
+#include "ImNodeFlow/fwd.h"
+
+#include "./imgui_bezier_items.h"
+#include "./pin_base.h"
+
+#include "imgui.h"
+
+namespace ImFlow::detail {
+
+void draw_bezier_from_pin_to_pos(pin_base_t const& pin_base, ImVec2 pos)
+{
+    PinRef<true> pin { pin_base };
+
+    // Links drag-out
+    if (pin.getType() == PinType::Output) {
+        detail::smart_bezier(
+            pin.pinPoint(),
+            pos,
+            pin.getStyle().color,
+            pin.getStyle().extra.link_dragged_thickness);
+    } else {
+        detail::smart_bezier(
+            pos,
+            pin.pinPoint(),
+            pin.getStyle().color,
+            pin.getStyle().extra.link_dragged_thickness);
+    }
+}
+
+} // namespace ImFlow::detail

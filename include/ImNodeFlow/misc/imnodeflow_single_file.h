@@ -20,6 +20,7 @@
 #include "./../../../src/PinConnectionHolder.cpp"
 #include "./../../../src/PinRef.cpp"
 #include "./../../../src/uid_helpers.cpp"
+#include "./../../../src/pin_drawing_utils.cpp"
 #endif  // IMNODEFLOW_IMPLEMENTATION
 // NOLINTEND
 
