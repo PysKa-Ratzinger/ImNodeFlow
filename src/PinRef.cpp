@@ -432,12 +432,7 @@ bool PinRef<TIsConst>::allowsSameNodeConnections() const
 template <bool TIsConst>
 ImVec2 PinRef<TIsConst>::pinPoint() const
 {
-    auto& base = m_pin.get();
-
-    if (base.type == PinType::Input) {
-        return base.pos + ImVec2(-base.style.extra.socket_padding, base.size.y / 2);
-    }
-    return base.pos + ImVec2(base.size.x + base.style.extra.socket_padding, base.size.y / 2);
+    return m_pin.get().pinPoint;
 }
 
 template <bool TIsConst>

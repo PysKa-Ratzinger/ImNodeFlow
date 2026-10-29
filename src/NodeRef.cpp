@@ -519,15 +519,19 @@ void NodeRefImpl<TIsConst>::update()
     for (auto& p : node.outs) {
         PinRef pin { *p };
         float w = pin.pinPoint().x - pin.getPos().x;
-        float align_offset = maxW - w;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + align_offset);
+        if (w > 0.F) {
+            float align_offset = maxW - w;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + align_offset);
+        }
         pin.update();
     }
     for (auto& dyn_pin : node.dynamicOuts) {
         PinRef pin { dyn_pin.pin() };
         float w = pin.pinPoint().x - pin.getPos().x;
-        float align_offset = maxW - w;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + align_offset);
+        if (w > 0.F) {
+            float align_offset = maxW - w;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + align_offset);
+        }
         dyn_pin.update();
     }
 
