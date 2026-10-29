@@ -469,7 +469,7 @@ void NodeRefImpl<TIsConst>::update()
             PinRef { *p }.update();
         }
         for (auto& dyn_pin : node.dynamicIns) {
-            PinRef { dyn_pin.pin() }.update();
+            dyn_pin.update();
         }
         ImGui::EndGroup();
         ImGui::SameLine();
@@ -528,7 +528,7 @@ void NodeRefImpl<TIsConst>::update()
         float w = pin.pinPoint().x - pin.getPos().x;
         float align_offset = maxW - w;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + align_offset);
-        pin.update();
+        dyn_pin.update();
     }
 
     ImGui::EndGroup();
