@@ -8,12 +8,12 @@ namespace ImFlow::detail {
 
 inline void
 smart_bezier(
-        const ImVec2& p1,
-        const ImVec2& p2,
-        ImU32 color,
-        float thickness)
+    ImDrawList* draw_list,
+    const ImVec2& p1,
+    const ImVec2& p2,
+    ImU32 color,
+    float thickness)
 {
-    ImDrawList* draw_list = ImGui::GetForegroundDrawList(ImGui::GetCurrentWindow());
     float distance = sqrt(pow((p2.x - p1.x), 2.f) + pow((p2.y - p1.y), 2.f));
     float delta = distance * 0.45f;
     if (p2.x < p1.x) {
@@ -29,6 +29,7 @@ smart_bezier(
 
 inline void
 smart_bezier_gradient(
+    ImDrawList* draw_list,
     const ImVec2& p1,
     const ImVec2& p2,
     ImU32 color1,
@@ -37,11 +38,10 @@ smart_bezier_gradient(
     float blend)
 {
     if (color1 == color2) {
-        smart_bezier(p1, p2, color1, thickness);
+        smart_bezier(draw_list, p1, p2, color1, thickness);
         return;
     }
 
-    ImDrawList* dl = ImGui::GetWindowDrawList();
     float distance = sqrt(pow((p2.x - p1.x), 2.f) + pow((p2.y - p1.y), 2.f));
     float delta = distance * 0.45f;
     if (p2.x < p1.x) {
@@ -66,7 +66,7 @@ smart_bezier_gradient(
         if (blend != 1.f) // symmetric contrast curve around the midpoint
             tm = (tm < 0.5f) ? 0.5f * powf(2.f * tm, blend) : 1.f - 0.5f * powf(2.f * (1.f - tm), blend);
         ImU32 col = ImGui::ColorConvertFloat4ToU32(ImLerp(c1, c2, tm));
-        dl->AddLine(prev, pt, col, thickness);
+        draw_list->AddLine(prev, pt, col, thickness);
         prev = pt;
     }
 }

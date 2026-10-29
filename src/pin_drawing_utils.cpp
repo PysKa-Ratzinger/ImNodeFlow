@@ -11,19 +11,24 @@
 
 namespace ImFlow::detail {
 
-void draw_bezier_from_pin_to_pos(pin_base_t const& pin_base, ImVec2 pos)
+void draw_bezier_from_pin_to_pos(
+    ImDrawList* draw_list,
+    pin_base_t const& pin_base,
+    ImVec2 pos)
 {
     PinRef<true> pin { pin_base };
 
     // Links drag-out
     if (pin.getType() == PinType::Output) {
         detail::smart_bezier(
+            draw_list,
             pin.pinPoint(),
             pos,
             pin.getStyle().color,
             pin.getStyle().extra.link_dragged_thickness);
     } else {
         detail::smart_bezier(
+            draw_list,
             pos,
             pin.pinPoint(),
             pin.getStyle().color,

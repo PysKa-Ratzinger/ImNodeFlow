@@ -113,6 +113,7 @@ void Link::update(ImNodeFlow& ctx)
     }
 
     smart_bezier_gradient(
+        ImGui::GetWindowDrawList(),
         start,
         end,
         start_color,

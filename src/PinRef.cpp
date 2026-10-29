@@ -232,7 +232,10 @@ void PinRef<TIsConst>::update()
     drawDragDropPinSourceAndTarget(m_pin, &drag_drop_source_active, &drag_drop_target_active);
 
     if (drag_drop_source_active) {
-        detail::draw_bezier_from_pin_to_pos(pin, ImGui::GetMousePos());
+        detail::draw_bezier_from_pin_to_pos(
+            ImGui::GetForegroundDrawList(),
+            pin,
+            ImGui::GetMousePos());
     }
 
     bool is_hovering = decoration_hovered

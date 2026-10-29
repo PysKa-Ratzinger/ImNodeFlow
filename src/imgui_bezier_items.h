@@ -6,6 +6,7 @@ namespace ImFlow::detail {
 
 /**
  * @brief Draw a sensible bezier between two points
+ * @param draw_list The draw list to draw to
  * @param p1 Starting point
  * @param p2 Ending point
  * @param color Color of the curve
@@ -13,13 +14,15 @@ namespace ImFlow::detail {
  */
 inline static void
 smart_bezier(
-        const ImVec2& p1,
-        const ImVec2& p2,
-        ImU32 color,
-        float thickness);
+    ImDrawList* draw_list,
+    const ImVec2& p1,
+    const ImVec2& p2,
+    ImU32 color,
+    float thickness);
 
 /**
  * @brief Draw a sensible bezier whose color blends from one end to the other
+ * @param draw_list The draw list to draw to
  * @param p1 Starting point
  * @param p2 Ending point
  * @param color1 Color at the starting point
@@ -28,6 +31,7 @@ smart_bezier(
  * @param blend Tightness of the color transition. 1 = linear, >1 concentrates it toward the middle, <1 spreads it
  */
 inline static void smart_bezier_gradient(
+    ImDrawList* draw_list,
     const ImVec2& p1,
     const ImVec2& p2,
     ImU32 color1,

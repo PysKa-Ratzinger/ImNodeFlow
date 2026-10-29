@@ -472,12 +472,26 @@ void ImNodeFlow::update()
     }
 
     // Dropped Link PopUp
-    if (ImGui::BeginPopup("DroppedLinkPopUp")) {
+    if (ImGui::IsPopupOpen("DroppedLinkPopUp")) {
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImDrawListSplitter splitter;
+        splitter.Split(draw_list, 2);
+        splitter.SetCurrentChannel(draw_list, 1);
+
+        ImVec2 mouse_pos_on_popup;
+        if (ImGui::BeginPopup("DroppedLinkPopUp")) {
+            mouse_pos_on_popup = ImGui::GetMousePosOnOpeningCurrentPopup();
+            m_impl->droppedLinkPopUp(PinRef<> { *m_impl->droppedLinkLeft });
+            ImGui::EndPopup();
+        }
+
+        splitter.SetCurrentChannel(draw_list, 0);
         detail::draw_bezier_from_pin_to_pos(
+            ImGui::GetWindowDrawList(),
             *m_impl->droppedLinkLeft,
-            ImGui::GetMousePosOnOpeningCurrentPopup());
-        m_impl->droppedLinkPopUp(PinRef<> { *m_impl->droppedLinkLeft });
-        ImGui::EndPopup();
+            mouse_pos_on_popup);
+
+        splitter.Merge(draw_list);
     }
 
     if (mouse_context_held
