@@ -29,8 +29,9 @@ struct editor_context_t {
 
     bool is_drawing = false;
 
+    std::vector<std::unique_ptr<node_t>> newNodesQueue;
+
     std::vector<std::unique_ptr<node_t>> nodes;
-    std::vector<std::unique_ptr<node_t>> nodesNext;
     std::vector<std::unique_ptr<Link>> links;
 
     dropped_link_popup_handler_t droppedLinkPopUp;

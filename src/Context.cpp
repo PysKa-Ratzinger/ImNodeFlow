@@ -30,7 +30,7 @@ int ImNodeFlow::m_instances = 0;
 NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
     auto uid = detail::generate_node_uid();
-    auto& container = m_impl->is_drawing ? m_impl->nodesNext : m_impl->nodes;
+    auto& container = m_impl->is_drawing ? m_impl->newNodesQueue : m_impl->nodes;
     auto& node = container.emplace_back(
         std::make_unique<detail::node_t>(
             detail::node_t {
@@ -574,12 +574,12 @@ void ImNodeFlow::update()
 
     m_impl->is_drawing = false;
 
-    if (!m_impl->nodesNext.empty()) {
+    if (!m_impl->newNodesQueue.empty()) {
         std::move(
-            std::begin(m_impl->nodesNext),
-            std::end(m_impl->nodesNext),
+            std::begin(m_impl->newNodesQueue),
+            std::end(m_impl->newNodesQueue),
             std::back_inserter(m_impl->nodes));
-        m_impl->nodesNext.clear();
+        m_impl->newNodesQueue.clear();
     }
 }
 
