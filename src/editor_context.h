@@ -41,8 +41,11 @@ struct editor_context_t {
     node_t* hoveredNodeAux = nullptr;
 
     node_t* hoveredNode = nullptr;
-    bool draggingNode = false;
-    bool draggingNodeNext = false;
+    ImVec2 nodeDragStart;
+    ImVec2 nodeDragEnd;
+    bool nodeDragActive = false;
+    bool nodeDragActiveNext = false;
+    bool nodeDragActiveNext2 = false;
 
     InfStyler style;
 

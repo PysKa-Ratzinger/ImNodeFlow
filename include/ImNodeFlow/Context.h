@@ -209,12 +209,6 @@ public:
     IContainedContext& getGrid();
 
     /**
-     * @brief Get dragging status
-     * @return [TRUE] if a Node is being dragged around the grid
-     */
-    [[nodiscard]] bool isNodeDragged() const;
-
-    /**
      * @brief Get current style
      * @return Reference to style variables
      */
@@ -231,13 +225,13 @@ public:
      */
     void setSize(const ImVec2& size);
 
-    /**
-     * @brief Set dragging status
-     * @param state New dragging state
-     *
-     * The new state will only be updated one at the start of each frame.
-     */
-    void draggingNode(bool state);
+    void startNodeDrag();
+
+    void stopNodeDrag();
+
+    bool wantsNodeDrag();
+
+    bool getNodeDragAmmount(ImVec2* out_vec_amount);
 
     /**
      * @brief Set what node is being hovered

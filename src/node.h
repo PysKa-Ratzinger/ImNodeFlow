@@ -25,6 +25,7 @@ struct node_t {
     std::string title;
     ImVec2 pos;
     ImVec2 posTarget;
+    ImVec2 posBackup;
     ImVec2 size;
     ImVec2 fullSize;
     NodeStyle style;
@@ -33,6 +34,7 @@ struct node_t {
     bool provisionallySelected = false;
     bool provisionallySelectedNext = false;
     bool destroyed = false;
+    bool dragging = false;
     bool indestructable = false;
 
     // Used to render each node's foreground and background out of order

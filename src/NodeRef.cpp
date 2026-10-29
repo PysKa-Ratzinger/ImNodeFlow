@@ -587,6 +587,7 @@ void NodeRefImpl<TIsConst>::update()
     bool header_hovered = false;
     bool header_held = false;
     bool header_pressed = false;
+    bool header_held_released = false;
     bool node_hovered = false;
     bool node_pressed = false;
 
@@ -600,6 +601,8 @@ void NodeRefImpl<TIsConst>::update()
             &header_hovered,
             &header_held,
             ImGuiButtonFlags_PressedOnClick);
+
+        header_held_released = ImGui::IsItemDeactivated();
     }
 
     if (ImGui::ItemAdd(node_bb, node_id)) {
@@ -619,19 +622,30 @@ void NodeRefImpl<TIsConst>::update()
         setSelected(true);
     }
 
-    if (header_held) {
-        ctx.draggingNode(true);
+    if (header_pressed) {
+        ctx.startNodeDrag();
+    }
+    if (header_held_released) {
+        ctx.stopNodeDrag();
     }
 
-    if (header_held || (node.selected && ctx.isNodeDragged())) {
-        float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
-        node.posTarget += ctx.getScreenSpaceDelta();
+    if (node.selected && ctx.wantsNodeDrag()) {
+        ImVec2 drag_vec;
+        bool should_apply_drag = ctx.getNodeDragAmmount(&drag_vec);
+
+        if (!node.dragging) {
+            node.posBackup = node.posTarget;
+            node.dragging = true;
+        }
+
+        node.posTarget = node.posBackup + drag_vec;
         // "Slam" The position
+        float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
         node.pos.x = round(node.posTarget.x / step) * step;
         node.pos.y = round(node.posTarget.y / step) * step;
 
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            ctx.draggingNode(false);
+        if (should_apply_drag) {
+            node.dragging = false;
             node.posTarget = node.pos;
         }
     }

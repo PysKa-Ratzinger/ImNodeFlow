@@ -245,11 +245,6 @@ IContainedContext& ImNodeFlow::getGrid()
     return m_impl->context;
 }
 
-[[nodiscard]] bool ImNodeFlow::isNodeDragged() const
-{
-    return m_impl->draggingNode;
-}
-
 const InfStyler& ImNodeFlow::getStyle() const
 {
     return m_impl->style;
@@ -265,9 +260,38 @@ void ImNodeFlow::setSize(const ImVec2& size)
     m_impl->context.config().size = size;
 }
 
-void ImNodeFlow::draggingNode(bool state)
+void ImNodeFlow::startNodeDrag()
 {
-    m_impl->draggingNodeNext = state;
+    m_impl->nodeDragStart = this->screen2grid(ImGui::GetMousePos());
+    m_impl->nodeDragEnd = this->screen2grid(ImGui::GetMousePos());
+    m_impl->nodeDragActive = true;
+    m_impl->nodeDragActiveNext = true;
+    m_impl->nodeDragActiveNext2 = true;
+}
+
+void ImNodeFlow::stopNodeDrag()
+{
+    m_impl->nodeDragActiveNext2 = false;
+}
+
+bool ImNodeFlow::wantsNodeDrag()
+{
+    return m_impl->nodeDragActive;
+}
+
+bool ImNodeFlow::getNodeDragAmmount(ImVec2* out_vec_amount)
+{
+    bool should_apply_drag = m_impl->nodeDragActive && !m_impl->nodeDragActiveNext;
+    if (m_impl->nodeDragActive) {
+        if (out_vec_amount != nullptr) {
+            *out_vec_amount = m_impl->nodeDragEnd - m_impl->nodeDragStart;
+        }
+    } else {
+        if (out_vec_amount != nullptr) {
+            *out_vec_amount = ImVec2 { 0.F, 0.F };
+        }
+    }
+    return should_apply_drag;
 }
 
 void ImNodeFlow::hoveredNode(detail::node_t* hovering)
@@ -281,7 +305,12 @@ void ImNodeFlow::update()
 
     // Updating looping stuff
     m_impl->hoveredNode = nullptr;
-    m_impl->draggingNode = m_impl->draggingNodeNext;
+    m_impl->nodeDragActive = m_impl->nodeDragActiveNext;
+    m_impl->nodeDragActiveNext = m_impl->nodeDragActiveNext2;
+
+    if (m_impl->nodeDragActive) {
+        m_impl->nodeDragEnd = this->screen2grid(ImGui::GetMousePos());
+    }
 
     // Create child canvas
     m_impl->context.begin();
