@@ -128,6 +128,8 @@ public:
     template <typename T, typename... Params>
     NodeRef emplaceNodeOnMouse(Params&&... args);
 
+    bool canLink(PinRef<true> source_pin, PinRef<true> target_pin);
+
     /**
      * @brief Creates a link between two pins
      * @param source_pin Reference to the input pin

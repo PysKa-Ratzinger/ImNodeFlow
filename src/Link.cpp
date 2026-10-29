@@ -2,11 +2,15 @@
 
 #include "ImNodeFlow/Context.h"
 #include "ImNodeFlow/PinRef.h"
+#include "ImNodeFlow/PinType.h"
 
 #include "./imgui_bezier_items.h"
+#include "./pin_base.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
+
+#include <utility>
 
 namespace ImFlow::detail {
 
@@ -15,6 +19,11 @@ Link::Link(pin_base_t& out_pin, pin_base_t& in_pin) noexcept
     , m_in_pin(&in_pin)
 {
     assert(m_out_pin != m_in_pin && "Links cannot be created starting and ending in the same node");
+    assert(m_out_pin->type != m_in_pin->type && "Links cannot be created between pins of the same type");
+
+    if (m_out_pin->type == PinType::Input) {
+        std::swap(m_out_pin, m_in_pin);
+    }
 
     PinRef<> { *m_out_pin }.addLink(this);
     PinRef<> { *m_in_pin }.addLink(this);

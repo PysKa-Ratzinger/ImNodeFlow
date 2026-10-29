@@ -227,6 +227,14 @@ public:
     /**
      * @internal For internal use only
      */
+    operator PinRef<true>() const
+    {
+        return PinRef<true>{ m_pin.get() };
+    }
+
+    /**
+     * @internal For internal use only
+     */
     operator value_type&()
     {
         return m_pin.get();

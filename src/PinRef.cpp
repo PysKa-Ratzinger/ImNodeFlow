@@ -57,6 +57,23 @@ namespace {
             radius = pin.style.socket_hovered_radius;
         }
 
+        const ImGuiPayload* payload = ImGui::GetDragDropPayload();
+        if (payload != nullptr && payload->IsDataType("PIN_BASE_POINTER")) {
+            IM_ASSERT(payload->DataSize == sizeof(detail::pin_base_t*));
+            detail::pin_base_t* source_pin;
+            std::memcpy(&source_pin, payload->Data, sizeof(source_pin));
+            if (source_pin != nullptr) {
+                bool is_compatible = pin.ctx.get().canLink(
+                    PinRef<true> { *source_pin },
+                    PinRef<true> { pin });
+                if (is_compatible) {
+                    radius *= 1.25F;
+                } else {
+                    color = ImGui::ColorConvertFloat4ToU32(ImVec4(0.4F, 0.4F, 0.4F, 0.5F));
+                }
+            }
+        }
+
         ImVec2 socket_size { maxRadius * 2.0F, maxRadius * 2.0F };
         ImVec2 item_size { maxRadius * 2.0F, text_height };
         ImVec2 point = ImGui::GetCursorPos() + item_size / 2.0F;

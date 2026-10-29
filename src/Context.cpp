@@ -124,27 +124,27 @@ ImNodeFlow::grid2screen(const ImVec2& p)
     return (p + m_impl->context.scroll()) * m_impl->context.scale() + m_impl->context.origin();
 }
 
-void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
+bool ImNodeFlow::canLink(PinRef<true> source_pin, PinRef<true> target_pin)
 {
     if (source_pin == target_pin) {
-        return;
+        return false;
     }
 
     if (source_pin.getType() == target_pin.getType()) {
         // Cannot link inputs to inputs nor outputs to outputs
-        return;
+        return false;
     }
 
     bool same_node_allowed = source_pin.allowsSameNodeConnections()
         && target_pin.allowsSameNodeConnections();
     if (source_pin.getParent() == target_pin.getParent() && !same_node_allowed) {
-        return;
+        return false;
     }
 
     for (const auto& pin_ref : source_pin.getConnections()) {
         if (pin_ref == target_pin) {
             // Connection already exists
-            return;
+            return false;
         }
     }
 
@@ -165,26 +165,19 @@ void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
     // Supporting connections only between same types avoids all these
     // issues, and it's not something that's prohibitibly hard to work
     // around on the client side.
-    if (source_pin.getTypeID() != target_pin.getTypeID()) {
+    return source_pin.getTypeID() == target_pin.getTypeID();
+}
+
+void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
+{
+    if (!canLink(source_pin, target_pin)) {
         return;
     }
 
-    if (source_pin.getType() == PinType::Output
-        && target_pin.getType() == PinType::Input) {
-
-        m_impl->links.emplace_back(
-            std::make_unique<detail::Link>(
-                source_pin,
-                target_pin));
-
-    } else if (source_pin.getType() == PinType::Input
-        && target_pin.getType() == PinType::Output) {
-
-        m_impl->links.emplace_back(
-            std::make_unique<detail::Link>(
-                target_pin,
-                source_pin));
-    }
+    m_impl->links.emplace_back(
+        std::make_unique<detail::Link>(
+            source_pin,
+            target_pin));
 }
 
 void ImNodeFlow::droppedLinkPopUpContent(
