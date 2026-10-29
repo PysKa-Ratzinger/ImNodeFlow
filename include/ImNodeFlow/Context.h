@@ -225,12 +225,28 @@ public:
      */
     void setSize(const ImVec2& size);
 
+    /**
+     * FIXME: Remove methods for internal use from public API
+     * @internal For internal use
+     */
     void startNodeDrag();
 
+    /**
+     * FIXME: Remove methods for internal use from public API
+     * @internal For internal use
+     */
     void stopNodeDrag();
 
+    /**
+     * FIXME: Remove methods for internal use from public API
+     * @internal For internal use
+     */
     bool wantsNodeDrag();
 
+    /**
+     * FIXME: Remove methods for internal use from public API
+     * @internal For internal use
+     */
     bool getNodeDragAmmount(ImVec2* out_vec_amount);
 
     /**
