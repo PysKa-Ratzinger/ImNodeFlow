@@ -278,12 +278,6 @@ public:
      */
     bool mouse_on_selected_node();
 
-    /**
-     * @brief Check if mouse is on a free point on the grid
-     * @return [TRUE] if the mouse is not hovering a node or a link
-     */
-    bool mouse_on_free_space();
-
 private:
     std::unique_ptr<detail::editor_context_t> m_impl;
 };

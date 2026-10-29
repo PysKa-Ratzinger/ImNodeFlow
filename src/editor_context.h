@@ -6,6 +6,7 @@
 #include "ImNodeFlow/Style.h"
 #include "ImNodeFlow/callback_types.h"
 
+#include "./NodeGroup.h"
 #include "./context_wrapper.h"
 #include "./node.h"
 
@@ -31,7 +32,8 @@ struct editor_context_t {
 
     std::vector<std::unique_ptr<node_t>> newNodesQueue;
 
-    std::vector<std::unique_ptr<node_t>> nodes;
+    detail::NodeGroup root_group;
+
     std::vector<std::unique_ptr<Link>> links;
 
     dropped_link_popup_handler_t droppedLinkPopUp;

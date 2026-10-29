@@ -30,18 +30,21 @@ int ImNodeFlow::m_instances = 0;
 NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 {
     auto uid = detail::generate_node_uid();
-    auto& container = m_impl->is_drawing ? m_impl->newNodesQueue : m_impl->nodes;
-    auto& node = container.emplace_back(
-        std::make_unique<detail::node_t>(
-            detail::node_t {
-                .ctx = *this,
-                .uid = uid,
-                .pos = grid_coords,
-                .posTarget = grid_coords,
-                .style = std::move(node_info.style),
-                .behaviour = std::move(node_info.behaviour),
-            }));
 
+    auto new_node = std::make_unique<detail::node_t>(
+        detail::node_t {
+            .ctx = *this,
+            .uid = uid,
+            .pos = grid_coords,
+            .posTarget = grid_coords,
+            .style = std::move(node_info.style),
+            .behaviour = std::move(node_info.behaviour),
+        });
+
+    auto& container = m_impl->is_drawing
+        ? m_impl->newNodesQueue
+        : m_impl->root_group.nodes;
+    auto& node = container.emplace_back(std::move(new_node));
     if (node->behaviour) {
         node->behaviour->setup(NodeRef { *node });
     }
@@ -91,21 +94,7 @@ ImNodeFlow::~ImNodeFlow() = default;
 
 bool ImNodeFlow::mouse_on_selected_node()
 {
-    return std::any_of(m_impl->nodes.begin(), m_impl->nodes.end(), [](const auto& n) {
-        ConstNodeRef node { *n };
-        return node.isSelected() && node.isHovered();
-    });
-}
-
-bool ImNodeFlow::mouse_on_free_space()
-{
-    return std::all_of(
-               m_impl->nodes.begin(),
-               m_impl->nodes.end(),
-               [](const auto& n) { return !ConstNodeRef { *n }.isHovered(); })
-        && std::all_of(m_impl->links.begin(), m_impl->links.end(), [](const auto& l) {
-               return !l->isHovered();
-           });
+    return m_impl->root_group.mouse_over_any_selected_node();
 }
 
 ImVec2
@@ -230,7 +219,7 @@ ImVec2 ImNodeFlow::getScreenSpaceDelta() const
 
 uint64_t ImNodeFlow::getNodesCount() const
 {
-    return m_impl->nodes.size();
+    return m_impl->root_group.getNodesCount();
 }
 
 IContainedContext& ImNodeFlow::getGrid()
@@ -346,66 +335,13 @@ void ImNodeFlow::update()
     }
 
     // Propagate pin values
-    for (auto& node : m_impl->nodes) {
-        NodeRef { *node }.calculate_inputs();
-    }
-    for (auto& node : m_impl->nodes) {
-        NodeRef { *node }.prime_inputs();
-    }
-    for (auto& node : m_impl->nodes) {
-        NodeRef { *node }.calculate_outputs();
-    }
-    for (auto& node : m_impl->nodes) {
-        NodeRef { *node }.prime_outputs();
-    }
+    m_impl->root_group.calculate_inputs();
+    m_impl->root_group.prime_inputs();
+    m_impl->root_group.calculate_outputs();
+    m_impl->root_group.prime_outputs();
 
     // Update and draw nodes
-    std::vector<std::unique_ptr<detail::node_t>> next_frame_nodes;
-    next_frame_nodes.reserve(m_impl->nodes.size());
-
-    if (!m_impl->nodes.empty()) {
-        // We need this in order to render the nodes front to back
-        ImDrawListSplitter splitter;
-        splitter.Split(draw_list, m_impl->nodes.size());
-        for (size_t i = 0; i < m_impl->nodes.size(); i++) {
-            splitter.SetCurrentChannel(draw_list, m_impl->nodes.size() - i - 1);
-            NodeRef { *m_impl->nodes[i] }.update();
-        }
-        splitter.Merge(draw_list);
-    }
-
-    for (auto& node : m_impl->nodes) {
-        if (node->destroyed) {
-            continue;
-        }
-
-        bool was_selected = node->selected;
-        NodeRef { *node }.updatePublicStatus();
-        bool is_selected = node->selected;
-
-        if (!was_selected && is_selected) {
-            next_frame_nodes.emplace_back(std::move(node));
-        }
-    }
-
-    for (auto& node : m_impl->nodes) {
-        if (!node || node->destroyed) {
-            continue;
-        }
-
-        if (node->selected) {
-            next_frame_nodes.emplace_back(std::move(node));
-        }
-    }
-
-    for (auto& node : m_impl->nodes) {
-        if (!node || node->destroyed) {
-            continue;
-        }
-
-        next_frame_nodes.emplace_back(std::move(node));
-    }
-    m_impl->nodes = std::move(next_frame_nodes);
+    m_impl->root_group.update();
 
     // Update and draw links
     for (auto iter = m_impl->links.begin(); iter != m_impl->links.end();) {
@@ -447,13 +383,11 @@ void ImNodeFlow::update()
     if (mouse_context_pressed) {
         if (active_id_mouse_button == grid_cfg.selection_box_button) {
             m_impl->box.active = true;
-            m_impl->box.selectionStart = ImGui::GetMousePos();
+            m_impl->box.selectionStart = this->screen2grid(ImGui::GetMousePos());
 
             // Deselect all nodes if not holding down CTRL
             if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
-                for (auto& node : m_impl->nodes) {
-                    NodeRef { *node }.setSelected(false);
-                }
+                m_impl->root_group.deselectAllNodes();
             }
         }
     }
@@ -508,13 +442,15 @@ void ImNodeFlow::update()
 
     if (m_impl->box.active) {
         ImRect boxClip { m_impl->box.selectionStart, m_impl->box.selectionStart };
-        boxClip.Add(ImGui::GetMousePos());
+        boxClip.Add(this->screen2grid(ImGui::GetMousePos()));
 
         draw_list->AddRectFilled(
-            boxClip.GetBL(), boxClip.GetTR(), m_impl->box.selectionColor);
+            this->grid2screen(boxClip.GetBL()),
+            this->grid2screen(boxClip.GetTR()),
+            m_impl->box.selectionColor);
         draw_list->AddRect(
-            boxClip.GetBL(),
-            boxClip.GetTR(),
+            this->grid2screen(boxClip.GetBL()),
+            this->grid2screen(boxClip.GetTR()),
             m_impl->box.borderColor,
             0.0F,
             0,
@@ -531,20 +467,10 @@ void ImNodeFlow::update()
             m_impl->box.active = false;
         }
 
-        for (auto& elem : m_impl->nodes) {
-            NodeRef node { *elem };
-
-            ImVec2 nodePos = grid2screen(node.getTLPos());
-            ImVec2 nodeSize = node.getFullSize();
-
-            ImRect nodeClip { nodePos, nodePos + nodeSize };
-            if (boxClip.Overlaps(nodeClip)) {
-                if (shouldMarkSelected) {
-                    node.setSelected(true);
-                } else {
-                    node.setProvisionallySelected(true);
-                }
-            }
+        if (shouldMarkSelected) {
+            m_impl->root_group.selectArea(boxClip);
+        } else {
+            m_impl->root_group.provisionallySelectArea(boxClip);
         }
     }
 
@@ -578,7 +504,7 @@ void ImNodeFlow::update()
         std::move(
             std::begin(m_impl->newNodesQueue),
             std::end(m_impl->newNodesQueue),
-            std::back_inserter(m_impl->nodes));
+            std::back_inserter(m_impl->root_group.nodes));
         m_impl->newNodesQueue.clear();
     }
 }

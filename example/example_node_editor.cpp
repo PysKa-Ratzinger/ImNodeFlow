@@ -284,6 +284,14 @@ NodeEditor::NodeEditor(float width, float height)
                 pin.linkTo(*node.inPin("In"));
                 ImGui::CloseCurrentPopup();
             }
+        } else if (pin.getType() == ImFlow::PinType::Output
+            && pin.getTypeID() == ImFlow::detail::get_type_id<bool>()) {
+            ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+            if (ImGui::Button("Not Gate")) {
+                auto node = mINF.emplaceNodeAt<NotGate>(mouse_screen_pos);
+                pin.linkTo(*node.inPin("IN"));
+                ImGui::CloseCurrentPopup();
+            }
         } else {
             ImGui::CloseCurrentPopup();
         }

@@ -15,13 +15,14 @@
 #include "./../../../src/IContainedContext.cpp"
 #include "./../../../src/INodeBehaviour.cpp"
 #include "./../../../src/Link.cpp"
+#include "./../../../src/NodeGroup.cpp"
 #include "./../../../src/NodeRef.cpp"
-#include "./../../../src/pin_base.cpp"
 #include "./../../../src/PinConnectionHolder.cpp"
 #include "./../../../src/PinRef.cpp"
-#include "./../../../src/uid_helpers.cpp"
+#include "./../../../src/pin_base.cpp"
 #include "./../../../src/pin_drawing_utils.cpp"
-#endif  // IMNODEFLOW_IMPLEMENTATION
+#include "./../../../src/uid_helpers.cpp"
+#endif // IMNODEFLOW_IMPLEMENTATION
 // NOLINTEND
 
-#endif  // IMNODEFLOW_SINGLE_FILE_H
+#endif // IMNODEFLOW_SINGLE_FILE_H
