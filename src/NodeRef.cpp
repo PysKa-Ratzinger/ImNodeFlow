@@ -3,23 +3,32 @@
 #include "ImNodeFlow/Context.h"
 #include "ImNodeFlow/NodeStyle.h"
 #include "ImNodeFlow/NodeUID.h"
+#include "ImNodeFlow/PinInfo.h"
 #include "ImNodeFlow/PinRef.h"
 #include "ImNodeFlow/PinType.h"
 
-#include "imgui.h"
-
+#include "./DynamicPinRef.h"
+#include "./dynamic_pin.h"
 #include "./node.h"
 #include "./pin_base.h"
+
+#include "ImNodeFlow/PinUID.h"
+#include "ImNodeFlow/detail/IPin.h"
+#include "imgui.h"
 #include "imgui_internal.h"
 
+#include <algorithm>
+#include <memory>
+#include <optional>
 #include <string_view>
 #include <utility>
 
 namespace ImFlow {
 
 template <bool TIsConst>
-NodeRefImpl<TIsConst>::NodeRefImpl(underlying_type& internal_node)
-    : m_node(internal_node)
+NodeRefImpl<TIsConst>::NodeRefImpl(context_type& ctx, node_type& internal_node)
+    : m_ctx(ctx)
+    , m_node(internal_node)
 {
 }
 
@@ -30,6 +39,18 @@ void NodeRefImpl<TIsConst>::destroy()
     auto& node = m_node.get();
     if (node.behaviour) {
         node.behaviour.reset();
+    }
+    for (auto& elem : node.ins) {
+        PinRef<> { m_ctx, *elem }.destroy();
+    }
+    for (auto& elem : node.dynamicIns) {
+        detail::DynamicPinRef<> { m_ctx, *elem }.destroy();
+    }
+    for (auto& elem : node.outs) {
+        PinRef<> { m_ctx, *elem }.destroy();
+    }
+    for (auto& elem : node.dynamicOuts) {
+        detail::DynamicPinRef<> { m_ctx, *elem }.destroy();
     }
     node.destroyed = true;
 }
@@ -47,8 +68,8 @@ bool NodeRefImpl<TIsConst>::isHovered() const
     ImVec2 paddingTL = { node.style.padding.x, node.style.padding.y };
     ImVec2 paddingBR = { node.style.padding.z, node.style.padding.w };
     return ImGui::IsMouseHoveringRect(
-        node.ctx.get().grid2screen(node.pos - paddingTL),
-        node.ctx.get().grid2screen(node.pos + node.size + paddingBR));
+        m_ctx.get().grid2screen(node.pos - paddingTL),
+        m_ctx.get().grid2screen(node.pos + node.size + paddingBR));
 }
 
 template <bool TIsConst>
@@ -92,6 +113,13 @@ template <bool TIsConst>
 const NodeStyle& NodeRefImpl<TIsConst>::getStyle() const
 {
     return m_node.get().style;
+}
+
+template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::isActivated() const
+{
+    auto& node = m_node.get();
+    return !node.wasSelected && node.selected;
 }
 
 template <bool TIsConst>
@@ -254,7 +282,7 @@ NodeRefImpl<TIsConst>::inPin(const PinUID& uid)
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != node.ins.end()) {
-        result.emplace(**it);
+        result.emplace(m_ctx, **it);
     }
     return result;
 }
@@ -272,7 +300,7 @@ NodeRefImpl<TIsConst>::inPin(std::string_view name)
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != node.ins.end()) {
-        result.emplace(**it);
+        result.emplace(m_ctx, **it);
     }
     return result;
 }
@@ -286,14 +314,15 @@ NodeRefImpl<TIsConst>::tempInPin(const PinUID& uid)
         node.dynamicIns.begin(),
         node.dynamicIns.end(),
         [&uid](const auto& p) {
-            return p.pin().uid == uid;
+            return p->pin.uid == uid;
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != node.dynamicIns.end()) {
+        detail::DynamicPinRef<TIsConst> dyn_pin { m_ctx, **it };
         if constexpr (!TIsConst) {
-            it->refresh();
+            dyn_pin.refresh();
         }
-        result.emplace(it->pin());
+        result.emplace(dyn_pin.pin());
     }
     return result;
 }
@@ -307,14 +336,15 @@ NodeRefImpl<TIsConst>::tempInPin(std::string_view name)
         node.dynamicIns.begin(),
         node.dynamicIns.end(),
         [&name](const auto& p) {
-            return p.pin().name == name;
+            return p->pin.name == name;
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != node.dynamicIns.end()) {
+        detail::DynamicPinRef<TIsConst> dyn_pin { m_ctx, **it };
         if constexpr (!TIsConst) {
-            it->refresh();
+            dyn_pin.refresh();
         }
-        result.emplace(it->pin());
+        result.emplace(dyn_pin.pin());
     }
     return result;
 }
@@ -332,7 +362,7 @@ NodeRefImpl<TIsConst>::outPin(const PinUID& uid)
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != node.outs.end()) {
-        result.emplace(**it);
+        result.emplace(m_ctx, **it);
     }
     return result;
 }
@@ -350,7 +380,7 @@ NodeRefImpl<TIsConst>::outPin(std::string_view name)
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != node.outs.end()) {
-        result.emplace(**it);
+        result.emplace(m_ctx, **it);
     }
     return result;
 }
@@ -364,14 +394,15 @@ NodeRefImpl<TIsConst>::tempOutPin(const PinUID& uid)
         node.dynamicOuts.begin(),
         node.dynamicOuts.end(),
         [&uid](const auto& p) {
-            return p.pin().uid == uid;
+            return p->pin.uid == uid;
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != node.dynamicOuts.end()) {
+        detail::DynamicPinRef<TIsConst> dyn_pin { m_ctx, **it };
         if constexpr (!TIsConst) {
-            it->refresh();
+            dyn_pin.refresh();
         }
-        result.emplace(it->pin());
+        result.emplace(dyn_pin.pin());
     }
     return result;
 }
@@ -385,14 +416,15 @@ NodeRefImpl<TIsConst>::tempOutPin(std::string_view name)
         node.dynamicOuts.begin(),
         node.dynamicOuts.end(),
         [&name](const auto& p) {
-            return p.pin().name == name;
+            return p->pin.name == name;
         });
     std::optional<PinRef<TIsConst>> result;
     if (it != node.dynamicOuts.end()) {
+        detail::DynamicPinRef<TIsConst> dyn_pin { m_ctx, **it };
         if constexpr (!TIsConst) {
-            it->refresh();
+            dyn_pin.refresh();
         }
-        result.emplace(it->pin());
+        result.emplace(dyn_pin.pin());
     }
     return result;
 }
@@ -403,10 +435,10 @@ void NodeRefImpl<TIsConst>::calculate_inputs()
 {
     auto& node = m_node.get();
     for (auto& pin : node.ins) {
-        pin->underlying_pin->calculate(PinRef { *pin });
+        PinRef { m_ctx, *pin }.calculate();
     }
     for (auto& pin : node.dynamicIns) {
-        pin.pin().underlying_pin->calculate(PinRef { pin.pin() });
+        detail::DynamicPinRef { m_ctx, *pin }.pin().calculate();
     }
 }
 
@@ -416,10 +448,10 @@ void NodeRefImpl<TIsConst>::calculate_outputs()
 {
     auto& node = m_node.get();
     for (auto& pin : node.outs) {
-        pin->underlying_pin->calculate(PinRef { *pin });
+        PinRef { m_ctx, *pin }.calculate();
     }
     for (auto& pin : node.dynamicOuts) {
-        pin.pin().underlying_pin->calculate(PinRef { pin.pin() });
+        detail::DynamicPinRef { m_ctx, *pin }.pin().calculate();
     }
 }
 
@@ -429,10 +461,10 @@ void NodeRefImpl<TIsConst>::prime_inputs()
 {
     auto& node = m_node.get();
     for (auto& pin : node.ins) {
-        pin->underlying_pin->prime();
+        PinRef { m_ctx, *pin }.prime();
     }
     for (auto& pin : node.dynamicIns) {
-        pin.pin().underlying_pin->prime();
+        detail::DynamicPinRef { m_ctx, *pin }.pin().prime();
     }
 }
 
@@ -442,10 +474,10 @@ void NodeRefImpl<TIsConst>::prime_outputs()
 {
     auto& node = m_node.get();
     for (auto& pin : node.outs) {
-        pin->underlying_pin->prime();
+        PinRef { m_ctx, *pin }.prime();
     }
     for (auto& pin : node.dynamicOuts) {
-        pin.pin().underlying_pin->prime();
+        detail::DynamicPinRef { m_ctx, *pin }.pin().prime();
     }
 }
 
@@ -454,7 +486,7 @@ void NodeRefImpl<TIsConst>::update()
     requires(!TIsConst)
 {
     detail::node_t& node = m_node.get();
-    auto& ctx = node.ctx.get();
+    auto& ctx = m_ctx.get();
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
@@ -483,10 +515,10 @@ void NodeRefImpl<TIsConst>::update()
     if (!node.ins.empty() || !node.dynamicIns.empty()) {
         ImGui::BeginGroup();
         for (auto& p : node.ins) {
-            PinRef { *p }.update();
+            PinRef { m_ctx, *p }.update();
         }
         for (auto& dyn_pin : node.dynamicIns) {
-            dyn_pin.update();
+            detail::DynamicPinRef<> { m_ctx, *dyn_pin }.update();
         }
         ImGui::EndGroup();
         ImGui::SameLine();
@@ -507,13 +539,17 @@ void NodeRefImpl<TIsConst>::update()
         std::remove_if(
             node.dynamicIns.begin(),
             node.dynamicIns.end(),
-            [](const auto& elem) -> bool { return elem.isStale(); }),
+            [this](const auto& elem) -> bool {
+                return detail::DynamicPinRef { m_ctx, *elem }.isStale();
+            }),
         node.dynamicIns.end());
     node.dynamicOuts.erase(
         std::remove_if(
             node.dynamicOuts.begin(),
             node.dynamicOuts.end(),
-            [](const auto& elem) -> bool { return elem.isStale(); }),
+            [this](const auto& elem) -> bool {
+                return detail::DynamicPinRef { m_ctx, *elem }.isStale();
+            }),
         node.dynamicOuts.end());
 
     ImGui::Dummy(ImVec2(0.f, 0.f));
@@ -523,18 +559,18 @@ void NodeRefImpl<TIsConst>::update()
     // Outputs
     float maxW = 0.0f;
     for (auto& p : node.outs) {
-        PinRef pin { *p };
+        PinRef pin { m_ctx, *p };
         float w = pin.pinPoint().x - pin.getPos().x;
         maxW = std::max(maxW, w);
     }
     for (auto& dyn_pin : node.dynamicOuts) {
-        PinRef pin { dyn_pin.pin() };
+        auto pin = detail::DynamicPinRef<> { m_ctx, *dyn_pin }.pin();
         float w = pin.pinPoint().x - pin.getPos().x;
         maxW = std::max(maxW, w);
     }
     ImGui::BeginGroup();
     for (auto& p : node.outs) {
-        PinRef pin { *p };
+        PinRef pin { m_ctx, *p };
         float w = pin.pinPoint().x - pin.getPos().x;
         if (w > 0.F) {
             float align_offset = maxW - w;
@@ -542,8 +578,9 @@ void NodeRefImpl<TIsConst>::update()
         }
         pin.update();
     }
-    for (auto& dyn_pin : node.dynamicOuts) {
-        PinRef pin { dyn_pin.pin() };
+    for (auto& elem : node.dynamicOuts) {
+        detail::DynamicPinRef<> dyn_pin { m_ctx, *elem };
+        PinRef pin = dyn_pin.pin();
         float w = pin.pinPoint().x - pin.getPos().x;
         if (w > 0.F) {
             float align_offset = maxW - w;
@@ -692,13 +729,12 @@ NodeRefImpl<TIsConst>::addIN_impl(
 {
     auto& node = m_node.get();
     node.ins.emplace_back(std::make_unique<detail::pin_base_t>(
-        node.ctx,
         *this,
         PinType::Input,
         std::move(info),
         std::move(pin_impl)));
 
-    return PinRef<TIsConst> { *node.ins.back() };
+    return PinRef<TIsConst> { m_ctx, *node.ins.back() };
 }
 
 template <bool TIsConst>
@@ -709,14 +745,15 @@ NodeRefImpl<TIsConst>::showIN_impl(
     requires(!TIsConst)
 {
     auto& node = m_node.get();
-    node.dynamicIns.emplace_back(std::make_unique<detail::pin_base_t>(
-        node.ctx,
-        *this,
-        PinType::Input,
-        std::move(info),
-        std::move(pin_impl)));
+    node.dynamicIns.emplace_back(std::make_unique<detail::dynamic_pin_t>(
+        detail::pin_base_t {
+            *this,
+            PinType::Input,
+            std::move(info),
+            std::move(pin_impl),
+        }));
 
-    return PinRef<TIsConst> { node.dynamicIns.back().pin() };
+    return detail::DynamicPinRef<TIsConst> { m_ctx, *node.dynamicIns.back() }.pin();
 }
 
 template <bool TIsConst>
@@ -728,13 +765,12 @@ NodeRefImpl<TIsConst>::addOUT_impl(
 {
     auto& node = m_node.get();
     node.outs.emplace_back(std::make_unique<detail::pin_base_t>(
-        node.ctx,
         *this,
         PinType::Output,
         std::move(info),
         std::move(pin_impl)));
 
-    return PinRef<TIsConst> { *node.outs.back() };
+    return PinRef<TIsConst> { m_ctx, *node.outs.back() };
 }
 
 template <bool TIsConst>
@@ -745,14 +781,15 @@ NodeRefImpl<TIsConst>::showOUT_impl(
     requires(!TIsConst)
 {
     auto& node = m_node.get();
-    node.dynamicOuts.emplace_back(std::make_unique<detail::pin_base_t>(
-        node.ctx,
-        *this,
-        PinType::Output,
-        std::move(info),
-        std::move(pin_impl)));
+    node.dynamicOuts.emplace_back(std::make_unique<detail::dynamic_pin_t>(
+        detail::pin_base_t {
+            *this,
+            PinType::Output,
+            std::move(info),
+            std::move(pin_impl),
+        }));
 
-    return PinRef<TIsConst> { node.dynamicOuts.back().pin() };
+    return detail::DynamicPinRef<TIsConst> { m_ctx, *node.dynamicOuts.back() }.pin();
 }
 
 template class NodeRefImpl<false>;

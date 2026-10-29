@@ -21,13 +21,14 @@ namespace ImFlow {
 template <bool TIsConst>
 class NodeRefImpl {
 public:
-    using underlying_type = std::conditional_t<TIsConst, const detail::node_t, detail::node_t>;
+    using node_type = std::conditional_t<TIsConst, const detail::node_t, detail::node_t>;
+    using context_type = std::conditional_t<TIsConst, const ImNodeFlow, ImNodeFlow>;
 
     /**
      * @brief NodeRef's ctor
      * @param internal_node Reference to the referred to internal node
      */
-    explicit NodeRefImpl(underlying_type& internal_node);
+    explicit NodeRefImpl(context_type& ctx, node_type& internal_node);
 
     /**
      * @brief Main loop of the node
@@ -260,6 +261,8 @@ public:
      */
     const NodeStyle& getStyle() const;
 
+    [[nodiscard]] bool isActivated() const;
+
     /**
      * @brief Get selected status
      * @return [TRUE] if the node is selected
@@ -360,7 +363,7 @@ public:
     /**
      * @internal For internal use only
      */
-    operator underlying_type&()
+    operator node_type&()
     {
         return m_node.get();
     }
@@ -387,7 +390,8 @@ private:
     showOUT_impl(BasePinInfo info, std::unique_ptr<detail::IPin> pin_impl)
         requires(!TIsConst);
 
-    std::reference_wrapper<underlying_type> m_node;
+    std::reference_wrapper<context_type> m_ctx;
+    std::reference_wrapper<node_type> m_node;
 };
 
 extern template class NodeRefImpl<false>;

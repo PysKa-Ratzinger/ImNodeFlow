@@ -128,7 +128,7 @@ public:
     template <typename T, typename... Params>
     NodeRef emplaceNodeOnMouse(Params&&... args);
 
-    bool canLink(PinRef<true> source_pin, PinRef<true> target_pin);
+    [[nodiscard]] bool canLink(PinRef<true> source_pin, PinRef<true> target_pin) const;
 
     /**
      * @brief Creates a link between two pins
@@ -263,20 +263,20 @@ public:
      * @param p Point in screen coordinates to be converted
      * @return Point in grid's coordinates
      */
-    ImVec2 screen2grid(const ImVec2& p);
+    ImVec2 screen2grid(const ImVec2& p) const;
 
     /**
      * @brief Convert coordinates from grid to screen
      * @param p Point in grid's coordinates to be converted
      * @return Point in screen coordinates
      */
-    ImVec2 grid2screen(const ImVec2& p);
+    ImVec2 grid2screen(const ImVec2& p) const;
 
     /**
      * @brief Check if mouse is on selected node
      * @return [TRUE] if the mouse is hovering a selected node
      */
-    bool mouse_on_selected_node();
+    bool mouse_on_selected_node() const;
 
 private:
     std::unique_ptr<detail::editor_context_t> m_impl;

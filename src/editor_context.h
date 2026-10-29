@@ -6,9 +6,10 @@
 #include "ImNodeFlow/Style.h"
 #include "ImNodeFlow/callback_types.h"
 
-#include "./NodeGroup.h"
 #include "./context_wrapper.h"
+#include "./link.h"
 #include "./node.h"
+#include "./node_group.h"
 
 #include <string>
 #include <unordered_map>
@@ -32,9 +33,9 @@ struct editor_context_t {
 
     std::vector<std::unique_ptr<node_t>> newNodesQueue;
 
-    detail::NodeGroup root_group;
+    detail::node_group_t root_group;
 
-    std::vector<std::unique_ptr<Link>> links;
+    std::vector<std::unique_ptr<link_t>> links;
 
     dropped_link_popup_handler_t droppedLinkPopUp;
     ImGuiKey droppedLinkPupUpComboKey = ImGuiKey_None;

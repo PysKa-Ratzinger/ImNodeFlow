@@ -8,7 +8,7 @@ namespace ImFlow::detail {
 
 void draw_bezier_from_pin_to_pos(
     ImDrawList* draw_list,
-    pin_base_t const& pin_base,
+    PinRef<true> pin,
     ImVec2 pos);
 
 } // namespace ImFlow::detail

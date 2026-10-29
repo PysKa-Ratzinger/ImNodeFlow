@@ -1,10 +1,12 @@
 #include "ImNodeFlow/PinRef.h"
 
 #include "ImNodeFlow/Context.h"
+#include "ImNodeFlow/PinConnStrat.h"
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/detail/IPin.h"
+#include "ImNodeFlow/detail/fwd.h"
 
-#include "./PinConnectionHolder.h"
+#include "./LinkRef.h"
 #include "./pin_base.h"
 #include "./pin_drawing_utils.h"
 
@@ -14,19 +16,20 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <vector>
 
 namespace ImFlow {
 
 namespace {
 
     ImRect
-    getSocketHitBounds(detail::pin_base_t const& pin, float expand_radius = -1.0F)
+    getSocketHitBounds(PinRef<true> pin, float expand_radius = -1.0F)
     {
         if (expand_radius < 0.0f) {
-            expand_radius = pin.style.socket_hovered_radius;
+            expand_radius = pin.getStyle().socket_hovered_radius;
         }
 
-        ImVec2 center = PinRef<true> { pin }.pinPoint();
+        ImVec2 center = pin.pinPoint();
         ImVec2 tl = center - ImVec2(expand_radius, expand_radius);
         ImVec2 br = center + ImVec2(expand_radius, expand_radius);
 
@@ -34,43 +37,40 @@ namespace {
     }
 
     bool drawSocket(
-        detail::pin_base_t const& pin,
+        PinRef<true> pin,
         bool* hovered = nullptr,
         ImVec2* socketPos = nullptr)
     {
         float text_height = ImGui::GetTextLineHeight();
-        float radius = pin.style.socket_radius;
+        float radius = pin.getStyle().socket_radius;
         float maxRadius = std::max(
-            pin.style.socket_radius,
+            pin.getStyle().socket_radius,
             std::max(
-                pin.style.socket_hovered_radius,
-                pin.style.socket_connected_radius));
-        ImU32 color = pin.style.color;
-        int shape = pin.style.socket_shape;
-        float thickness = pin.style.socket_thickness;
+                pin.getStyle().socket_hovered_radius,
+                pin.getStyle().socket_connected_radius));
+        ImU32 color = pin.getStyle().color;
+        int shape = pin.getStyle().socket_shape;
+        float thickness = pin.getStyle().socket_thickness;
         bool circle_filled = false;
 
         if (PinRef<true> { pin }.isConnected()) {
             circle_filled = true;
-            radius = pin.style.socket_connected_radius;
-        } else if (pin.isHovered) {
-            radius = pin.style.socket_hovered_radius;
+            radius = pin.getStyle().socket_connected_radius;
+        } else if (pin.isHovered()) {
+            radius = pin.getStyle().socket_hovered_radius;
         }
 
         const ImGuiPayload* payload = ImGui::GetDragDropPayload();
-        if (payload != nullptr && payload->IsDataType("PIN_BASE_POINTER")) {
-            IM_ASSERT(payload->DataSize == sizeof(detail::pin_base_t*));
-            detail::pin_base_t* source_pin;
-            std::memcpy(&source_pin, payload->Data, sizeof(source_pin));
-            if (source_pin != nullptr) {
-                bool is_compatible = pin.ctx.get().canLink(
-                    PinRef<true> { *source_pin },
-                    PinRef<true> { pin });
-                if (is_compatible) {
-                    radius *= 1.25F;
-                } else {
-                    color = ImGui::ColorConvertFloat4ToU32(ImVec4(0.4F, 0.4F, 0.4F, 0.5F));
-                }
+        if (payload != nullptr && payload->IsDataType("PIN_REF_LOCAL_DTO")) {
+            PinRefLocalDTO<> dto { };
+            IM_ASSERT(payload->DataSize == sizeof(dto));
+            std::memcpy(&dto, payload->Data, sizeof(dto));
+            PinRef<> source_pin { dto };
+            bool is_compatible = pin.canLink(source_pin);
+            if (is_compatible) {
+                radius *= 1.25F;
+            } else {
+                color = ImGui::ColorConvertFloat4ToU32(ImVec4(0.4F, 0.4F, 0.4F, 0.5F));
             }
         }
 
@@ -144,13 +144,13 @@ namespace {
     }
 
     void drawDragDropPinSourceAndTarget(
-        detail::pin_base_t& pin,
+        PinRef<> pin,
         bool* out_source_active = nullptr,
         bool* out_target_active = nullptr)
     {
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip)) {
-            detail::pin_base_t* pin_ptr = &pin;
-            ImGui::SetDragDropPayload("PIN_BASE_POINTER", (void*)&pin_ptr, sizeof(detail::pin_base_t*));
+            auto dto = pin.serialize();
+            ImGui::SetDragDropPayload("PIN_REF_LOCAL_DTO", &dto, sizeof(dto));
             ImGui::EndDragDropSource();
 
             if (out_source_active != nullptr) {
@@ -159,14 +159,12 @@ namespace {
         }
 
         if (ImGui::BeginDragDropTarget()) {
-            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PIN_BASE_POINTER", ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
+            const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PIN_REF_LOCAL_DTO", ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
             if (payload != nullptr) {
-                IM_ASSERT(payload->DataSize == sizeof(detail::pin_base_t*));
-                detail::pin_base_t* source_pin;
-                std::memcpy(&source_pin, payload->Data, sizeof(source_pin));
-                if (source_pin != nullptr) {
-                    PinRef<> { pin }.linkTo(PinRef<> { *source_pin });
-                }
+                PinRefLocalDTO<> dto { };
+                IM_ASSERT(payload->DataSize == sizeof(dto));
+                std::memcpy(&dto, payload->Data, sizeof(dto));
+                pin.linkTo(PinRef<> { dto });
             }
 
             ImGui::EndDragDropTarget();
@@ -200,11 +198,11 @@ void PinRef<TIsConst>::update()
         pin.size = ImGui::GetItemRectSize();
         drawDecoration(pin);
         ImGui::SameLine(0.f, 0.f);
-        socket_pressed = drawSocket(m_pin, &socket_hovered, &pin.pinPoint);
-        drawDragDropPinSourceAndTarget(m_pin, &drag_drop_source_active, &drag_drop_target_active);
+        socket_pressed = drawSocket(*this, &socket_hovered, &pin.pinPoint);
+        drawDragDropPinSourceAndTarget(*this, &drag_drop_source_active, &drag_drop_target_active);
     } else if (this->getType() == PinType::Input) {
-        socket_pressed = drawSocket(m_pin, &socket_hovered, &pin.pinPoint);
-        drawDragDropPinSourceAndTarget(m_pin, &drag_drop_source_active, &drag_drop_target_active);
+        socket_pressed = drawSocket(*this, &socket_hovered, &pin.pinPoint);
+        drawDragDropPinSourceAndTarget(*this, &drag_drop_source_active, &drag_drop_target_active);
         ImGui::SameLine(0.f, 0.f);
         this->setPos(ImGui::GetCursorPos());
         ImGui::BeginGroup();
@@ -229,12 +227,12 @@ void PinRef<TIsConst>::update()
             ImGuiButtonFlags_PressedOnClick);
     }
 
-    drawDragDropPinSourceAndTarget(m_pin, &drag_drop_source_active, &drag_drop_target_active);
+    drawDragDropPinSourceAndTarget(*this, &drag_drop_source_active, &drag_drop_target_active);
 
     if (drag_drop_source_active) {
         detail::draw_bezier_from_pin_to_pos(
             ImGui::GetForegroundDrawList(),
-            pin,
+            *this,
             ImGui::GetMousePos());
     }
 
@@ -243,8 +241,6 @@ void PinRef<TIsConst>::update()
         || drag_drop_target_active;
     bool is_pressed = decoration_pressed
         || socket_pressed;
-
-    ImNodeFlow& flow = pin.ctx.get();
 
     pin.isHovered = is_hovering;
 
@@ -262,36 +258,54 @@ PinRef<TIsConst>::renderer(pin_rendering_handler_t r)
 }
 
 template <bool TIsConst>
+bool PinRef<TIsConst>::canLink(PinRef<TIsConst> other) const
+{
+    auto& pin = m_pin.get();
+
+    if (&m_ctx.get() != &other.m_ctx.get()) {
+        return false;
+    }
+
+    return m_ctx.get().canLink(*this, other);
+}
+
+template <bool TIsConst>
 void PinRef<TIsConst>::linkTo(PinRef<TIsConst> other)
     requires(!TIsConst)
 {
     auto& base = m_pin.get();
     auto& other_base = other.m_pin.get();
 
-    if (&base.ctx.get() != &other_base.ctx.get()) {
+    if (&m_ctx.get() != &other.m_ctx.get()) {
         // Cannot link pins across different contexts
         return;
     }
 
-    auto& ctx = base.ctx.get();
-    ctx.createLink(*this, other);
+    m_ctx.get().createLink(*this, other);
 }
 
 template <bool TIsConst>
 void PinRef<TIsConst>::deleteAllLinks()
     requires(!TIsConst)
 {
-    auto& base = m_pin.get();
-    auto links = std::move(base.links);
+    auto& pin = m_pin.get();
+    auto links = std::move(pin.links);
+    for (auto& l : links) {
+        detail::LinkRef link { m_ctx, *l };
+        link.destroy();
+    }
 }
 
 template <bool TIsConst>
-void PinRef<TIsConst>::addLink(detail::Link* link)
+void PinRef<TIsConst>::addLink(detail::link_t* link)
     requires(!TIsConst)
 {
     auto& base = m_pin.get();
 
-    auto iter = std::find(base.links.begin(), base.links.end(), link);
+    auto iter = std::find(
+        base.links.begin(),
+        base.links.end(),
+        link);
 
     if (iter != base.links.end()) {
         return;
@@ -305,17 +319,15 @@ void PinRef<TIsConst>::addLink(detail::Link* link)
 }
 
 template <bool TIsConst>
-void PinRef<TIsConst>::removeLink(detail::Link* link)
+void PinRef<TIsConst>::removeLink(detail::link_t* link)
     requires(!TIsConst)
 {
     auto& base = m_pin.get();
 
-    auto iter = std::find_if(
+    auto iter = std::find(
         base.links.begin(),
         base.links.end(),
-        [link](const auto& internal_link) -> bool {
-            return internal_link == link;
-        });
+        link);
 
     if (iter != base.links.end()) {
         base.links.erase(iter);
@@ -330,29 +342,36 @@ bool PinRef<TIsConst>::isConnected() const
 }
 
 template <bool TIsConst>
+bool PinRef<TIsConst>::isHovered() const
+{
+    auto& base = m_pin.get();
+    return !base.isHovered;
+}
+
+template <bool TIsConst>
 std::vector<PinRef<TIsConst>>
 PinRef<TIsConst>::getConnections() const
 {
     std::vector<PinRef<TIsConst>> result;
 
-    detail::pin_base_t const& base = this->m_pin.get();
-    result.reserve(base.links.size());
+    auto& pin = this->m_pin.get();
+    result.reserve(pin.links.size());
 
-    for (const detail::PinConnectionHolder& connection : base.links) {
-        auto* link = connection.link();
-
+    for (auto& l : pin.links) {
         // Not connected for some reason?
-        if (link == nullptr) {
+        if (l == nullptr) {
             continue;
         }
 
-        switch (base.type) {
+        detail::LinkRef<TIsConst> link { m_ctx, *l };
+
+        switch (pin.type) {
         case PinType::Input:
-            result.emplace_back(link->outPin());
+            result.emplace_back(link.outPin());
             break;
 
         case PinType::Output:
-            result.emplace_back(link->inPin());
+            result.emplace_back(link.inPin());
             break;
 
         default:
@@ -391,7 +410,7 @@ const ImVec2& PinRef<TIsConst>::getSize() const
 template <bool TIsConst>
 NodeRefImpl<TIsConst> PinRef<TIsConst>::getParent() const
 {
-    return NodeRefImpl<TIsConst>(*m_pin.get().parent);
+    return NodeRefImpl<TIsConst>(m_ctx, *m_pin.get().parent);
 }
 
 template <bool TIsConst>
@@ -462,7 +481,7 @@ template <bool TIsConst>
 void PinRef<TIsConst>::calculate()
     requires(!TIsConst)
 {
-    m_pin.get().underlying_pin->calculate(PinRef { m_pin.get() });
+    m_pin.get().underlying_pin->calculate(*this);
 }
 
 template <bool TIsConst>
@@ -470,6 +489,13 @@ void PinRef<TIsConst>::prime()
     requires(!TIsConst)
 {
     m_pin.get().underlying_pin->prime();
+}
+
+template <bool TIsConst>
+void PinRef<TIsConst>::destroy()
+    requires(!TIsConst)
+{
+    this->deleteAllLinks();
 }
 
 template <bool TIsConst>

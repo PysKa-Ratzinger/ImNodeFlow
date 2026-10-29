@@ -1,5 +1,6 @@
 #ifndef IMNODEFLOW_PINREF_H
 #define IMNODEFLOW_PINREF_H
+#include <cassert>
 #pragma once
 
 #include "ImNodeFlow/PinStyle.h"
@@ -17,23 +18,54 @@
 
 namespace ImFlow {
 
+template <bool TIsConst = false>
+struct PinRefLocalDTO {
+    using context_type = std::conditional_t<
+        TIsConst, const ImNodeFlow, ImNodeFlow>;
+    using pin_base_type = std::conditional_t<
+        TIsConst, const detail::pin_base_t, detail::pin_base_t>;
+
+    context_type* ctx;
+    pin_base_type* pin;
+};
+
+static_assert(std::is_trivially_copyable_v<PinRefLocalDTO<false>>);
+static_assert(std::is_trivially_copyable_v<PinRefLocalDTO<true>>);
+
 /**
  * @brief Generic base class for pins
  */
 template <bool TIsConst>
 class PinRef {
 public:
-    using value_type = std::conditional_t<
-        TIsConst,
-        const detail::pin_base_t,
-        detail::pin_base_t>;
+    using context_type = std::conditional_t<
+        TIsConst, const ImNodeFlow, ImNodeFlow>;
+    using pin_base_type = std::conditional_t<
+        TIsConst, const detail::pin_base_t, detail::pin_base_t>;
 
-    explicit PinRef(value_type& pin)
-        : m_pin(pin)
+    explicit PinRef(context_type& ctx, pin_base_type& pin)
+        : m_ctx(ctx)
+        , m_pin(pin)
     {
     }
 
+    explicit PinRef(PinRefLocalDTO<TIsConst> dto)
+        : m_ctx(*dto.ctx)
+        , m_pin(*dto.pin)
+    {
+        assert(dto.ctx != nullptr);
+        assert(dto.pin != nullptr);
+    }
+
     virtual ~PinRef() noexcept = default;
+
+    [[nodiscard]] PinRefLocalDTO<TIsConst> serialize() const
+    {
+        return PinRefLocalDTO<TIsConst> {
+            .ctx = &m_ctx.get(),
+            .pin = &m_pin.get(),
+        };
+    }
 
     /**
      * @brief Safely casts a base Pin into the underlying InPin, if
@@ -70,6 +102,8 @@ public:
     PinRef& renderer(pin_rendering_handler_t r)
         requires(!TIsConst);
 
+    [[nodiscard]] bool canLink(PinRef<TIsConst> other) const;
+
     /**
      * @brief Creates a new link between this pin and another pin
      * @param other Reference of the pin we want to connect with
@@ -90,7 +124,7 @@ public:
      * @internal This function is for internal use only. Do not call this
      * function as an API user.
      */
-    void addLink(detail::Link* link)
+    void addLink(detail::link_t* link)
         requires(!TIsConst);
 
     /**
@@ -99,7 +133,7 @@ public:
      * @internal This function is for internal use only. Do not call this
      * function as an API user.
      */
-    void removeLink(detail::Link* link)
+    void removeLink(detail::link_t* link)
         requires(!TIsConst);
 
     /**
@@ -107,6 +141,8 @@ public:
      * @return [TRUE] if the pin is connected
      */
     [[nodiscard]] bool isConnected() const;
+
+    [[nodiscard]] bool isHovered() const;
 
     [[nodiscard]] std::vector<PinRef<TIsConst>> getConnections() const;
 
@@ -227,15 +263,21 @@ public:
     /**
      * @internal For internal use only
      */
+    void destroy()
+        requires(!TIsConst);
+
+    /**
+     * @internal For internal use only
+     */
     operator PinRef<true>() const
     {
-        return PinRef<true>{ m_pin.get() };
+        return PinRef<true> { m_ctx, m_pin };
     }
 
     /**
      * @internal For internal use only
      */
-    operator value_type&()
+    operator pin_base_type&()
     {
         return m_pin.get();
     }
@@ -252,7 +294,8 @@ public:
     }
 
 protected:
-    std::reference_wrapper<value_type> m_pin;
+    std::reference_wrapper<context_type> m_ctx;
+    std::reference_wrapper<pin_base_type> m_pin;
 };
 
 /**

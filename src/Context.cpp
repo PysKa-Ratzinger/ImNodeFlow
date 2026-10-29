@@ -5,10 +5,12 @@
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/fwd.h"
 
-#include "./Link.h"
+#include "./LinkRef.h"
+#include "./NodeGroupRef.h"
 #include "./NodeWrapper.h"
 #include "./editor_context.h"
 #include "./imgui_button_flags_helper.h"
+#include "./link.h"
 #include "./node.h"
 #include "./pin_base.h"
 #include "./pin_drawing_utils.h"
@@ -18,6 +20,7 @@
 #include "imgui_internal.h"
 
 #include <algorithm>
+#include <cstring>
 #include <iterator>
 #include <memory>
 #include <utility>
@@ -33,7 +36,6 @@ NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 
     auto new_node = std::make_unique<detail::node_t>(
         detail::node_t {
-            .ctx = *this,
             .uid = uid,
             .pos = grid_coords,
             .posTarget = grid_coords,
@@ -46,10 +48,10 @@ NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
         : m_impl->root_group.nodes;
     auto& node = container.emplace_back(std::move(new_node));
     if (node->behaviour) {
-        node->behaviour->setup(NodeRef { *node });
+        node->behaviour->setup(NodeRef { *this, *node });
     }
 
-    return NodeRef { *node };
+    return NodeRef { *this, *node };
 }
 
 NodeRef ImNodeFlow::placeNodeAt(const ImVec2& screen_coords, NodeInfo node_info)
@@ -92,13 +94,13 @@ ImNodeFlow& ImNodeFlow::operator=(ImNodeFlow&&) = default;
 
 ImNodeFlow::~ImNodeFlow() = default;
 
-bool ImNodeFlow::mouse_on_selected_node()
+bool ImNodeFlow::mouse_on_selected_node() const
 {
-    return m_impl->root_group.mouse_over_any_selected_node();
+    return detail::NodeGroupRef<true> { *this, m_impl->root_group }.mouse_over_any_selected_node();
 }
 
 ImVec2
-ImNodeFlow::screen2grid(const ImVec2& p)
+ImNodeFlow::screen2grid(const ImVec2& p) const
 {
     if (ImGui::GetCurrentContext() == m_impl->context.getRawContext())
         return p - m_impl->context.scroll();
@@ -106,14 +108,14 @@ ImNodeFlow::screen2grid(const ImVec2& p)
 }
 
 ImVec2
-ImNodeFlow::grid2screen(const ImVec2& p)
+ImNodeFlow::grid2screen(const ImVec2& p) const
 {
     if (ImGui::GetCurrentContext() == m_impl->context.getRawContext())
         return p + m_impl->context.scroll();
     return (p + m_impl->context.scroll()) * m_impl->context.scale() + m_impl->context.origin();
 }
 
-bool ImNodeFlow::canLink(PinRef<true> source_pin, PinRef<true> target_pin)
+bool ImNodeFlow::canLink(PinRef<true> source_pin, PinRef<true> target_pin) const
 {
     if (source_pin == target_pin) {
         return false;
@@ -163,10 +165,11 @@ void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
         return;
     }
 
-    m_impl->links.emplace_back(
-        std::make_unique<detail::Link>(
-            source_pin,
-            target_pin));
+    auto new_link = std::make_unique<detail::link_t>();
+
+    detail::LinkRef<> { *this, *new_link }.connect(source_pin, target_pin);
+
+    m_impl->links.emplace_back(std::move(new_link));
 }
 
 void ImNodeFlow::droppedLinkPopUpContent(
@@ -219,7 +222,7 @@ ImVec2 ImNodeFlow::getScreenSpaceDelta() const
 
 uint64_t ImNodeFlow::getNodesCount() const
 {
-    return m_impl->root_group.getNodesCount();
+    return detail::NodeGroupRef<true> { *this, m_impl->root_group }.getNodesCount();
 }
 
 IContainedContext& ImNodeFlow::getGrid()
@@ -335,23 +338,27 @@ void ImNodeFlow::update()
     }
 
     // Propagate pin values
-    m_impl->root_group.calculate_inputs();
-    m_impl->root_group.prime_inputs();
-    m_impl->root_group.calculate_outputs();
-    m_impl->root_group.prime_outputs();
+    detail::NodeGroupRef<> root_group { *this, m_impl->root_group };
+    root_group.calculate_inputs();
+    root_group.prime_inputs();
+    root_group.calculate_outputs();
+    root_group.prime_outputs();
 
     // Update and draw nodes
-    m_impl->root_group.update();
+    root_group.update();
 
     // Update and draw links
     for (auto iter = m_impl->links.begin(); iter != m_impl->links.end();) {
+        detail::LinkRef<> link { *this, **iter };
+
         // Clean up deleted links along the way
-        if ((*iter)->isMarkedForDeletion()) {
+        if (!link.isAlive()) {
+            link.destroy();
             iter = m_impl->links.erase(iter);
             continue;
         }
 
-        (*iter)->update(*this);
+        link.update();
         ++iter;
     }
 
@@ -387,25 +394,24 @@ void ImNodeFlow::update()
 
             // Deselect all nodes if not holding down CTRL
             if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
-                m_impl->root_group.deselectAllNodes();
+                root_group.deselectAllNodes();
             }
         }
     }
 
     if (mouse_context_hovered && ImGui::BeginDragDropTarget()) {
-        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PIN_BASE_POINTER", ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
+        const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PIN_REF_LOCAL_DTO", ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
         if (payload != nullptr) {
-            IM_ASSERT(payload->DataSize == sizeof(detail::pin_base_t*));
-            detail::pin_base_t* source_pin;
-            std::memcpy(&source_pin, payload->Data, sizeof(source_pin));
-            if (source_pin != nullptr) {
-                // Links drop-off
-                if (m_impl->droppedLinkPopUp
-                    && (m_impl->droppedLinkPupUpComboKey == ImGuiKey_None
-                        || ImGui::IsKeyDown(m_impl->droppedLinkPupUpComboKey))) {
-                    m_impl->droppedLinkLeft = source_pin;
-                    ImGui::OpenPopup("DroppedLinkPopUp");
-                }
+            PinRefLocalDTO<> dto { };
+            IM_ASSERT(payload->DataSize == sizeof(dto));
+            std::memcpy(&dto, payload->Data, sizeof(dto));
+            PinRef<> source_pin { dto };
+            // Links drop-off
+            if (m_impl->droppedLinkPopUp
+                && (m_impl->droppedLinkPupUpComboKey == ImGuiKey_None
+                    || ImGui::IsKeyDown(m_impl->droppedLinkPupUpComboKey))) {
+                m_impl->droppedLinkLeft = &static_cast<detail::pin_base_t&>(source_pin);
+                ImGui::OpenPopup("DroppedLinkPopUp");
             }
         }
         ImGui::EndDragDropTarget();
@@ -421,14 +427,14 @@ void ImNodeFlow::update()
         ImVec2 mouse_pos_on_popup;
         if (ImGui::BeginPopup("DroppedLinkPopUp")) {
             mouse_pos_on_popup = ImGui::GetMousePosOnOpeningCurrentPopup();
-            m_impl->droppedLinkPopUp(PinRef<> { *m_impl->droppedLinkLeft });
+            m_impl->droppedLinkPopUp(PinRef<> { *this, *m_impl->droppedLinkLeft });
             ImGui::EndPopup();
         }
 
         splitter.SetCurrentChannel(draw_list, 0);
         detail::draw_bezier_from_pin_to_pos(
             ImGui::GetWindowDrawList(),
-            *m_impl->droppedLinkLeft,
+            PinRef<true> { *this, *m_impl->droppedLinkLeft },
             mouse_pos_on_popup);
 
         splitter.Merge(draw_list);
@@ -468,9 +474,9 @@ void ImNodeFlow::update()
         }
 
         if (shouldMarkSelected) {
-            m_impl->root_group.selectArea(boxClip);
+            root_group.selectArea(boxClip);
         } else {
-            m_impl->root_group.provisionallySelectArea(boxClip);
+            root_group.provisionallySelectArea(boxClip);
         }
     }
 
@@ -482,7 +488,7 @@ void ImNodeFlow::update()
     if (ImGui::BeginPopup("RightClickPopUp")) {
         std::optional<NodeRef> arg;
         if (m_impl->hoveredNodeAux != nullptr) {
-            arg.emplace(*m_impl->hoveredNodeAux);
+            arg.emplace(*this, *m_impl->hoveredNodeAux);
         }
         m_impl->rightClickPopUp(std::move(arg));
         ImGui::EndPopup();

@@ -11,13 +11,12 @@
 // NOLINTBEGIN (bugprone-suspicious-include)
 #ifdef IMNODEFLOW_IMPLEMENTATION
 #include "./../../../src/Context.cpp"
-#include "./../../../src/DynamicPin.cpp"
+#include "./../../../src/DynamicPinRef.cpp"
 #include "./../../../src/IContainedContext.cpp"
 #include "./../../../src/INodeBehaviour.cpp"
-#include "./../../../src/Link.cpp"
-#include "./../../../src/NodeGroup.cpp"
+#include "./../../../src/LinkRef.cpp"
+#include "./../../../src/NodeGroupRef.cpp"
 #include "./../../../src/NodeRef.cpp"
-#include "./../../../src/PinConnectionHolder.cpp"
 #include "./../../../src/PinRef.cpp"
 #include "./../../../src/pin_base.cpp"
 #include "./../../../src/pin_drawing_utils.cpp"

@@ -11,11 +11,8 @@
 #include "ImNodeFlow/detail/fwd.h"
 #include "ImNodeFlow/fwd.h"
 
-#include "./PinConnectionHolder.h"
-
 #include "imgui.h"
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,13 +21,11 @@ namespace ImFlow::detail {
 
 struct pin_base_t {
     pin_base_t(
-        ImNodeFlow& ctx,
         detail::node_t& parent,
         PinType pin_type,
         BasePinInfo info,
         std::unique_ptr<IPin> impl) noexcept;
 
-    std::reference_wrapper<ImNodeFlow> ctx;
     PinUID uid;
     std::string name;
     ImVec2 pos = ImVec2(0.f, 0.f);
@@ -44,7 +39,7 @@ struct pin_base_t {
     bool socketHitboxEnabled = true;
     bool isHovered = false;
     pin_rendering_handler_t renderer;
-    std::vector<PinConnectionHolder> links { };
+    std::vector<link_t*> links { };
     std::unique_ptr<IPin> underlying_pin;
 };
 
