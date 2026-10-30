@@ -186,7 +186,8 @@ template <bool TIsConst>
 NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setSelected(bool state)
     requires(!TIsConst)
 {
-    m_node.get().selectedNext = state;
+    auto& node = m_node.get();
+    node.selectedNext = state;
     return *this;
 }
 
@@ -733,9 +734,11 @@ void NodeRefImpl<TIsConst>::update()
     bool header_hovered = false;
     bool header_held = false;
     bool header_pressed = false;
-    bool header_held_released = false;
+    bool header_released = false;
     bool node_hovered = false;
+    bool node_held = false;
     bool node_pressed = false;
+    bool node_released = false;
 
     ImGuiID header_id = ImGui::GetID("##node_header");
     ImGuiID node_id = ImGui::GetID("##node_body");
@@ -748,7 +751,7 @@ void NodeRefImpl<TIsConst>::update()
             &header_held,
             ImGuiButtonFlags_PressedOnClick);
 
-        header_held_released = ImGui::IsItemDeactivated();
+        header_released = ImGui::IsItemDeactivated();
     }
 
     if (ImGui::ItemAdd(node_bb, node_id)) {
@@ -756,8 +759,10 @@ void NodeRefImpl<TIsConst>::update()
             node_bb,
             node_id,
             &node_hovered,
-            nullptr,
+            &node_held,
             ImGuiButtonFlags_PressedOnClick);
+
+        node_released = ImGui::IsItemDeactivated();
     }
 
     if (header_hovered || node_hovered) {
@@ -765,13 +770,17 @@ void NodeRefImpl<TIsConst>::update()
     }
 
     if (node_pressed || header_pressed) {
+        node.wantsDeselect = node.selected;
         setSelected(true);
+    }
+    if ((node_released || header_released) && node.wantsDeselect) {
+        setSelected(false);
     }
 
     if (header_pressed) {
         ctx.startNodeDrag();
     }
-    if (header_held_released) {
+    if (header_released) {
         ctx.stopNodeDrag();
     }
 
@@ -792,6 +801,10 @@ void NodeRefImpl<TIsConst>::update()
         }
 
         node.posTarget = node.posBackup + drag_vec;
+        if (drag_vec != ImVec2(0.F, 0.F)) {
+            node.wantsDeselect = false;
+        }
+
         // "Slam" The position
         float step = ctx.getStyle().grid_size / ctx.getStyle().grid_subdivisions;
         node.pos.x = round(node.posTarget.x / step) * step;

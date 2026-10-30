@@ -34,6 +34,7 @@ struct node_t {
     bool selectedNext = false;
     bool provisionallySelected = false;
     bool provisionallySelectedNext = false;
+    bool wantsDeselect = false;
     bool destroyed = false;
     bool dragging = false;
     bool indestructable = false;
