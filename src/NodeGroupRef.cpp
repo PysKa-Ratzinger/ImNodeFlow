@@ -8,7 +8,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
+#include <vector>
 
 namespace ImFlow::detail {
 
@@ -36,6 +38,42 @@ template <bool TIsConst>
 uint64_t NodeGroupRef<TIsConst>::getNodesCount() const
 {
     return m_node_group.get().nodes.size();
+}
+
+template <bool TIsConst>
+uint64_t NodeGroupRef<TIsConst>::getSelectedNodesCount() const
+{
+    uint64_t n_selected = 0;
+    auto& node_group = this->m_node_group.get();
+    for (auto& node : node_group.nodes) {
+        if (ConstNodeRef { m_ctx, *node }.isSelected()) {
+            ++n_selected;
+        }
+    }
+    return n_selected;
+}
+
+template <bool TIsConst>
+void NodeGroupRef<TIsConst>::getNodes(
+    std::vector<NodeRefImpl<TIsConst>>& out_vec) const
+{
+    auto& node_group = this->m_node_group.get();
+    for (auto& node : node_group.nodes) {
+        out_vec.emplace_back(m_ctx, *node);
+    }
+}
+
+template <bool TIsConst>
+void NodeGroupRef<TIsConst>::getSelectedNodes(
+    std::vector<NodeRefImpl<TIsConst>>& out_vec) const
+{
+    auto& node_group = this->m_node_group.get();
+    for (auto& n : node_group.nodes) {
+        NodeRefImpl<TIsConst> node { m_ctx, *n };
+        if (node.isSelected()) {
+            out_vec.emplace_back(std::move(node));
+        }
+    }
 }
 
 template <bool TIsConst>

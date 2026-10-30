@@ -11,6 +11,7 @@
 #include "imgui.h"
 
 #include <string>
+#include <vector>
 
 namespace ImFlow {
 
@@ -203,6 +204,14 @@ public:
      * @return Number of nodes present in the editor
      */
     uint64_t getNodesCount() const;
+
+    uint64_t getSelectedNodesCount() const;
+
+    /// PERF: Getting all nodes is quite slow
+    std::vector<NodeRef> getNodes();
+
+    /// PERF: Getting all selected nodes is quite slow
+    std::vector<NodeRef> getSelectedNodes();
 
     /**
      * @brief Get zooming viewport

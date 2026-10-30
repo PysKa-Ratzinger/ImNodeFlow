@@ -225,6 +225,27 @@ uint64_t ImNodeFlow::getNodesCount() const
     return detail::NodeGroupRef<true> { *this, m_impl->root_group }.getNodesCount();
 }
 
+uint64_t ImNodeFlow::getSelectedNodesCount() const
+{
+    return detail::NodeGroupRef<true> { *this, m_impl->root_group }.getSelectedNodesCount();
+}
+
+std::vector<NodeRef> ImNodeFlow::getNodes()
+{
+    std::vector<NodeRef> result;
+    result.reserve(this->getNodesCount());
+    detail::NodeGroupRef { *this, m_impl->root_group }.getNodes(result);
+    return result;
+}
+
+std::vector<NodeRef> ImNodeFlow::getSelectedNodes()
+{
+    std::vector<NodeRef> result;
+    result.reserve(this->getSelectedNodesCount());
+    detail::NodeGroupRef { *this, m_impl->root_group }.getSelectedNodes(result);
+    return result;
+}
+
 IContainedContext& ImNodeFlow::getGrid()
 {
     return m_impl->context;

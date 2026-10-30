@@ -5,7 +5,9 @@
 
 #include "imgui_internal.h"
 
+#include <cstdint>
 #include <type_traits>
+#include <vector>
 
 namespace ImFlow::detail {
 
@@ -17,9 +19,15 @@ public:
 
     NodeGroupRef(context_type& ctx, node_group_type& node_group);
 
-    bool mouse_over_any_selected_node() const;
+    [[nodiscard]] bool mouse_over_any_selected_node() const;
 
-    uint64_t getNodesCount() const;
+    [[nodiscard]] uint64_t getNodesCount() const;
+
+    [[nodiscard]] uint64_t getSelectedNodesCount() const;
+
+    void getNodes(std::vector<NodeRefImpl<TIsConst>>& out_vec) const;
+
+    void getSelectedNodes(std::vector<NodeRefImpl<TIsConst>>& out_vec) const;
 
     void deselectAllNodes()
         requires(!TIsConst);

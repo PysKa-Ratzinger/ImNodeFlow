@@ -246,9 +246,11 @@ NodeEditor::NodeEditor(float width, float height)
     mINF.setSize({ width, height });
     mINF.rightClickPopUpContent([this](std::optional<ImFlow::NodeRef> node) -> void {
         if (node.has_value()) {
+            auto selected_nodes = mINF.getSelectedNodes();
             ImGui::Text(
-                "you have right-clicked on [%s]",
-                node->getName().c_str());
+                "you have right-clicked on [%s] (%zu total nodes selected)",
+                node->getName().c_str(),
+                selected_nodes.size());
         } else {
             ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
             bool should_close = true;
