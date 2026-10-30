@@ -103,8 +103,8 @@ void NodeGroupArenaRef<TIsConst>::provisionallySelectArea(ImRect clip_area)
     requires(!TIsConst)
 {
     auto& arena = m_arena.get();
-    for (auto& elem : arena.nodes) {
-        NodeRef node { m_ctx, *elem };
+    for (auto& n : arena.nodes) {
+        NodeRef node { m_ctx, *n };
 
         ImRect node_clip {
             node.getTLPos(),
@@ -288,7 +288,7 @@ void NodeGroupArenaRef<TIsConst>::prepareNextFrame()
 
         node.prepareNextFrame();
 
-        if (node.isActivated()) {
+        if (node.isActivated() || node.anyChildActivated()) {
             ++count_activated;
         } else if (node.isSelected()) {
             ++count_selected;
@@ -310,7 +310,7 @@ void NodeGroupArenaRef<TIsConst>::prepareNextFrame()
             continue;
         }
 
-        if (node.isActivated()) {
+        if (node.isActivated() || node.anyChildActivated()) {
             next_iteration_nodes[next_idx_activated] = std::move(elem);
             ++next_idx_activated;
         } else if (node.isSelected()) {
