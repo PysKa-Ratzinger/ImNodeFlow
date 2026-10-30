@@ -128,6 +128,22 @@ bool NodeRefImpl<TIsConst>::isActivated() const
 }
 
 template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::anyChildActivated() const
+{
+    detail::node_t const& node = m_node.get();
+    if (!node.child_arena) {
+        return false;
+    }
+    return std::any_of(
+        std::begin(node.child_arena->nodes),
+        std::end(node.child_arena->nodes),
+        [this](const auto& elem) -> bool {
+            ConstNodeRef child_node { m_ctx, *elem };
+            return child_node.isActivated() || child_node.anyChildActivated();
+        });
+}
+
+template <bool TIsConst>
 bool NodeRefImpl<TIsConst>::isSelected() const
 {
     auto& node = m_node.get();

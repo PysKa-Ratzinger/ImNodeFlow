@@ -263,6 +263,8 @@ public:
 
     [[nodiscard]] bool isActivated() const;
 
+    [[nodiscard]] bool anyChildActivated() const;
+
     /**
      * @brief Get selected status
      * @return [TRUE] if the node is selected

@@ -114,6 +114,10 @@ void NodeGroupArenaRef<TIsConst>::provisionallySelectArea(ImRect clip_area)
         if (clip_area.Overlaps(node_clip)) {
             node.setProvisionallySelected(true);
         }
+
+        if (n->child_arena) {
+            NodeGroupArenaRef<TIsConst> { m_ctx, *n->child_arena }.provisionallySelectArea(clip_area);
+        }
     }
 }
 
