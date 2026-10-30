@@ -12,12 +12,12 @@
 namespace ImFlow::detail {
 
 template <bool TIsConst = false>
-class NodeGroupRef {
+class NodeGroupArenaRef {
 public:
     using context_type = std::conditional_t<TIsConst, const ImNodeFlow, ImNodeFlow>;
-    using node_group_type = std::conditional_t<TIsConst, const node_group_t, node_group_t>;
+    using group_arena_type = std::conditional_t<TIsConst, const node_group_arena_t, node_group_arena_t>;
 
-    NodeGroupRef(context_type& ctx, node_group_type& node_group);
+    NodeGroupArenaRef(context_type& ctx, group_arena_type& arena);
 
     [[nodiscard]] bool mouse_over_any_selected_node() const;
 
@@ -45,15 +45,19 @@ public:
     void prime_outputs()
         requires(!TIsConst);
 
+    void draw_outline(ConstNodeRef parentNode) const;
+
     void update()
+        requires(!TIsConst);
+    void prepareNextFrame()
         requires(!TIsConst);
 
 private:
     std::reference_wrapper<context_type> m_ctx;
-    std::reference_wrapper<node_group_type> m_node_group;
+    std::reference_wrapper<group_arena_type> m_arena;
 };
 
-extern template class NodeGroupRef<false>;
-extern template class NodeGroupRef<true>;
+extern template class NodeGroupArenaRef<false>;
+extern template class NodeGroupArenaRef<true>;
 
 } // namespace ImFlow::detail

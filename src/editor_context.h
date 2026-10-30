@@ -33,7 +33,7 @@ struct editor_context_t {
 
     std::vector<std::unique_ptr<node_t>> newNodesQueue;
 
-    detail::node_group_t root_group;
+    detail::node_group_arena_t root_arena;
 
     std::vector<std::unique_ptr<link_t>> links;
 

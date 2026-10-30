@@ -287,6 +287,12 @@ public:
      */
     bool mouse_on_selected_node() const;
 
+    /**
+     * FIXME: Remove all internal use methods from the public API
+     * @internal For internal use only
+     */
+    detail::editor_context_t& getDetail();
+
 private:
     std::unique_ptr<detail::editor_context_t> m_impl;
 };

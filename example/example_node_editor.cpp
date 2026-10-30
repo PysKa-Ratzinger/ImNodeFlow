@@ -304,6 +304,10 @@ NodeEditor::NodeEditor(float width, float height)
     auto result = mINF.emplaceNode<ResultNode>({ 340, 20 });
     auto multi_adder = mINF.emplaceNode<MultipleInputAdder>({ 360, 140 });
 
+    n1.setParentNode(result);
+    n2.setParentNode(result);
+    multi_adder.setParentNode(result);
+
     result.setIndestructable(true);
 
     // Add links between nodes

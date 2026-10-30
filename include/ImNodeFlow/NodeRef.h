@@ -314,7 +314,7 @@ public:
      * @brief Set selected status
      * @param state New selected state
      *
-     * Status only updates when updatePublicStatus() is called
+     * Status only updates when prepareNextFrame() is called
      */
     NodeRefImpl& setSelected(bool state)
         requires(!TIsConst);
@@ -323,15 +323,18 @@ public:
      * @brief Set provisionally selected status
      * @param state New provisionally selected state
      *
-     * Status only updates when updatePublicStatus() is called
+     * Status only updates when prepareNextFrame() is called
      */
     NodeRefImpl& setProvisionallySelected(bool state)
+        requires(!TIsConst);
+
+    void setParentNode(NodeRef newParentNode)
         requires(!TIsConst);
 
     /**
      * @brief Update the isSelected status of the node
      */
-    void updatePublicStatus()
+    void prepareNextFrame()
         requires(!TIsConst);
 
     /**
@@ -360,7 +363,13 @@ public:
     void prime_outputs()
         requires(!TIsConst);
 
+    operator NodeRefImpl<true>() const
+    {
+        return NodeRefImpl<true> { m_ctx, m_node };
+    }
+
     /**
+     * FIXME: Remove internal methods from public API
      * @internal For internal use only
      */
     operator node_type&()

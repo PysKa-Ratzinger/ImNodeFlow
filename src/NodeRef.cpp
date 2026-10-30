@@ -6,18 +6,23 @@
 #include "ImNodeFlow/PinInfo.h"
 #include "ImNodeFlow/PinRef.h"
 #include "ImNodeFlow/PinType.h"
+#include "ImNodeFlow/PinUID.h"
+#include "ImNodeFlow/detail/IPin.h"
+#include "ImNodeFlow/detail/fwd.h"
 
 #include "./DynamicPinRef.h"
+#include "./NodeGroupArenaRef.h"
 #include "./dynamic_pin.h"
+#include "./editor_context.h"
 #include "./node.h"
 #include "./pin_base.h"
 
-#include "ImNodeFlow/PinUID.h"
-#include "ImNodeFlow/detail/IPin.h"
+#include "ImNodeFlow/fwd.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 
 #include <algorithm>
+#include <cassert>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -194,14 +199,64 @@ NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setProvisionallySelected(bool stat
 }
 
 template <bool TIsConst>
-void NodeRefImpl<TIsConst>::updatePublicStatus()
+void NodeRefImpl<TIsConst>::setParentNode(NodeRef newParentNode)
     requires(!TIsConst)
 {
-    auto& node = m_node.get();
+    ImNodeFlow& ctx = m_ctx.get();
+    detail::node_t& node = m_node.get();
+    detail::node_t& parent_node = newParentNode.m_node.get();
+
+    // A node cannot be it's own parent
+    if (&node == &parent_node) {
+        return;
+    }
+
+    detail::node_group_arena_t* own_arena = &ctx.getDetail().root_arena;
+    if (node.parent_node != nullptr) {
+        own_arena = node.parent_node->child_arena.get();
+    }
+
+    if (!parent_node.child_arena) {
+        parent_node.child_arena = std::make_unique<detail::node_group_arena_t>();
+    }
+
+    assert(own_arena != nullptr
+        && "Could not find node's own arena");
+
+    if (own_arena == &*parent_node.child_arena) {
+        return;
+    }
+
+    auto iter = std::find_if(
+        std::begin(own_arena->nodes),
+        std::end(own_arena->nodes),
+        [&](std::unique_ptr<detail::node_t>& elem) -> bool {
+            return elem.get() == &node;
+        });
+
+    assert(iter != std::end(own_arena->nodes)
+        && "Sanity check failed. Node cannot be found in it's own arena.");
+
+    // move node ownership to the new arena
+    parent_node.child_arena->nodes.emplace_back(std::move(*iter));
+    // Remove the empty unique_ptr from the old arena
+    own_arena->nodes.erase(iter);
+    node.parent_node = &parent_node;
+}
+
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::prepareNextFrame()
+    requires(!TIsConst)
+{
+    detail::node_t& node = m_node.get();
     node.wasSelected = node.selected;
     node.selected = node.selectedNext;
     node.provisionallySelected = node.provisionallySelectedNext;
     node.provisionallySelectedNext = false;
+
+    if (node.child_arena) {
+        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.prepareNextFrame();
+    }
 }
 
 template <bool TIsConst>
@@ -433,12 +488,15 @@ template <bool TIsConst>
 void NodeRefImpl<TIsConst>::calculate_inputs()
     requires(!TIsConst)
 {
-    auto& node = m_node.get();
+    detail::node_t& node = m_node.get();
     for (auto& pin : node.ins) {
         PinRef { m_ctx, *pin }.calculate();
     }
     for (auto& pin : node.dynamicIns) {
         detail::DynamicPinRef { m_ctx, *pin }.pin().calculate();
+    }
+    if (node.child_arena) {
+        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.calculate_inputs();
     }
 }
 
@@ -453,6 +511,9 @@ void NodeRefImpl<TIsConst>::calculate_outputs()
     for (auto& pin : node.dynamicOuts) {
         detail::DynamicPinRef { m_ctx, *pin }.pin().calculate();
     }
+    if (node.child_arena) {
+        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.calculate_outputs();
+    }
 }
 
 template <bool TIsConst>
@@ -465,6 +526,9 @@ void NodeRefImpl<TIsConst>::prime_inputs()
     }
     for (auto& pin : node.dynamicIns) {
         detail::DynamicPinRef { m_ctx, *pin }.pin().prime();
+    }
+    if (node.child_arena) {
+        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.prime_inputs();
     }
 }
 
@@ -479,6 +543,9 @@ void NodeRefImpl<TIsConst>::prime_outputs()
     for (auto& pin : node.dynamicOuts) {
         detail::DynamicPinRef { m_ctx, *pin }.pin().prime();
     }
+    if (node.child_arena) {
+        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.prime_outputs();
+    }
 }
 
 template <bool TIsConst>
@@ -488,9 +555,30 @@ void NodeRefImpl<TIsConst>::update()
     detail::node_t& node = m_node.get();
     auto& ctx = m_ctx.get();
 
+    if (node.child_arena && node.child_arena->nodes.empty()) {
+        node.child_arena.reset();
+    }
+
+    if (node.child_arena) {
+        detail::NodeGroupArenaRef<> arena { m_ctx, *node.child_arena };
+        arena.draw_outline(*this);
+
+        // Update and draw child nodes
+        arena.update();
+    }
+
+    if (ImGui::IsWindowFocused() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {
+        setSelected(false);
+    }
+
+    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected() && !isIndestructable()) {
+        destroy();
+    }
+
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     ImGui::PushID(&node);
+
     ImVec2 offset = ctx.grid2screen({ 0.f, 0.f });
     ImVec2 paddingTL = { node.style.padding.x, node.style.padding.y };
     ImVec2 paddingBR = { node.style.padding.z, node.style.padding.w };
@@ -632,14 +720,6 @@ void NodeRefImpl<TIsConst>::update()
         0,
         thickness);
 
-    if (ImGui::IsWindowHovered() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {
-        setSelected(false);
-    }
-
-    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected() && !isIndestructable()) {
-        destroy();
-    }
-
     ImRect header_bb {
         ctx.grid2screen(node.pos - paddingTL),
         ctx.grid2screen(node.pos + headerSize),
@@ -695,7 +775,14 @@ void NodeRefImpl<TIsConst>::update()
         ctx.stopNodeDrag();
     }
 
-    if (node.selected && ctx.wantsNodeDrag()) {
+    bool wants_drag = false;
+    detail::node_t* curr = &node;
+    while (!wants_drag && curr != nullptr) {
+        wants_drag = curr->selected;
+        curr = curr->parent_node;
+    }
+
+    if (wants_drag && ctx.wantsNodeDrag()) {
         ImVec2 drag_vec;
         bool should_apply_drag = ctx.getNodeDragAmmount(&drag_vec);
 

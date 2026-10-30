@@ -15,7 +15,7 @@
 #include "./../../../src/IContainedContext.cpp"
 #include "./../../../src/INodeBehaviour.cpp"
 #include "./../../../src/LinkRef.cpp"
-#include "./../../../src/NodeGroupRef.cpp"
+#include "./../../../src/NodeGroupArenaRef.cpp"
 #include "./../../../src/NodeRef.cpp"
 #include "./../../../src/PinRef.cpp"
 #include "./../../../src/pin_base.cpp"

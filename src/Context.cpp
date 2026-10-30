@@ -6,7 +6,7 @@
 #include "ImNodeFlow/fwd.h"
 
 #include "./LinkRef.h"
-#include "./NodeGroupRef.h"
+#include "./NodeGroupArenaRef.h"
 #include "./NodeWrapper.h"
 #include "./editor_context.h"
 #include "./imgui_button_flags_helper.h"
@@ -45,7 +45,7 @@ NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
 
     auto& container = m_impl->is_drawing
         ? m_impl->newNodesQueue
-        : m_impl->root_group.nodes;
+        : m_impl->root_arena.nodes;
     auto& node = container.emplace_back(std::move(new_node));
     if (node->behaviour) {
         node->behaviour->setup(NodeRef { *this, *node });
@@ -96,7 +96,12 @@ ImNodeFlow::~ImNodeFlow() = default;
 
 bool ImNodeFlow::mouse_on_selected_node() const
 {
-    return detail::NodeGroupRef<true> { *this, m_impl->root_group }.mouse_over_any_selected_node();
+    return detail::NodeGroupArenaRef<true> { *this, m_impl->root_arena }.mouse_over_any_selected_node();
+}
+
+detail::editor_context_t& ImNodeFlow::getDetail()
+{
+    return *m_impl;
 }
 
 ImVec2
@@ -222,19 +227,19 @@ ImVec2 ImNodeFlow::getScreenSpaceDelta() const
 
 uint64_t ImNodeFlow::getNodesCount() const
 {
-    return detail::NodeGroupRef<true> { *this, m_impl->root_group }.getNodesCount();
+    return detail::NodeGroupArenaRef<true> { *this, m_impl->root_arena }.getNodesCount();
 }
 
 uint64_t ImNodeFlow::getSelectedNodesCount() const
 {
-    return detail::NodeGroupRef<true> { *this, m_impl->root_group }.getSelectedNodesCount();
+    return detail::NodeGroupArenaRef<true> { *this, m_impl->root_arena }.getSelectedNodesCount();
 }
 
 std::vector<NodeRef> ImNodeFlow::getNodes()
 {
     std::vector<NodeRef> result;
     result.reserve(this->getNodesCount());
-    detail::NodeGroupRef { *this, m_impl->root_group }.getNodes(result);
+    detail::NodeGroupArenaRef { *this, m_impl->root_arena }.getNodes(result);
     return result;
 }
 
@@ -242,7 +247,7 @@ std::vector<NodeRef> ImNodeFlow::getSelectedNodes()
 {
     std::vector<NodeRef> result;
     result.reserve(this->getSelectedNodesCount());
-    detail::NodeGroupRef { *this, m_impl->root_group }.getSelectedNodes(result);
+    detail::NodeGroupArenaRef { *this, m_impl->root_arena }.getSelectedNodes(result);
     return result;
 }
 
@@ -359,14 +364,16 @@ void ImNodeFlow::update()
     }
 
     // Propagate pin values
-    detail::NodeGroupRef<> root_group { *this, m_impl->root_group };
-    root_group.calculate_inputs();
-    root_group.prime_inputs();
-    root_group.calculate_outputs();
-    root_group.prime_outputs();
+    detail::NodeGroupArenaRef<> root_arena { *this, m_impl->root_arena };
+    root_arena.calculate_inputs();
+    root_arena.prime_inputs();
+    root_arena.calculate_outputs();
+    root_arena.prime_outputs();
 
     // Update and draw nodes
-    root_group.update();
+    root_arena.update();
+
+    root_arena.prepareNextFrame();
 
     // Update and draw links
     for (auto iter = m_impl->links.begin(); iter != m_impl->links.end();) {
@@ -415,7 +422,7 @@ void ImNodeFlow::update()
 
             // Deselect all nodes if not holding down CTRL
             if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
-                root_group.deselectAllNodes();
+                root_arena.deselectAllNodes();
             }
         }
     }
@@ -495,9 +502,9 @@ void ImNodeFlow::update()
         }
 
         if (shouldMarkSelected) {
-            root_group.selectArea(boxClip);
+            root_arena.selectArea(boxClip);
         } else {
-            root_group.provisionallySelectArea(boxClip);
+            root_arena.provisionallySelectArea(boxClip);
         }
     }
 
@@ -531,7 +538,7 @@ void ImNodeFlow::update()
         std::move(
             std::begin(m_impl->newNodesQueue),
             std::end(m_impl->newNodesQueue),
-            std::back_inserter(m_impl->root_group.nodes));
+            std::back_inserter(m_impl->root_arena.nodes));
         m_impl->newNodesQueue.clear();
     }
 }

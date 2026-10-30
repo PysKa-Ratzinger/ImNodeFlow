@@ -19,6 +19,9 @@ namespace ImFlow::detail {
 
 struct node_t {
     NodeUID uid;
+    /// When NULL, the node belongs in the root group
+    node_t* parent_node = nullptr;
+
     std::string title;
     ImVec2 pos;
     ImVec2 posTarget;
@@ -35,6 +38,7 @@ struct node_t {
     bool dragging = false;
     bool indestructable = false;
 
+    std::unique_ptr<node_group_arena_t> child_arena;
     std::unique_ptr<INodeBehaviour> behaviour;
 
     std::vector<std::unique_ptr<detail::pin_base_t>> ins;
