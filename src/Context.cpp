@@ -179,7 +179,7 @@ void ImNodeFlow::droppedLinkPopUpContent(
     ImGuiKey key)
 {
     m_impl->droppedLinkPopUp = std::move(handler);
-    m_impl->droppedLinkPupUpComboKey = key;
+    m_impl->droppedLinkPopUpComboKey = key;
 }
 
 void ImNodeFlow::rightClickPopUpContent(right_click_popup_handler_t content)
@@ -433,8 +433,8 @@ void ImNodeFlow::update()
             PinRef<> source_pin { dto };
             // Links drop-off
             if (m_impl->droppedLinkPopUp
-                && (m_impl->droppedLinkPupUpComboKey == ImGuiKey_None
-                    || ImGui::IsKeyDown(m_impl->droppedLinkPupUpComboKey))) {
+                && (m_impl->droppedLinkPopUpComboKey == ImGuiKey_None
+                    || ImGui::IsKeyDown(m_impl->droppedLinkPopUpComboKey))) {
                 m_impl->droppedLinkLeft = &static_cast<detail::pin_base_t&>(source_pin);
                 ImGui::OpenPopup("DroppedLinkPopUp");
             }

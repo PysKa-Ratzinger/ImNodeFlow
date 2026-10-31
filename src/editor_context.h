@@ -37,7 +37,7 @@ struct editor_context_t {
     std::vector<std::unique_ptr<pin_link_t>> pin_links;
 
     dropped_link_popup_handler_t droppedLinkPopUp;
-    ImGuiKey droppedLinkPupUpComboKey = ImGuiKey_None;
+    ImGuiKey droppedLinkPopUpComboKey = ImGuiKey_None;
     pin_base_t* droppedLinkLeft = nullptr;
     right_click_popup_handler_t rightClickPopUp;
     drag_drop_target_handler_t dragdropTarget;
