@@ -12,6 +12,8 @@ template <bool TIsConst = false>
 class PinRef;
 template <bool TIsConst = false>
 class NodeRefImpl;
+template <bool TIsConst = false>
+class NodeGroupArenaRef;
 
 using NodeRef = NodeRefImpl<false>;
 using ConstNodeRef = NodeRefImpl<true>;

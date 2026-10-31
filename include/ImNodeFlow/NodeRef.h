@@ -8,9 +8,9 @@
 #include "ImNodeFlow/detail/fwd.h"
 #include "ImNodeFlow/fwd.h"
 
-#include <type_traits>
-
+#include <optional>
 #include <string_view>
+#include <type_traits>
 
 namespace ImFlow {
 
@@ -263,7 +263,11 @@ public:
 
     [[nodiscard]] bool isActivated() const;
 
+    [[nodiscard]] std::optional<NodeGroupArenaRef<TIsConst>> getChildArena() const;
+
     [[nodiscard]] bool anyChildActivated() const;
+
+    [[nodiscard]] bool hasChildNodes() const;
 
     /**
      * @brief Get selected status
@@ -330,7 +334,10 @@ public:
     NodeRefImpl& setProvisionallySelected(bool state)
         requires(!TIsConst);
 
-    void setParentNode(NodeRef newParentNode)
+    void setParentNode(std::optional<NodeRef> new_parent_node)
+        requires(!TIsConst);
+
+    void disbandGroup()
         requires(!TIsConst);
 
     /**

@@ -251,6 +251,20 @@ NodeEditor::NodeEditor(float width, float height)
                 "you have right-clicked on [%s] (%zu total nodes selected)",
                 node->getName().c_str(),
                 selected_nodes.size());
+            if (!selected_nodes.empty()) {
+                if (ImGui::Button("Make parent")) {
+                    for (auto& selected_node : selected_nodes) {
+                        selected_node.setParentNode(*node);
+                    }
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            if (node->hasChildNodes()) {
+                if (ImGui::Button("Disband group")) {
+                    node->disbandGroup();
+                    ImGui::CloseCurrentPopup();
+                }
+            }
         } else {
             ImVec2 mouse_screen_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
             bool should_close = true;

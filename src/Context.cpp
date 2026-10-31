@@ -1,12 +1,12 @@
 #include "ImNodeFlow/Context.h"
 
+#include "ImNodeFlow/NodeGroupArenaRef.h"
 #include "ImNodeFlow/NodeRef.h"
 #include "ImNodeFlow/PinRef.h"
 #include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/fwd.h"
 
 #include "./LinkRef.h"
-#include "./NodeGroupArenaRef.h"
 #include "./NodeWrapper.h"
 #include "./editor_context.h"
 #include "./imgui_button_flags_helper.h"
@@ -96,7 +96,7 @@ ImNodeFlow::~ImNodeFlow() = default;
 
 bool ImNodeFlow::mouse_on_selected_node() const
 {
-    return detail::NodeGroupArenaRef<true> { *this, m_impl->root_arena }.mouse_over_any_selected_node();
+    return NodeGroupArenaRef<true> { *this, m_impl->root_arena }.mouse_over_any_selected_node();
 }
 
 detail::editor_context_t& ImNodeFlow::getDetail()
@@ -227,19 +227,19 @@ ImVec2 ImNodeFlow::getScreenSpaceDelta() const
 
 uint64_t ImNodeFlow::getNodesCount() const
 {
-    return detail::NodeGroupArenaRef<true> { *this, m_impl->root_arena }.getNodesCount();
+    return NodeGroupArenaRef<true> { *this, m_impl->root_arena }.getNodesCount();
 }
 
 uint64_t ImNodeFlow::getSelectedNodesCount() const
 {
-    return detail::NodeGroupArenaRef<true> { *this, m_impl->root_arena }.getSelectedNodesCount();
+    return NodeGroupArenaRef<true> { *this, m_impl->root_arena }.getSelectedNodesCount();
 }
 
 std::vector<NodeRef> ImNodeFlow::getNodes()
 {
     std::vector<NodeRef> result;
     result.reserve(this->getNodesCount());
-    detail::NodeGroupArenaRef { *this, m_impl->root_arena }.getNodes(result);
+    NodeGroupArenaRef { *this, m_impl->root_arena }.getNodes(result);
     return result;
 }
 
@@ -247,7 +247,7 @@ std::vector<NodeRef> ImNodeFlow::getSelectedNodes()
 {
     std::vector<NodeRef> result;
     result.reserve(this->getSelectedNodesCount());
-    detail::NodeGroupArenaRef { *this, m_impl->root_arena }.getSelectedNodes(result);
+    NodeGroupArenaRef { *this, m_impl->root_arena }.getSelectedNodes(result);
     return result;
 }
 
@@ -364,7 +364,7 @@ void ImNodeFlow::update()
     }
 
     // Propagate pin values
-    detail::NodeGroupArenaRef<> root_arena { *this, m_impl->root_arena };
+    NodeGroupArenaRef<> root_arena { *this, m_impl->root_arena };
     root_arena.calculate_inputs();
     root_arena.prime_inputs();
     root_arena.calculate_outputs();

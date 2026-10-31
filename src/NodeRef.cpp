@@ -1,6 +1,7 @@
 #include "ImNodeFlow/NodeRef.h"
 
 #include "ImNodeFlow/Context.h"
+#include "ImNodeFlow/NodeGroupArenaRef.h"
 #include "ImNodeFlow/NodeStyle.h"
 #include "ImNodeFlow/NodeUID.h"
 #include "ImNodeFlow/PinInfo.h"
@@ -11,7 +12,6 @@
 #include "ImNodeFlow/detail/fwd.h"
 
 #include "./DynamicPinRef.h"
-#include "./NodeGroupArenaRef.h"
 #include "./dynamic_pin.h"
 #include "./editor_context.h"
 #include "./node.h"
@@ -128,6 +128,18 @@ bool NodeRefImpl<TIsConst>::isActivated() const
 }
 
 template <bool TIsConst>
+std::optional<NodeGroupArenaRef<TIsConst>>
+NodeRefImpl<TIsConst>::getChildArena() const
+{
+    std::optional<NodeGroupArenaRef<TIsConst>> result;
+    auto& node = m_node.get();
+    if (node.child_arena) {
+        result.emplace(m_ctx, *node.child_arena);
+    }
+    return result;
+}
+
+template <bool TIsConst>
 bool NodeRefImpl<TIsConst>::anyChildActivated() const
 {
     detail::node_t const& node = m_node.get();
@@ -141,6 +153,13 @@ bool NodeRefImpl<TIsConst>::anyChildActivated() const
             ConstNodeRef child_node { m_ctx, *elem };
             return child_node.isActivated() || child_node.anyChildActivated();
         });
+}
+
+template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::hasChildNodes() const
+{
+    detail::node_t const& node = m_node.get();
+    return node.child_arena && !node.child_arena->nodes.empty();
 }
 
 template <bool TIsConst>
@@ -216,15 +235,15 @@ NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setProvisionallySelected(bool stat
 }
 
 template <bool TIsConst>
-void NodeRefImpl<TIsConst>::setParentNode(NodeRef newParentNode)
+void NodeRefImpl<TIsConst>::setParentNode(std::optional<NodeRef> newParentNode)
     requires(!TIsConst)
 {
     ImNodeFlow& ctx = m_ctx.get();
     detail::node_t& node = m_node.get();
-    detail::node_t& parent_node = newParentNode.m_node.get();
+    detail::node_t* parent_node = newParentNode.has_value() ? &newParentNode->m_node.get() : nullptr;
 
     // A node cannot be it's own parent
-    if (&node == &parent_node) {
+    if (&node == parent_node) {
         return;
     }
 
@@ -233,14 +252,18 @@ void NodeRefImpl<TIsConst>::setParentNode(NodeRef newParentNode)
         own_arena = node.parent_node->child_arena.get();
     }
 
-    if (!parent_node.child_arena) {
-        parent_node.child_arena = std::make_unique<detail::node_group_arena_t>();
+    detail::node_group_arena_t* target_arena = &ctx.getDetail().root_arena;
+    if (parent_node != nullptr) {
+        if (!parent_node->child_arena) {
+            parent_node->child_arena = std::make_unique<detail::node_group_arena_t>();
+        }
+        target_arena = &*parent_node->child_arena;
     }
 
-    assert(own_arena != nullptr
-        && "Could not find node's own arena");
+    assert(own_arena != nullptr && "Could not find node's own arena");
+    assert(target_arena != nullptr && "Could not find target arena");
 
-    if (own_arena == &*parent_node.child_arena) {
+    if (own_arena == target_arena) {
         return;
     }
 
@@ -255,10 +278,32 @@ void NodeRefImpl<TIsConst>::setParentNode(NodeRef newParentNode)
         && "Sanity check failed. Node cannot be found in it's own arena.");
 
     // move node ownership to the new arena
-    parent_node.child_arena->nodes.emplace_back(std::move(*iter));
+    target_arena->nodes.emplace_back(std::move(*iter));
     // Remove the empty unique_ptr from the old arena
     own_arena->nodes.erase(iter);
-    node.parent_node = &parent_node;
+    node.parent_node = parent_node;
+}
+
+template <bool TIsConst>
+void NodeRefImpl<TIsConst>::disbandGroup()
+    requires(!TIsConst)
+{
+    detail::node_t& node = m_node.get();
+    if (!node.child_arena) {
+        return;
+    }
+
+    std::optional<NodeRef> parent_node;
+    if (node.parent_node != nullptr) {
+        parent_node.emplace(m_ctx, *node.parent_node);
+    }
+
+    while (!node.child_arena->nodes.empty()) {
+        NodeRef child { m_ctx, **std::rbegin(node.child_arena->nodes) };
+        child.setParentNode(parent_node);
+    }
+
+    node.child_arena.reset();
 }
 
 template <bool TIsConst>
@@ -271,8 +316,12 @@ void NodeRefImpl<TIsConst>::prepareNextFrame()
     node.provisionallySelected = node.provisionallySelectedNext;
     node.provisionallySelectedNext = false;
 
-    if (node.child_arena) {
-        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.prepareNextFrame();
+    auto child_arena = this->getChildArena();
+    if (child_arena.has_value()) {
+        child_arena->prepareNextFrame();
+        if (child_arena->getNodesCount() == 0) {
+            node.child_arena.reset();
+        }
     }
 }
 
@@ -512,8 +561,9 @@ void NodeRefImpl<TIsConst>::calculate_inputs()
     for (auto& pin : node.dynamicIns) {
         detail::DynamicPinRef { m_ctx, *pin }.pin().calculate();
     }
-    if (node.child_arena) {
-        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.calculate_inputs();
+    auto child_arena = this->getChildArena();
+    if (child_arena.has_value()) {
+        child_arena->calculate_inputs();
     }
 }
 
@@ -528,8 +578,9 @@ void NodeRefImpl<TIsConst>::calculate_outputs()
     for (auto& pin : node.dynamicOuts) {
         detail::DynamicPinRef { m_ctx, *pin }.pin().calculate();
     }
-    if (node.child_arena) {
-        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.calculate_outputs();
+    auto child_arena = this->getChildArena();
+    if (child_arena.has_value()) {
+        child_arena->calculate_outputs();
     }
 }
 
@@ -544,8 +595,9 @@ void NodeRefImpl<TIsConst>::prime_inputs()
     for (auto& pin : node.dynamicIns) {
         detail::DynamicPinRef { m_ctx, *pin }.pin().prime();
     }
-    if (node.child_arena) {
-        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.prime_inputs();
+    auto child_arena = this->getChildArena();
+    if (child_arena.has_value()) {
+        child_arena->prime_inputs();
     }
 }
 
@@ -560,8 +612,9 @@ void NodeRefImpl<TIsConst>::prime_outputs()
     for (auto& pin : node.dynamicOuts) {
         detail::DynamicPinRef { m_ctx, *pin }.pin().prime();
     }
-    if (node.child_arena) {
-        detail::NodeGroupArenaRef<> { m_ctx, *node.child_arena }.prime_outputs();
+    auto child_arena = this->getChildArena();
+    if (child_arena.has_value()) {
+        child_arena->prime_outputs();
     }
 }
 
@@ -576,12 +629,12 @@ void NodeRefImpl<TIsConst>::update()
         node.child_arena.reset();
     }
 
-    if (node.child_arena) {
-        detail::NodeGroupArenaRef<> arena { m_ctx, *node.child_arena };
-        arena.draw_outline(*this);
+    auto child_arena = this->getChildArena();
+    if (child_arena.has_value()) {
+        child_arena->draw_outline(*this);
 
         // Update and draw child nodes
-        arena.update();
+        child_arena->update();
     }
 
     if (ImGui::IsWindowFocused() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {

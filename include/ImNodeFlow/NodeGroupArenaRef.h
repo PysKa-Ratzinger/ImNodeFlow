@@ -9,13 +9,16 @@
 #include <type_traits>
 #include <vector>
 
-namespace ImFlow::detail {
+namespace ImFlow {
 
-template <bool TIsConst = false>
+template <bool TIsConst>
 class NodeGroupArenaRef {
 public:
     using context_type = std::conditional_t<TIsConst, const ImNodeFlow, ImNodeFlow>;
-    using group_arena_type = std::conditional_t<TIsConst, const node_group_arena_t, node_group_arena_t>;
+    using group_arena_type = std::conditional_t<
+        TIsConst,
+        const detail::node_group_arena_t,
+        detail::node_group_arena_t>;
 
     NodeGroupArenaRef(context_type& ctx, group_arena_type& arena);
 
@@ -45,6 +48,8 @@ public:
     void prime_outputs()
         requires(!TIsConst);
 
+    ImRect get_bounding_box(ConstNodeRef parentNode) const;
+
     void draw_outline(ConstNodeRef parentNode) const;
 
     void update()
@@ -60,4 +65,4 @@ private:
 extern template class NodeGroupArenaRef<false>;
 extern template class NodeGroupArenaRef<true>;
 
-} // namespace ImFlow::detail
+} // namespace ImFlow

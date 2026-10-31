@@ -1,4 +1,4 @@
-#include "NodeGroupArenaRef.h"
+#include "ImNodeFlow/NodeGroupArenaRef.h"
 
 #include "ImNodeFlow/Context.h"
 #include "ImNodeFlow/NodeRef.h"
@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-namespace ImFlow::detail {
+namespace ImFlow {
 
 template <bool TIsConst>
 NodeGroupArenaRef<TIsConst>::NodeGroupArenaRef(context_type& ctx, group_arena_type& arena)
@@ -58,6 +58,9 @@ uint64_t NodeGroupArenaRef<TIsConst>::getSelectedNodesCount() const
         if (ConstNodeRef { m_ctx, *node }.isSelected()) {
             ++n_selected;
         }
+        if (node->child_arena != nullptr) {
+            n_selected += NodeGroupArenaRef<TIsConst> { m_ctx, *node->child_arena }.getSelectedNodesCount();
+        }
     }
     return n_selected;
 }
@@ -81,6 +84,9 @@ void NodeGroupArenaRef<TIsConst>::getSelectedNodes(
         NodeRefImpl<TIsConst> node { m_ctx, *n };
         if (node.isSelected()) {
             out_vec.emplace_back(std::move(node));
+        }
+        if (n->child_arena) {
+            NodeGroupArenaRef<TIsConst> { m_ctx, *n->child_arena }.getSelectedNodes(out_vec);
         }
     }
 }
@@ -185,28 +191,45 @@ void NodeGroupArenaRef<TIsConst>::prime_outputs()
 }
 
 template <bool TIsConst>
-void NodeGroupArenaRef<TIsConst>::draw_outline(ConstNodeRef parentNode) const
+ImRect NodeGroupArenaRef<TIsConst>::get_bounding_box(ConstNodeRef parentNode) const
 {
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-    node_group_arena_t const& arena = m_arena.get();
-    auto const& ctx = m_ctx.get();
-
     ImRect arena_outline {
         parentNode.getTLPos(),
         parentNode.getTLPos() + parentNode.getFullSize(),
     };
 
+    detail::node_group_arena_t const& arena = m_arena.get();
+
     for (auto const& n : arena.nodes) {
         ConstNodeRef node { m_ctx, *n };
         arena_outline.Add(node.getTLPos());
         arena_outline.Add(node.getTLPos() + node.getFullSize());
+
+        auto child_arena = node.getChildArena();
+        if (child_arena.has_value()) {
+            auto child_bb = child_arena->get_bounding_box(node);
+            arena_outline.Add(child_bb.Min);
+            arena_outline.Add(child_bb.Max);
+        }
     }
 
     ImVec2 padding { 10.F, 10.F };
 
     arena_outline.Add(arena_outline.Min - padding);
     arena_outline.Add(arena_outline.Max + padding);
+
+    return arena_outline;
+}
+
+template <bool TIsConst>
+void NodeGroupArenaRef<TIsConst>::draw_outline(ConstNodeRef parentNode) const
+{
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    detail::node_group_arena_t const& arena = m_arena.get();
+    auto const& ctx = m_ctx.get();
+
+    ImRect arena_outline = this->get_bounding_box(parentNode);
 
     auto color = parentNode.getStyle().header_bg;
     auto radius = parentNode.getStyle().radius;
@@ -328,4 +351,4 @@ void NodeGroupArenaRef<TIsConst>::prepareNextFrame()
 template class NodeGroupArenaRef<false>;
 template class NodeGroupArenaRef<true>;
 
-} // namespace ImFlow::detail
+} // namespace ImFlow
