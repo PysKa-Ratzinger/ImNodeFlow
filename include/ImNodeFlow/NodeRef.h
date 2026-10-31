@@ -334,6 +334,8 @@ public:
     NodeRefImpl& setProvisionallySelected(bool state)
         requires(!TIsConst);
 
+    std::optional<NodeRefImpl<TIsConst>> getParentNode() const;
+
     void setParentNode(std::optional<NodeRef> new_parent_node)
         requires(!TIsConst);
 

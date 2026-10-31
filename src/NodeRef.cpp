@@ -235,6 +235,19 @@ NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setProvisionallySelected(bool stat
 }
 
 template <bool TIsConst>
+std::optional<NodeRefImpl<TIsConst>>
+NodeRefImpl<TIsConst>::getParentNode() const
+{
+    auto& node = m_node.get();
+
+    std::optional<NodeRefImpl<TIsConst>> result;
+    if (node.parent_node) {
+        result.emplace(m_ctx, *node.parent_node);
+    }
+    return result;
+}
+
+template <bool TIsConst>
 void NodeRefImpl<TIsConst>::setParentNode(std::optional<NodeRef> newParentNode)
     requires(!TIsConst)
 {
@@ -245,6 +258,17 @@ void NodeRefImpl<TIsConst>::setParentNode(std::optional<NodeRef> newParentNode)
     // A node cannot be it's own parent
     if (&node == parent_node) {
         return;
+    }
+
+    for (detail::node_t* curr = parent_node;
+        curr != nullptr;
+        curr = curr->parent_node) {
+        if (curr == &node) {
+            // new parent node is a child node, so we must remove it from
+            // the the child list in order to avoid catastrophic results
+            newParentNode->setParentNode(getParentNode());
+            break;
+        }
     }
 
     detail::node_group_arena_t* own_arena = &ctx.getDetail().root_arena;
@@ -293,14 +317,9 @@ void NodeRefImpl<TIsConst>::disbandGroup()
         return;
     }
 
-    std::optional<NodeRef> parent_node;
-    if (node.parent_node != nullptr) {
-        parent_node.emplace(m_ctx, *node.parent_node);
-    }
-
     while (!node.child_arena->nodes.empty()) {
         NodeRef child { m_ctx, **std::rbegin(node.child_arena->nodes) };
-        child.setParentNode(parent_node);
+        child.setParentNode(getParentNode());
     }
 
     node.child_arena.reset();
