@@ -39,7 +39,7 @@ struct pin_base_t {
     bool socketHitboxEnabled = true;
     bool isHovered = false;
     pin_rendering_handler_t renderer;
-    std::vector<link_t*> links { };
+    std::vector<pin_link_t*> links { };
     std::unique_ptr<IPin> underlying_pin;
 };
 

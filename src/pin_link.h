@@ -4,7 +4,7 @@
 
 namespace ImFlow::detail {
 
-struct link_t {
+struct pin_link_t {
     detail::pin_base_t* out_pin = nullptr;
     detail::pin_base_t* in_pin = nullptr;
     bool marked_for_deletion = false;

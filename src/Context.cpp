@@ -3,16 +3,13 @@
 #include "ImNodeFlow/NodeGroupArenaRef.h"
 #include "ImNodeFlow/NodeRef.h"
 #include "ImNodeFlow/PinRef.h"
-#include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/fwd.h"
 
-#include "./LinkRef.h"
 #include "./NodeWrapper.h"
+#include "./PinLinkRef.h"
 #include "./editor_context.h"
 #include "./imgui_button_flags_helper.h"
-#include "./link.h"
 #include "./node.h"
-#include "./pin_base.h"
 #include "./pin_drawing_utils.h"
 #include "./uid_helpers.h"
 
@@ -170,11 +167,11 @@ void ImNodeFlow::createLink(PinRef<> source_pin, PinRef<> target_pin)
         return;
     }
 
-    auto new_link = std::make_unique<detail::link_t>();
+    auto new_link = std::make_unique<detail::pin_link_t>();
 
-    detail::LinkRef<> { *this, *new_link }.connect(source_pin, target_pin);
+    detail::PinLinkRef<> { *this, *new_link }.connect(source_pin, target_pin);
 
-    m_impl->links.emplace_back(std::move(new_link));
+    m_impl->pin_links.emplace_back(std::move(new_link));
 }
 
 void ImNodeFlow::droppedLinkPopUpContent(
@@ -376,13 +373,13 @@ void ImNodeFlow::update()
     root_arena.prepareNextFrame();
 
     // Update and draw links
-    for (auto iter = m_impl->links.begin(); iter != m_impl->links.end();) {
-        detail::LinkRef<> link { *this, **iter };
+    for (auto iter = m_impl->pin_links.begin(); iter != m_impl->pin_links.end();) {
+        detail::PinLinkRef<> link { *this, **iter };
 
         // Clean up deleted links along the way
         if (!link.isAlive()) {
             link.destroy();
-            iter = m_impl->links.erase(iter);
+            iter = m_impl->pin_links.erase(iter);
             continue;
         }
 

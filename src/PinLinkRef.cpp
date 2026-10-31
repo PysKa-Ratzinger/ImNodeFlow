@@ -1,37 +1,41 @@
-#include "LinkRef.h"
+#include "PinLinkRef.h"
 
 #include "ImNodeFlow/PinRef.h"
 
 #include "./imgui_bezier_items.h"
 #include "./pin_base.h"
 
+#include "ImNodeFlow/PinType.h"
 #include "imgui.h"
+#include "imgui_internal.h"
+#include "pin_link.h"
 
 #include <cassert>
+#include <utility>
 
 namespace ImFlow::detail {
 
 template <bool TIsConst>
-LinkRef<TIsConst>::LinkRef(context_type& ctx, link_type& link)
+PinLinkRef<TIsConst>::PinLinkRef(context_type& ctx, link_type& link)
     : m_ctx(ctx)
     , m_link(link)
 {
 }
 
 template <bool TIsConst>
-PinRef<TIsConst> LinkRef<TIsConst>::outPin() const
+PinRef<TIsConst> PinLinkRef<TIsConst>::outPin() const
 {
     return PinRef<TIsConst> { m_ctx, *m_link.get().out_pin };
 }
 
 template <bool TIsConst>
-PinRef<TIsConst> LinkRef<TIsConst>::inPin() const
+PinRef<TIsConst> PinLinkRef<TIsConst>::inPin() const
 {
     return PinRef<TIsConst> { m_ctx, *m_link.get().in_pin };
 }
 
 template <bool TIsConst>
-bool LinkRef<TIsConst>::isAlive() const
+bool PinLinkRef<TIsConst>::isAlive() const
 {
     auto& link = m_link.get();
     return !link.marked_for_deletion
@@ -40,7 +44,7 @@ bool LinkRef<TIsConst>::isAlive() const
 }
 
 template <bool TIsConst>
-void LinkRef<TIsConst>::connect(pin_base_t& out_pin, pin_base_t& in_pin)
+void PinLinkRef<TIsConst>::connect(pin_base_t& out_pin, pin_base_t& in_pin)
     requires(!TIsConst)
 {
     this->destroy();
@@ -64,7 +68,7 @@ void LinkRef<TIsConst>::connect(pin_base_t& out_pin, pin_base_t& in_pin)
 }
 
 template <bool TIsConst>
-void LinkRef<TIsConst>::destroy()
+void PinLinkRef<TIsConst>::destroy()
     requires(!TIsConst)
 {
     auto& link = m_link.get();
@@ -80,10 +84,10 @@ void LinkRef<TIsConst>::destroy()
 }
 
 template <bool TIsConst>
-void LinkRef<TIsConst>::update()
+void PinLinkRef<TIsConst>::update()
     requires(!TIsConst)
 {
-    detail::link_t& link = m_link.get();
+    detail::pin_link_t& link = m_link.get();
 
     if (link.marked_for_deletion) {
         return;
@@ -163,7 +167,7 @@ void LinkRef<TIsConst>::update()
     }
 }
 
-template class LinkRef<false>;
-template class LinkRef<true>;
+template class PinLinkRef<false>;
+template class PinLinkRef<true>;
 
 } // namespace ImFlow::detail

@@ -6,7 +6,7 @@
 #include "ImNodeFlow/detail/IPin.h"
 #include "ImNodeFlow/detail/fwd.h"
 
-#include "./LinkRef.h"
+#include "./PinLinkRef.h"
 #include "./pin_base.h"
 #include "./pin_drawing_utils.h"
 
@@ -291,13 +291,13 @@ void PinRef<TIsConst>::deleteAllLinks()
     auto& pin = m_pin.get();
     auto links = std::move(pin.links);
     for (auto& l : links) {
-        detail::LinkRef link { m_ctx, *l };
+        detail::PinLinkRef link { m_ctx, *l };
         link.destroy();
     }
 }
 
 template <bool TIsConst>
-void PinRef<TIsConst>::addLink(detail::link_t* link)
+void PinRef<TIsConst>::addLink(detail::pin_link_t* link)
     requires(!TIsConst)
 {
     auto& base = m_pin.get();
@@ -319,7 +319,7 @@ void PinRef<TIsConst>::addLink(detail::link_t* link)
 }
 
 template <bool TIsConst>
-void PinRef<TIsConst>::removeLink(detail::link_t* link)
+void PinRef<TIsConst>::removeLink(detail::pin_link_t* link)
     requires(!TIsConst)
 {
     auto& base = m_pin.get();
@@ -363,7 +363,7 @@ PinRef<TIsConst>::getConnections() const
             continue;
         }
 
-        detail::LinkRef<TIsConst> link { m_ctx, *l };
+        detail::PinLinkRef<TIsConst> link { m_ctx, *l };
 
         switch (pin.type) {
         case PinType::Input:

@@ -7,12 +7,11 @@
 #include "ImNodeFlow/callback_types.h"
 
 #include "./context_wrapper.h"
-#include "./link.h"
 #include "./node.h"
 #include "./node_group.h"
+#include "./pin_link.h"
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 template <>
@@ -35,7 +34,7 @@ struct editor_context_t {
 
     detail::node_group_arena_t root_arena;
 
-    std::vector<std::unique_ptr<link_t>> links;
+    std::vector<std::unique_ptr<pin_link_t>> pin_links;
 
     dropped_link_popup_handler_t droppedLinkPopUp;
     ImGuiKey droppedLinkPupUpComboKey = ImGuiKey_None;

@@ -5,11 +5,10 @@
 namespace ImFlow::detail {
 
 class IPin;
-class Link;
 
 struct dynamic_pin_t;
 struct editor_context_t;
-struct link_t;
+struct pin_link_t;
 struct node_group_arena_t;
 struct node_group_t;
 struct node_t;

@@ -124,7 +124,7 @@ public:
      * @internal This function is for internal use only. Do not call this
      * function as an API user.
      */
-    void addLink(detail::link_t* link)
+    void addLink(detail::pin_link_t* link)
         requires(!TIsConst);
 
     /**
@@ -133,7 +133,7 @@ public:
      * @internal This function is for internal use only. Do not call this
      * function as an API user.
      */
-    void removeLink(detail::link_t* link)
+    void removeLink(detail::pin_link_t* link)
         requires(!TIsConst);
 
     /**

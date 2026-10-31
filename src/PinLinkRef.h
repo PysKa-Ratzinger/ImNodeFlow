@@ -4,7 +4,7 @@
 #include "ImNodeFlow/detail/fwd.h"
 #include "ImNodeFlow/fwd.h"
 
-#include "./link.h"
+#include "./pin_link.h"
 
 #include <functional>
 #include <type_traits>
@@ -12,12 +12,12 @@
 namespace ImFlow::detail {
 
 template <bool TIsConst = false>
-class LinkRef {
+class PinLinkRef {
 public:
     using context_type = std::conditional_t<TIsConst, const ImNodeFlow, ImNodeFlow>;
-    using link_type = std::conditional_t<TIsConst, const link_t, link_t>;
+    using link_type = std::conditional_t<TIsConst, const pin_link_t, pin_link_t>;
 
-    LinkRef(context_type& ctx, link_type& link);
+    PinLinkRef(context_type& ctx, link_type& link);
 
     [[nodiscard]] PinRef<TIsConst> outPin() const;
     [[nodiscard]] PinRef<TIsConst> inPin() const;
@@ -38,7 +38,7 @@ private:
     std::reference_wrapper<link_type> m_link;
 };
 
-extern template class LinkRef<false>;
-extern template class LinkRef<true>;
+extern template class PinLinkRef<false>;
+extern template class PinLinkRef<true>;
 
 } // namespace ImFlow::detail
