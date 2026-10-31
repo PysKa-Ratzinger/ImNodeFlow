@@ -62,6 +62,7 @@ struct editor_context_t {
     SelectionBox box;
 
     bool draggingCanvas = false;
+    bool mouseOnSelectedNode = false;
 };
 
 } // namespace ImFlow::detail

@@ -93,7 +93,7 @@ ImNodeFlow::~ImNodeFlow() = default;
 
 bool ImNodeFlow::mouse_on_selected_node() const
 {
-    return NodeGroupArenaRef<true> { *this, m_impl->root_arena }.mouse_over_any_selected_node();
+    return m_impl->mouseOnSelectedNode;
 }
 
 detail::editor_context_t& ImNodeFlow::getDetail()
@@ -310,6 +310,10 @@ void ImNodeFlow::hoveredNode(detail::node_t* hovering)
 void ImNodeFlow::update()
 {
     m_impl->is_drawing = true;
+
+    m_impl->mouseOnSelectedNode
+        = NodeGroupArenaRef<true> { *this, m_impl->root_arena }
+              .mouse_over_any_selected_node();
 
     // Updating looping stuff
     m_impl->hoveredNode = nullptr;
