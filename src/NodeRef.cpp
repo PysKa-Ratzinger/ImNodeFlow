@@ -632,9 +632,6 @@ void NodeRefImpl<TIsConst>::update()
     auto child_arena = this->getChildArena();
     if (child_arena.has_value()) {
         child_arena->draw_outline(*this);
-
-        // Update and draw child nodes
-        child_arena->update();
     }
 
     if (ImGui::IsWindowFocused() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {
@@ -655,8 +652,8 @@ void NodeRefImpl<TIsConst>::update()
 
     // Used to render each node's foreground and background out of order
     ImDrawListSplitter drawListSplitter;
-    drawListSplitter.Split(draw_list, 2);
-    drawListSplitter.SetCurrentChannel(draw_list, 1); // Foreground
+    drawListSplitter.Split(draw_list, 3);
+    drawListSplitter.SetCurrentChannel(draw_list, 2); // Foreground
     ImGui::SetCursorScreenPos(offset + node.pos);
 
     ImGui::BeginGroup();
@@ -754,7 +751,7 @@ void NodeRefImpl<TIsConst>::update()
     ImVec2 headerSize = ImVec2(node.size.x + paddingBR.x, headerH);
 
     // Background
-    drawListSplitter.SetCurrentChannel(draw_list, 0);
+    drawListSplitter.SetCurrentChannel(draw_list, 1);
     draw_list->AddRectFilled(
         offset + node.pos - paddingTL,
         offset + node.pos + node.size + paddingBR,
@@ -883,6 +880,11 @@ void NodeRefImpl<TIsConst>::update()
             node.dragging = false;
             node.posTarget = node.pos;
         }
+    }
+
+    drawListSplitter.SetCurrentChannel(draw_list, 0);
+    if (child_arena.has_value()) {
+        child_arena->update();
     }
 
     drawListSplitter.Merge(draw_list);
