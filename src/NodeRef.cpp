@@ -41,7 +41,7 @@ template <bool TIsConst>
 void NodeRefImpl<TIsConst>::destroy()
     requires(!TIsConst)
 {
-    auto& node = m_node.get();
+    detail::node_t& node = m_node.get();
     if (node.behaviour) {
         node.behaviour.reset();
     }
@@ -56,6 +56,11 @@ void NodeRefImpl<TIsConst>::destroy()
     }
     for (auto& elem : node.dynamicOuts) {
         detail::DynamicPinRef<> { m_ctx, *elem }.destroy();
+    }
+    auto child_arena = this->getChildArena();
+    if (child_arena.has_value()) {
+        child_arena->destroy();
+        node.child_arena.reset();
     }
     node.destroyed = true;
 }
@@ -648,9 +653,11 @@ void NodeRefImpl<TIsConst>::update()
         node.child_arena.reset();
     }
 
-    auto child_arena = this->getChildArena();
-    if (child_arena.has_value()) {
-        child_arena->draw_outline(*this);
+    {
+        auto child_arena = this->getChildArena();
+        if (child_arena.has_value()) {
+            child_arena->draw_outline(*this);
+        }
     }
 
     if (ImGui::IsWindowFocused() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {
@@ -902,8 +909,11 @@ void NodeRefImpl<TIsConst>::update()
     }
 
     drawListSplitter.SetCurrentChannel(draw_list, 0);
-    if (child_arena.has_value()) {
-        child_arena->update();
+    {
+        auto child_arena = this->getChildArena();
+        if (child_arena.has_value()) {
+            child_arena->update();
+        }
     }
 
     drawListSplitter.Merge(draw_list);

@@ -83,7 +83,11 @@ template <bool TIsConst>
 void LinkRef<TIsConst>::update()
     requires(!TIsConst)
 {
-    auto& link = m_link.get();
+    detail::link_t& link = m_link.get();
+
+    if (link.marked_for_deletion) {
+        return;
+    }
 
     ImVec2 start = outPin().pinPoint();
     ImVec2 end = inPin().pinPoint();

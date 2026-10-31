@@ -26,6 +26,17 @@ NodeGroupArenaRef<TIsConst>::NodeGroupArenaRef(context_type& ctx, group_arena_ty
 }
 
 template <bool TIsConst>
+void NodeGroupArenaRef<TIsConst>::destroy()
+    requires(!TIsConst)
+{
+    detail::node_group_arena_t& arena = m_arena.get();
+    for (auto& node : arena.nodes) {
+        NodeRef { m_ctx, *node }.destroy();
+    }
+    arena.nodes.clear();
+}
+
+template <bool TIsConst>
 bool NodeGroupArenaRef<TIsConst>::mouse_over_any_selected_node() const
 {
     detail::node_group_arena_t const& arena = m_arena.get();

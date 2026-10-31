@@ -22,6 +22,9 @@ public:
 
     NodeGroupArenaRef(context_type& ctx, group_arena_type& arena);
 
+    void destroy()
+        requires(!TIsConst);
+
     [[nodiscard]] bool mouse_over_any_selected_node() const;
 
     [[nodiscard]] uint64_t getNodesCount() const;
