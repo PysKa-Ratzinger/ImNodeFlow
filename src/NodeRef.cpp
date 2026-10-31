@@ -666,6 +666,7 @@ void NodeRefImpl<TIsConst>::update()
 
     if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete) && !ImGui::IsAnyItemActive() && isSelected() && !isIndestructable()) {
         destroy();
+        return;
     }
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
