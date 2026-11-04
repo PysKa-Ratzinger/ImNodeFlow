@@ -9,9 +9,10 @@
 #include "ImNodeFlow/callback_types.h"
 
 #include "./context_wrapper.h"
+#include "./link_node.h"
+#include "./link_pin.h"
 #include "./node.h"
 #include "./node_group.h"
-#include "./pin_link.h"
 
 #include <string>
 #include <vector>
@@ -35,8 +36,8 @@ struct editor_context_t {
     std::vector<std::unique_ptr<node_t>> newNodesQueue;
 
     detail::node_group_arena_t root_arena;
-    std::vector<std::unique_ptr<pin_link_t>> pin_links;
-    std::vector<std::unique_ptr<node_link_t>> node_links;
+    std::vector<std::unique_ptr<link_pin_t>> pin_links;
+    std::vector<std::unique_ptr<link_node_t>> node_links;
 
     dropped_link_popup_handler_t droppedLinkPopUp;
     ImGuiKey droppedLinkPopUpComboKey = ImGuiKey_None;

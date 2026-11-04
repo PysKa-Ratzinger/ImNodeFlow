@@ -6,8 +6,8 @@
 
 #include "./imgui_bezier_items.h"
 #include "./imgui_bezier_widgets.h"
+#include "./link_pin.h"
 #include "./pin_base.h"
-#include "./pin_link.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -42,7 +42,7 @@ template <bool TIsConst>
 bool PinLinkRef<TIsConst>::isAlive() const
 {
     auto& link = m_link.get();
-    return !link.marked_for_deletion
+    return !link.base.marked_for_deletion
         && link.in_pin != nullptr
         && link.out_pin != nullptr;
 }
@@ -53,8 +53,8 @@ void PinLinkRef<TIsConst>::connect(PinRef& out_pin, PinRef& in_pin)
 {
     this->destroy();
 
-    pin_link_t& link = m_link.get();
-    link.marked_for_deletion = false;
+    link_pin_t& link = m_link.get();
+    link.base.marked_for_deletion = false;
     link.out_pin = &static_cast<pin_base_t&>(out_pin);
     link.in_pin = &static_cast<pin_base_t&>(in_pin);
 
@@ -103,47 +103,59 @@ void PinLinkRef<TIsConst>::destroy()
         }
         link.in_pin = nullptr;
     }
-    link.marked_for_deletion = true;
+    link.base.marked_for_deletion = true;
 }
 
 template <bool TIsConst>
 void PinLinkRef<TIsConst>::update()
     requires(!TIsConst)
 {
-    detail::pin_link_t& link = m_link.get();
+    detail::link_pin_t& link = m_link.get();
 
-    if (link.marked_for_deletion) {
+    if (link.base.marked_for_deletion) {
         return;
     }
 
-    ImVec2 start = outPin().pinPoint();
-    ImVec2 end = inPin().pinPoint();
-    auto line = detail::smart_bezier_controls_from_two_points(start, end);
+    float thickness = link.base.hovered
+        ? outPin().getStyle().extra.link_hovered_thickness
+        : outPin().getStyle().extra.link_thickness;
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.selected = false;
+        link.base.selected = false;
     }
 
     auto start_color = outPin().getStyle().color;
     auto end_color = inPin().getStyle().color;
 
-    float thickness = link.hovered
-        ? outPin().getStyle().extra.link_hovered_thickness
-        : outPin().getStyle().extra.link_thickness;
+    ImVec2 start = outPin().pinPoint();
+    ImVec2 end = inPin().pinPoint();
 
-    bool pressed = detail::smart_bezier_widget(
-        ImGui::GetID(&link),
-        line,
-        start_color,
-        end_color,
-        link.selected,
-        &link.hovered,
-        thickness,
-        m_ctx.get().getStyle().link_gradient_blend);
+    auto path = detail::smart_bezier_path_between_two_pins(start, end);
+    bool pressed = false;
+    bool new_hovered = false;
 
-    link.selected = link.selected || pressed;
+    ImGui::PushID(&link);
+    for (int i = 0; i < path.size(); i++) {
+        auto& segment = path[i];
+        bool segment_hovered = false;
+        pressed |= detail::smart_bezier_widget(
+            ImGui::GetID(i),
+            segment,
+            start_color,
+            end_color,
+            link.base.selected,
+            link.base.hovered,
+            &segment_hovered,
+            thickness,
+            m_ctx.get().getStyle().link_gradient_blend);
+        new_hovered |= segment_hovered;
+    }
+    ImGui::PopID();
 
-    if (link.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+    link.base.hovered = new_hovered;
+    link.base.selected = link.base.selected || pressed;
+
+    if (link.base.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
         this->destroy();
     }
 }

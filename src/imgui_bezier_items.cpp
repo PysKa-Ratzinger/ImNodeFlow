@@ -8,26 +8,43 @@
 
 #include "imgui.h"
 
+#include <vector>
+
 namespace ImFlow::detail {
 
-cubic_bezier_controls_t smart_bezier_controls_from_two_points(
+std::vector<cubic_bezier_controls_t> smart_bezier_path_between_two_pins(
     const ImVec2& p1,
     const ImVec2& p2)
 {
-    float distance = sqrt(pow((p2.x - p1.x), 2.f) + pow((p2.y - p1.y), 2.f));
-    float delta = distance * 0.45f;
-    if (p2.x < p1.x) {
-        delta += 0.2f * (p1.x - p2.x);
-        delta = std::min(150.F, delta);
-    }
-    // float vert = (p2.x < p1.x - 20.f) ? 0.062f * distance * (p2.y - p1.y) * 0.005f : 0.f;
-    float vert = 0.f;
-    ImVec2 p22 = p2 - ImVec2(delta, vert);
-    ImVec2 p11 = p1 + ImVec2(delta, vert);
+    std::vector<cubic_bezier_controls_t> result;
 
-    return cubic_bezier_controls_t {
-        p1, p11, p22, p2
-    };
+    if (p1.y == p2.y) {
+        // Straight line
+        result.emplace_back(cubic_bezier_controls_t { p1, p1, p2, p2 });
+    } else {
+        auto p11 = p1 + ImVec2(20.F, 0);
+        auto p22 = p2 - ImVec2(20.F, 0);
+
+        if (p22.x < p11.x) {
+            float y_midpoint = (p1.y + p2.y) / 2.F;
+            auto p1m = ImVec2(p11.x, y_midpoint);
+            auto p2m = ImVec2(p22.x, y_midpoint);
+
+            result.emplace_back(cubic_bezier_controls_t { p1, p1, p11, p11 });
+            result.emplace_back(cubic_bezier_controls_t { p11, p11, p1m, p1m });
+            result.emplace_back(cubic_bezier_controls_t { p1m, p1m, p2m, p2m });
+            result.emplace_back(cubic_bezier_controls_t { p2m, p2m, p22, p22 });
+            result.emplace_back(cubic_bezier_controls_t { p22, p22, p2, p2 });
+        } else {
+            p22 = ImVec2(p11.x, p22.y);
+
+            result.emplace_back(cubic_bezier_controls_t { p1, p1, p11, p11 });
+            result.emplace_back(cubic_bezier_controls_t { p11, p11, p22, p22 });
+            result.emplace_back(cubic_bezier_controls_t { p22, p22, p2, p2 });
+        }
+    }
+
+    return result;
 }
 
 void smart_bezier(

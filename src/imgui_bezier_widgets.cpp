@@ -12,12 +12,13 @@ bool smart_bezier_widget(
     ImU32 color1,
     ImU32 color2,
     bool selected,
-    bool* hovered,
+    bool is_hovered,
+    bool* out_hovered,
     float thickness,
     float blend)
 {
     auto mouse_pos = ImGui::GetMousePos();
-    bool is_hovered = detail::smart_bezier_collider(mouse_pos, line, 2.5);
+    bool is_segment_hovered = detail::smart_bezier_collider(mouse_pos, line, 2.5);
     bool is_pressed = false;
 
     if (is_hovered) {
@@ -60,8 +61,8 @@ bool smart_bezier_widget(
         thickness,
         blend);
 
-    if (hovered != nullptr) {
-        *hovered = is_hovered;
+    if (out_hovered != nullptr) {
+        *out_hovered = is_segment_hovered;
     }
 
     return is_pressed;

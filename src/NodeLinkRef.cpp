@@ -7,8 +7,8 @@
 
 #include "./imgui_bezier_items.h"
 #include "./imgui_bezier_widgets.h"
+#include "./link_node.h"
 #include "./node.h"
-#include "./node_link.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iterator>
+#include <vector>
 
 namespace ImFlow::detail {
 
@@ -27,8 +28,8 @@ NodeLinkRef<TIsConst>::NodeLinkRef(context_type& ctx, link_type& link)
 }
 
 template <bool TIsConst>
-cubic_bezier_controls_t
-NodeLinkRef<TIsConst>::getCubicLineBetween(
+std::vector<cubic_bezier_controls_t>
+NodeLinkRef<TIsConst>::getPathBetween(
     ImNodeFlow& ctx,
     ConstNodeRef sourceNode,
     ConstNodeRef targetNode)
@@ -39,14 +40,14 @@ NodeLinkRef<TIsConst>::getCubicLineBetween(
     start.y += ImGui::GetTextLineHeight();
     end.y += ImGui::GetTextLineHeight();
 
-    return detail::smart_bezier_controls_from_two_points(
+    return detail::smart_bezier_path_between_two_pins(
         ctx.grid2screen(start),
         ctx.grid2screen(end));
 }
 
 template <bool TIsConst>
-cubic_bezier_controls_t
-NodeLinkRef<TIsConst>::getCubicLineToMouse(
+std::vector<cubic_bezier_controls_t>
+NodeLinkRef<TIsConst>::getPathToMouse(
     ImNodeFlow& ctx,
     ConstNodeRef sourceNode)
 {
@@ -55,7 +56,7 @@ NodeLinkRef<TIsConst>::getCubicLineToMouse(
 
     start.y += ImGui::GetTextLineHeight();
 
-    return detail::smart_bezier_controls_from_two_points(
+    return detail::smart_bezier_path_between_two_pins(
         ctx.grid2screen(start),
         ctx.grid2screen(end));
 }
@@ -64,7 +65,9 @@ template <bool TIsConst>
 bool NodeLinkRef<TIsConst>::isAlive() const
 {
     auto& link = m_link.get();
-    return !link.marked_for_deletion;
+    return !link.base.marked_for_deletion
+        && link.source_node != nullptr
+        && link.target_node != nullptr;
 }
 
 template <bool TIsConst>
@@ -87,8 +90,8 @@ void NodeLinkRef<TIsConst>::connect(NodeRef source_node, NodeRef target_node)
 {
     this->destroy();
 
-    node_link_t& link = m_link.get();
-    link.marked_for_deletion = false;
+    link_node_t& link = m_link.get();
+    link.base.marked_for_deletion = false;
     link.source_node = &static_cast<node_t&>(source_node);
     link.target_node = &static_cast<node_t&>(target_node);
 
@@ -103,7 +106,7 @@ template <bool TIsConst>
 void NodeLinkRef<TIsConst>::destroy()
     requires(!TIsConst)
 {
-    node_link_t& link = m_link.get();
+    link_node_t& link = m_link.get();
     if (link.source_node != nullptr) {
         auto iter = std::find(
             std::begin(link.source_node->links),
@@ -124,7 +127,7 @@ void NodeLinkRef<TIsConst>::destroy()
         }
         link.target_node = nullptr;
     }
-    link.marked_for_deletion = true;
+    link.base.marked_for_deletion = true;
 }
 
 template <bool TIsConst>
@@ -132,40 +135,45 @@ void NodeLinkRef<TIsConst>::update()
     requires(!TIsConst)
 {
     ImNodeFlow& ctx = m_ctx.get();
-    detail::node_link_t& link = m_link.get();
+    detail::link_node_t& link = m_link.get();
 
-    if (link.marked_for_deletion) {
+    if (link.base.marked_for_deletion) {
         return;
     }
 
-    auto line = getCubicLineBetween(ctx, sourceNode(), targetNode());
+    float thickness = link.base.hovered
+        ? sourceNode().getStyle().link_hovered_thickness
+        : sourceNode().getStyle().link_thickness;
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.selected = false;
+        link.base.selected = false;
     }
 
     auto start_color = sourceNode().getStyle().header_bg;
     auto end_color = targetNode().getStyle().header_bg;
 
-    float thickness = link.hovered
-        ? sourceNode().getStyle().link_hovered_thickness
-        : sourceNode().getStyle().link_thickness;
-
-    bool pressed = detail::smart_bezier_widget(
-        ImGui::GetID(&link),
-        line,
-        start_color,
-        end_color,
-        link.selected,
-        &link.hovered,
-        thickness,
-        m_ctx.get().getStyle().link_gradient_blend);
-
-    if (link.hovered) {
-        link.selected = link.selected || pressed;
+    auto path = getPathBetween(ctx, sourceNode(), targetNode());
+    bool pressed = false;
+    bool new_hovered = false;
+    for (auto& segment : path) {
+        bool segment_hovered = false;
+        pressed |= detail::smart_bezier_widget(
+            ImGui::GetID(&link),
+            segment,
+            start_color,
+            end_color,
+            link.base.selected,
+            link.base.hovered,
+            &segment_hovered,
+            thickness,
+            m_ctx.get().getStyle().link_gradient_blend);
+        new_hovered |= segment_hovered;
     }
 
-    if (link.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+    link.base.hovered = new_hovered;
+    link.base.selected = link.base.selected || pressed;
+
+    if (link.base.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
         this->destroy();
     }
 }

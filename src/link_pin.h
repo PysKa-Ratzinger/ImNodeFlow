@@ -2,14 +2,14 @@
 
 #include "ImNodeFlow/detail/fwd.h"
 
+#include "./link_base.h"
+
 namespace ImFlow::detail {
 
-struct pin_link_t {
+struct link_pin_t {
+    link_base_t base;
     detail::pin_base_t* out_pin = nullptr;
     detail::pin_base_t* in_pin = nullptr;
-    bool marked_for_deletion = false;
-    bool hovered = false;
-    bool selected = false;
 };
 
 } // namespace ImFlow::detail

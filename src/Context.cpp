@@ -11,10 +11,10 @@
 #include "./editor_context.h"
 #include "./imgui_button_flags_helper.h"
 #include "./imgui_compat.h"
+#include "./link_node.h"
+#include "./link_pin.h"
 #include "./node.h"
-#include "./node_link.h"
 #include "./pin_drawing_utils.h"
-#include "./pin_link.h"
 #include "./uid_helpers.h"
 
 #include "imgui.h"
@@ -201,7 +201,7 @@ void ImNodeFlow::createLink(PinRef source_pin, PinRef target_pin)
         return;
     }
 
-    auto new_link = std::make_unique<detail::pin_link_t>();
+    auto new_link = std::make_unique<detail::link_pin_t>();
     detail::PinLinkRef<> { *this, *new_link }.connect(source_pin, target_pin);
     m_impl->pin_links.emplace_back(std::move(new_link));
 }
@@ -212,7 +212,7 @@ void ImNodeFlow::createLink(NodeRef source_node, NodeRef target_node)
         return;
     }
 
-    auto new_link = std::make_unique<detail::node_link_t>();
+    auto new_link = std::make_unique<detail::link_node_t>();
     detail::NodeLinkRef<> { *this, *new_link }.connect(source_node, target_node);
     m_impl->node_links.emplace_back(std::move(new_link));
 }

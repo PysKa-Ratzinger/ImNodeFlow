@@ -14,18 +14,18 @@ template <bool TIsConst = false>
 class NodeLinkRef {
 public:
     using context_type = std::conditional_t<TIsConst, const ImNodeFlow, ImNodeFlow>;
-    using link_type = std::conditional_t<TIsConst, const node_link_t, node_link_t>;
+    using link_type = std::conditional_t<TIsConst, const link_node_t, link_node_t>;
 
     NodeLinkRef(context_type& ctx, link_type& link);
 
-    static cubic_bezier_controls_t
-    getCubicLineBetween(
+    static std::vector<cubic_bezier_controls_t>
+    getPathBetween(
         ImNodeFlow& ctx,
         ConstNodeRef sourceNode,
         ConstNodeRef targetNode);
 
-    static cubic_bezier_controls_t
-    getCubicLineToMouse(
+    static std::vector<cubic_bezier_controls_t>
+    getPathToMouse(
         ImNodeFlow& ctx,
         ConstNodeRef sourceNode);
 

@@ -19,8 +19,8 @@
 #include "./imgui_bezier_items.h"
 #include "./imgui_button_flags_helper.h"
 #include "./imgui_compat.h"
+#include "./link_node.h"
 #include "./node.h"
-#include "./node_link.h"
 #include "./pin_base.h"
 
 #include "imgui.h"
@@ -989,13 +989,14 @@ void NodeRefImpl<TIsConst>::update()
         ImGui::SetDragDropPayload("NODE_REF_LOCAL_DTO", &dto, sizeof(dto));
         ImGui::EndDragDropSource();
 
-        auto line = detail::NodeLinkRef<true>::getCubicLineToMouse(m_ctx, *this);
-
-        detail::smart_bezier(
-            ImGui::GetForegroundDrawList(),
-            line,
-            node.style.header_bg,
-            node.style.link_thickness);
+        auto path = detail::NodeLinkRef<true>::getPathToMouse(m_ctx, *this);
+        for (auto& segment : path) {
+            detail::smart_bezier(
+                ImGui::GetForegroundDrawList(),
+                segment,
+                node.style.header_bg,
+                node.style.link_thickness);
+        }
     }
 
     if (node.allowInboundLinksToOtherNodes

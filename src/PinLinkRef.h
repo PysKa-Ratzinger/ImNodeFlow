@@ -4,7 +4,7 @@
 #include "ImNodeFlow/detail/fwd.h"
 #include "ImNodeFlow/fwd.h"
 
-#include "./pin_link.h"
+#include "./link_pin.h"
 
 #include <functional>
 #include <type_traits>
@@ -15,7 +15,7 @@ template <bool TIsConst = false>
 class PinLinkRef {
 public:
     using context_type = std::conditional_t<TIsConst, const ImNodeFlow, ImNodeFlow>;
-    using link_type = std::conditional_t<TIsConst, const pin_link_t, pin_link_t>;
+    using link_type = std::conditional_t<TIsConst, const link_pin_t, link_pin_t>;
 
     PinLinkRef(context_type& ctx, link_type& link);
 

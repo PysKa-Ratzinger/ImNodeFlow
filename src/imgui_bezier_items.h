@@ -4,6 +4,8 @@
 
 #include "imgui.h"
 
+#include <vector>
+
 namespace ImFlow::detail {
 
 struct cubic_bezier_controls_t {
@@ -13,7 +15,7 @@ struct cubic_bezier_controls_t {
     ImVec2 p4;
 };
 
-cubic_bezier_controls_t smart_bezier_controls_from_two_points(
+std::vector<cubic_bezier_controls_t> smart_bezier_path_between_two_pins(
     const ImVec2& p1,
     const ImVec2& p2);
 
