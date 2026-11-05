@@ -425,30 +425,57 @@ void ImNodeFlow::update()
     root_arena.update();
     root_arena.prepareNextFrame();
 
-    // Update and draw links
-    for (auto iter = m_impl->pin_links.begin(); iter != m_impl->pin_links.end();) {
-        detail::PinLinkRef<> link { *this, **iter };
-
-        // Clean up deleted links along the way
-        if (!link.isAlive()) {
-            link.destroy();
-            iter = m_impl->pin_links.erase(iter);
-            continue;
+    {
+        // Remove pin links that are not alive
+        auto iter = std::remove_if(
+            std::begin(m_impl->pin_links),
+            std::end(m_impl->pin_links),
+            [this](const auto& pin_link) -> bool {
+                return !detail::PinLinkRef<> { *this, *pin_link }.isAlive();
+            });
+        for (auto curr_iter = iter; curr_iter != m_impl->pin_links.end(); ++curr_iter) {
+            detail::PinLinkRef<> { *this, **curr_iter }.destroy();
         }
-
-        link.update();
-        ++iter;
+        if (iter != m_impl->pin_links.end()) {
+            m_impl->pin_links.erase(iter, m_impl->pin_links.end());
+        }
     }
 
-    for (auto& l : m_impl->node_links) {
-        detail::NodeLinkRef<> link { *this, *l };
-
-        if (!link.isAlive()) {
-            link.destroy();
-            continue;
+    {
+        // Remove node links that are not alive
+        auto iter = std::remove_if(
+            std::begin(m_impl->node_links),
+            std::end(m_impl->node_links),
+            [this](const auto& node_link) -> bool {
+                return !detail::NodeLinkRef<> { *this, *node_link }.isAlive();
+            });
+        for (auto curr_iter = iter; curr_iter != m_impl->node_links.end(); ++curr_iter) {
+            detail::NodeLinkRef<> { *this, **curr_iter }.destroy();
         }
+        if (iter != m_impl->node_links.end()) {
+            m_impl->node_links.erase(iter, m_impl->node_links.end());
+        }
+    }
 
-        link.update();
+    // Update and draw links
+    if (!m_impl->pin_links.empty()) {
+        ImDrawListSplitter splitter;
+        splitter.Split(draw_list, m_impl->pin_links.size());
+        for (size_t pin_i = 0; pin_i < m_impl->pin_links.size(); ++pin_i) {
+            splitter.SetCurrentChannel(draw_list, m_impl->pin_links.size() - 1 - pin_i);
+            detail::PinLinkRef<> { *this, *m_impl->pin_links[pin_i] }.update();
+        }
+        splitter.Merge(draw_list);
+    }
+
+    if (!m_impl->node_links.empty()) {
+        ImDrawListSplitter splitter;
+        splitter.Split(draw_list, m_impl->node_links.size());
+        for (size_t node_i = 0; node_i < m_impl->node_links.size(); ++node_i) {
+            splitter.SetCurrentChannel(draw_list, m_impl->pin_links.size() - 1 - node_i);
+            detail::NodeLinkRef<> { *this, *m_impl->node_links[node_i] }.update();
+        }
+        splitter.Merge(draw_list);
     }
 
     ImRect always_valid_bb {
