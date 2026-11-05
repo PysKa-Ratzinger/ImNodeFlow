@@ -227,6 +227,8 @@ void PinRefImpl<TIsConst>::update()
         drawDecoration(pin);
     }
 
+    pin.pinPoint = ctx.screen2grid(pin.pinPoint);
+
     // here, decoration is everything except the pin's socket
     bool decoration_hovered = false;
     bool decoration_pressed = false;

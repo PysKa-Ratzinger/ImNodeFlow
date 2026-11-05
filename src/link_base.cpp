@@ -31,11 +31,11 @@ namespace {
                 float x_midpoint = (last_pt.pos.x + next_pt.pos.x) / 2.F;
                 result.points.emplace_back(link_grid_path_t::coord_t {
                     .pos = { x_midpoint, last_pt.pos.y },
-                    .waypoint_index = last_pt.waypoint_index,
+                    .waypoint_index = next_pt.waypoint_index,
                 });
                 result.points.emplace_back(link_grid_path_t::coord_t {
                     .pos = { x_midpoint, next_pt.pos.y },
-                    .waypoint_index = last_pt.waypoint_index,
+                    .waypoint_index = next_pt.waypoint_index,
                 });
             } else {
                 // When going to the left side, let's do the opposite. Let's start
@@ -44,11 +44,11 @@ namespace {
                 float y_midpoint = (last_pt.pos.y + next_pt.pos.y) / 2.F;
                 result.points.emplace_back(link_grid_path_t::coord_t {
                     .pos = { last_pt.pos.x, y_midpoint },
-                    .waypoint_index = last_pt.waypoint_index,
+                    .waypoint_index = next_pt.waypoint_index,
                 });
                 result.points.emplace_back(link_grid_path_t::coord_t {
                     .pos = { next_pt.pos.x, y_midpoint },
-                    .waypoint_index = last_pt.waypoint_index,
+                    .waypoint_index = next_pt.waypoint_index,
                 });
             }
         }
@@ -57,26 +57,6 @@ namespace {
     }
 
 } // anonymous namespace
-
-link_grid_path_t generate_path_from_node_to_node(
-    ImNodeFlow& ctx,
-    ConstNodeRef source_node,
-    ConstNodeRef target_node,
-    std::vector<link_waypoint_t> const& waypoints)
-{
-    ImVec2 start = source_node.getTLPos() + source_node.getFullSize() * ImVec2(1.F, 0.F);
-    ImVec2 end = target_node.getTLPos();
-
-    start.y += ImGui::GetTextLineHeight();
-    end.y += ImGui::GetTextLineHeight();
-
-    auto p1 = start;
-    auto p2 = start + ImVec2(20.F, 0.F);
-    auto p3 = end - ImVec2(20.F, 0.F);
-    auto p4 = end;
-
-    return detail::generate_path(ctx, p1, p2, p3, p4, waypoints);
-}
 
 link_grid_path_t generate_path_from_node_to_pos(
     ImNodeFlow& ctx,
@@ -135,7 +115,7 @@ link_grid_path_t generate_path(
     ImVec2 uv_axis = end_point - start_point;
     for (int i = 0; i < waypoints.size(); i++) {
         const auto& waypoint = waypoints[i];
-        ImVec2 waypoint_pos = waypoint.uv_pos * uv_axis;
+        ImVec2 waypoint_pos = start_point + waypoint.uv_pos * uv_axis;
         waypoint_pos = ctx.slamPosition(waypoint_pos);
 
         process_next_point(
@@ -172,12 +152,14 @@ bool draw_path(
     float thickness,
     bool selected,
     bool hovered,
-    bool* out_hovered)
+    bool* out_hovered,
+    int* out_double_clicked)
 {
     ImGui::PushID(path_id);
 
     bool pressed = false;
     bool new_hovered = false;
+    int new_double_clicked = int(-1);
     for (int i = 0; i < path.points.size() - 1; i++) {
         cubic_bezier_controls_t segment {
             .p1 = ctx.grid2screen(path.points[i].pos),
@@ -187,6 +169,7 @@ bool draw_path(
         };
 
         bool segment_hovered = false;
+        bool segment_double_clicked = false;
         pressed |= detail::smart_bezier_widget(
             ImGui::GetID(i),
             draw_list,
@@ -196,15 +179,22 @@ bool draw_path(
             selected,
             hovered,
             &segment_hovered,
+            &segment_double_clicked,
             thickness,
             ctx.getStyle().link_gradient_blend);
         new_hovered |= segment_hovered;
+        if (segment_double_clicked) {
+            new_double_clicked = path.points[i + 1].waypoint_index;
+        }
     }
 
     ImGui::PopID();
 
     if (out_hovered != nullptr) {
         *out_hovered = new_hovered;
+    }
+    if (out_double_clicked != nullptr) {
+        *out_double_clicked = new_double_clicked;
     }
 
     return pressed;

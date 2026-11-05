@@ -430,12 +430,14 @@ void ImNodeFlow::update()
         auto iter = std::remove_if(
             std::begin(m_impl->pin_links),
             std::end(m_impl->pin_links),
-            [this](const auto& pin_link) -> bool {
-                return !detail::PinLinkRef<> { *this, *pin_link }.isAlive();
+            [this](auto& pin_link) -> bool {
+                detail::PinLinkRef<> link_ref { *this, *pin_link };
+                if (link_ref.isAlive()) {
+                    return false;
+                }
+                link_ref.destroy();
+                return true;
             });
-        for (auto curr_iter = iter; curr_iter != m_impl->pin_links.end(); ++curr_iter) {
-            detail::PinLinkRef<> { *this, **curr_iter }.destroy();
-        }
         if (iter != m_impl->pin_links.end()) {
             m_impl->pin_links.erase(iter, m_impl->pin_links.end());
         }
@@ -446,18 +448,20 @@ void ImNodeFlow::update()
         auto iter = std::remove_if(
             std::begin(m_impl->node_links),
             std::end(m_impl->node_links),
-            [this](const auto& node_link) -> bool {
-                return !detail::NodeLinkRef<> { *this, *node_link }.isAlive();
+            [this](auto& node_link) -> bool {
+                detail::NodeLinkRef<> link_ref { *this, *node_link };
+                if (link_ref.isAlive()) {
+                    return false;
+                }
+                link_ref.destroy();
+                return true;
             });
-        for (auto curr_iter = iter; curr_iter != m_impl->node_links.end(); ++curr_iter) {
-            detail::NodeLinkRef<> { *this, **curr_iter }.destroy();
-        }
         if (iter != m_impl->node_links.end()) {
             m_impl->node_links.erase(iter, m_impl->node_links.end());
         }
     }
 
-    // Update and draw links
+    // Update and draw pin links
     if (!m_impl->pin_links.empty()) {
         ImDrawListSplitter splitter;
         splitter.Split(draw_list, m_impl->pin_links.size());
@@ -468,11 +472,12 @@ void ImNodeFlow::update()
         splitter.Merge(draw_list);
     }
 
+    // Update and draw node links
     if (!m_impl->node_links.empty()) {
         ImDrawListSplitter splitter;
         splitter.Split(draw_list, m_impl->node_links.size());
         for (size_t node_i = 0; node_i < m_impl->node_links.size(); ++node_i) {
-            splitter.SetCurrentChannel(draw_list, m_impl->pin_links.size() - 1 - node_i);
+            splitter.SetCurrentChannel(draw_list, m_impl->node_links.size() - 1 - node_i);
             detail::NodeLinkRef<> { *this, *m_impl->node_links[node_i] }.update();
         }
         splitter.Merge(draw_list);
@@ -545,7 +550,7 @@ void ImNodeFlow::update()
 
         ImVec2 mouse_pos_on_popup;
         if (ImGui::BeginPopup("DroppedLinkPopUp")) {
-            mouse_pos_on_popup = ImGui::GetMousePosOnOpeningCurrentPopup();
+            mouse_pos_on_popup = this->screen2grid(ImGui::GetMousePosOnOpeningCurrentPopup());
             m_impl->droppedLinkPopUp(PinRef { *this, *m_impl->droppedLinkLeft });
             ImGui::EndPopup();
         }

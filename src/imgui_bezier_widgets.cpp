@@ -15,27 +15,32 @@ bool smart_bezier_widget(
     bool selected,
     bool is_hovered,
     bool* out_hovered,
+    bool* out_double_clicked,
     float thickness,
     float blend)
 {
     auto mouse_pos = ImGui::GetMousePos();
     bool is_segment_hovered = detail::smart_bezier_collider(mouse_pos, line, 2.5);
-    bool is_pressed = false;
+    bool is_clicked = false;
+    bool is_double_clicked = false;
 
-    if (is_hovered) {
+    if (is_segment_hovered) {
         ImRect always_valid_bb {
             mouse_pos - ImVec2(1.F, 1.F),
             mouse_pos + ImVec2(1.F, 1.F),
         };
 
+        ImGui::PushID(item_id);
         if (ImGui::ItemAdd(always_valid_bb, item_id)) {
-            is_pressed = ImGui::ButtonBehavior(
+            is_double_clicked = ImGui::ButtonBehavior(
                 always_valid_bb,
                 item_id,
                 &is_hovered,
                 nullptr,
-                ImGuiButtonFlags_PressedOnClick);
+                ImGuiButtonFlags_PressedOnDoubleClick);
+            is_clicked = ImGui::IsItemClicked();
         }
+        ImGui::PopID();
     }
 
     auto start_color = color1;
@@ -65,8 +70,11 @@ bool smart_bezier_widget(
     if (out_hovered != nullptr) {
         *out_hovered = is_segment_hovered;
     }
+    if (out_double_clicked != nullptr) {
+        *out_double_clicked = is_double_clicked;
+    }
 
-    return is_pressed;
+    return is_clicked;
 }
 
 } // namespace ImFlow::detail

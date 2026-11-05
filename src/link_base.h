@@ -33,12 +33,6 @@ struct link_grid_path_t {
     std::vector<coord_t> points;
 };
 
-link_grid_path_t generate_path_from_node_to_node(
-    ImNodeFlow& ctx,
-    ConstNodeRef source_node,
-    ConstNodeRef target_node,
-    std::vector<link_waypoint_t> const& waypoints = { });
-
 link_grid_path_t generate_path_from_node_to_pos(
     ImNodeFlow& ctx,
     ConstNodeRef node,
@@ -64,9 +58,10 @@ bool draw_path(
     link_grid_path_t const& path,
     ImU32 start_color,
     ImU32 end_color,
-    float thickness = 5.F,
+    float thickness = 1.F,
     bool selected = false,
     bool hovered = false,
-    bool* out_hovered = nullptr);
+    bool* out_hovered = nullptr,
+    int* out_double_clicked = nullptr);
 
 } // namespace ImFlow::detail

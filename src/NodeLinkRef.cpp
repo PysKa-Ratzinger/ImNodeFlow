@@ -120,10 +120,23 @@ void NodeLinkRef<TIsConst>::update()
     auto start_color = sourceNode().getStyle().header_bg;
     auto end_color = targetNode().getStyle().header_bg;
 
-    auto path = detail::generate_path_from_node_to_node(
+    ImVec2 start = sourceNode().getTLPos() + sourceNode().getFullSize() * ImVec2(1.F, 0.F);
+    ImVec2 end = targetNode().getTLPos();
+
+    start.y += ImGui::GetTextLineHeight();
+    end.y += ImGui::GetTextLineHeight();
+
+    auto p1 = start;
+    auto p2 = start + ImVec2(20.F, 0.F);
+    auto p3 = end - ImVec2(20.F, 0.F);
+    auto p4 = end;
+
+    link.base.startpoint = p2;
+    link.base.endpoint = p3;
+
+    auto path = detail::generate_path(
         ctx,
-        sourceNode(),
-        targetNode(),
+        p1, p2, p3, p4,
         link.base.waypoints);
     bool pressed = draw_path(
         m_ctx,

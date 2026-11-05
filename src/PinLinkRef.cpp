@@ -121,21 +121,24 @@ void PinLinkRef<TIsConst>::update()
         ? outPin().getStyle().extra.link_hovered_thickness
         : outPin().getStyle().extra.link_thickness;
 
-    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.base.selected = false;
-    }
-
     auto start_color = outPin().getStyle().color;
     auto end_color = inPin().getStyle().color;
 
-    ImVec2 p1 = ctx.screen2grid(outPin().pinPoint());
-    ImVec2 p4 = ctx.screen2grid(inPin().pinPoint());
+    ImVec2 p1 = outPin().pinPoint();
+    ImVec2 p4 = inPin().pinPoint();
     auto p2 = p1 + ImVec2(20.F, 0.F);
     auto p3 = p4 - ImVec2(20.F, 0.F);
 
-    auto path = detail::generate_path(ctx, p1, p2, p3, p4, link.base.waypoints);
+    link.base.startpoint = p2;
+    link.base.endpoint = p3;
 
-    bool pressed = draw_path(
+    auto path = detail::generate_path(
+        ctx,
+        p1, p2, p3, p4,
+        link.base.waypoints);
+
+    int double_clicked = -1;
+    bool clicked = draw_path(
         m_ctx,
         ImGui::GetWindowDrawList(),
         ImGui::GetID(&link),
@@ -145,9 +148,30 @@ void PinLinkRef<TIsConst>::update()
         thickness,
         link.base.selected,
         link.base.hovered,
-        &link.base.hovered);
+        &link.base.hovered,
+        &double_clicked);
 
-    link.base.selected = link.base.selected || pressed;
+    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        link.base.selected = false;
+    }
+
+    link.base.selected = link.base.selected || clicked;
+
+    if (double_clicked >= 0 && double_clicked <= link.base.waypoints.size()) {
+        ImVec2 uv_axis = link.base.endpoint - link.base.startpoint;
+        ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
+        waypoint_pos.x = uv_axis.x == 0.F
+            ? 0.5F
+            : (waypoint_pos.x - link.base.startpoint.x) / uv_axis.x;
+        waypoint_pos.y = uv_axis.y == 0.F
+            ? 0.5F
+            : (waypoint_pos.y - link.base.startpoint.y) / uv_axis.y;
+        link.base.waypoints.emplace(
+            link.base.waypoints.begin() + double_clicked,
+            link_waypoint_t {
+                .uv_pos = waypoint_pos,
+            });
+    }
 
     if (link.base.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
         this->destroy();
