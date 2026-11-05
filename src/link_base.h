@@ -24,8 +24,13 @@ struct link_base_t {
 };
 
 struct link_grid_path_t {
+    struct coord_t {
+        ImVec2 pos;
+        int waypoint_index;
+    };
+
     /// All points are in grid coordinates, not screen coordinates
-    std::vector<ImVec2> points;
+    std::vector<coord_t> points;
 };
 
 link_grid_path_t generate_path_from_node_to_node(
