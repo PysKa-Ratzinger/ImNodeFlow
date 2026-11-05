@@ -10,6 +10,7 @@ namespace ImFlow::detail {
  * @brief Bezier curve widget
  * @details Draws a bezier curve and processes GUI interactions with ImGui
  * @param id ImguiID for the current curve
+ * @param draw_list Pointer to the drawlist where to draw
  * @param line Bezier curve description
  * @param color1 Color at the starting point
  * @param color2 Color at the ending point
@@ -24,6 +25,7 @@ namespace ImFlow::detail {
  */
 bool smart_bezier_widget(
     ImGuiID id,
+    ImDrawList* draw_list,
     cubic_bezier_controls_t const& line,
     ImU32 color1,
     ImU32 color2,

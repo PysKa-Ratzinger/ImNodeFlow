@@ -11,6 +11,7 @@
 #include "./editor_context.h"
 #include "./imgui_button_flags_helper.h"
 #include "./imgui_compat.h"
+#include "./link_base.h"
 #include "./link_node.h"
 #include "./link_pin.h"
 #include "./node.h"
@@ -523,10 +524,18 @@ void ImNodeFlow::update()
         }
 
         splitter.SetCurrentChannel(draw_list, 0);
-        detail::draw_bezier_from_pin_to_pos(
-            ImGui::GetWindowDrawList(),
+
+        auto path = detail::generate_path_from_pin_to_pos(
+            *this,
             ConstPinRef { *this, *m_impl->droppedLinkLeft },
             mouse_pos_on_popup);
+        detail::draw_path(
+            *this,
+            ImGui::GetWindowDrawList(),
+            0,
+            path,
+            ConstPinRef { *this, *m_impl->droppedLinkLeft }.getStyle().color,
+            ConstPinRef { *this, *m_impl->droppedLinkLeft }.getStyle().color);
 
         splitter.Merge(draw_list);
     }

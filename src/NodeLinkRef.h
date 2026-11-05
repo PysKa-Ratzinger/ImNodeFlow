@@ -4,7 +4,11 @@
 #include "ImNodeFlow/fwd.h"
 
 #include "./imgui_bezier_items.h"
+#include "./link_base.h"
 
+#include "imgui.h"
+
+#include <array>
 #include <functional>
 #include <type_traits>
 
@@ -18,13 +22,7 @@ public:
 
     NodeLinkRef(context_type& ctx, link_type& link);
 
-    static std::vector<cubic_bezier_controls_t>
-    getPathBetween(
-        ImNodeFlow& ctx,
-        ConstNodeRef sourceNode,
-        ConstNodeRef targetNode);
-
-    static std::vector<cubic_bezier_controls_t>
+    static link_grid_path_t
     getPathToMouse(
         ImNodeFlow& ctx,
         ConstNodeRef sourceNode);

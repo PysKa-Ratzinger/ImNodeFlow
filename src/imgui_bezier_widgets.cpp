@@ -8,6 +8,7 @@ namespace ImFlow::detail {
 
 bool smart_bezier_widget(
     ImGuiID item_id,
+    ImDrawList* draw_list,
     cubic_bezier_controls_t const& line,
     ImU32 color1,
     ImU32 color2,
@@ -54,7 +55,7 @@ bool smart_bezier_widget(
     }
 
     smart_bezier_gradient(
-        ImGui::GetWindowDrawList(),
+        draw_list,
         line,
         start_color,
         end_color,

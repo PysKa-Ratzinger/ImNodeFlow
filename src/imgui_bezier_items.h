@@ -4,8 +4,6 @@
 
 #include "imgui.h"
 
-#include <vector>
-
 namespace ImFlow::detail {
 
 struct cubic_bezier_controls_t {
@@ -14,10 +12,6 @@ struct cubic_bezier_controls_t {
     ImVec2 p3;
     ImVec2 p4;
 };
-
-std::vector<cubic_bezier_controls_t> smart_bezier_path_between_two_pins(
-    const ImVec2& p1,
-    const ImVec2& p2);
 
 /**
  * @brief Draw a sensible bezier between two points

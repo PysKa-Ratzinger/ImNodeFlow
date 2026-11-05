@@ -21,6 +21,7 @@
 #include "./../../../src/PinRef.cpp"
 #include "./../../../src/imgui_bezier_items.cpp"
 #include "./../../../src/imgui_bezier_widgets.cpp"
+#include "./../../../src/link_base.cpp"
 #include "./../../../src/pin_base.cpp"
 #include "./../../../src/pin_drawing_utils.cpp"
 #include "./../../../src/uid_helpers.cpp"

@@ -1,38 +1,31 @@
 #include "pin_drawing_utils.h"
 
-#include "ImNodeFlow/PinRef.h"
-#include "ImNodeFlow/PinType.h"
 #include "ImNodeFlow/fwd.h"
 
-#include "./imgui_bezier_items.h"
-#include "./pin_base.h"
+#include "./PinLinkRef.h"
+#include "./link_base.h"
 
 #include "imgui.h"
 
-#include <vector>
-
 namespace ImFlow::detail {
 
-void draw_bezier_from_pin_to_pos(
+void draw_path_from_pin_to_pos(
     ImDrawList* draw_list,
+    ImNodeFlow& ctx,
     ConstPinRef pin,
-    ImVec2 pos)
+    ImVec2 grid_pos)
 {
     // Links drag-out
-    std::vector<cubic_bezier_controls_t> path;
-    if (pin.getType() == PinType::Output) {
-        path = detail::smart_bezier_path_between_two_pins(pin.pinPoint(), pos);
-    } else {
-        path = detail::smart_bezier_path_between_two_pins(pos, pin.pinPoint());
-    }
+    link_grid_path_t path = generate_path_from_pin_to_pos(ctx, pin, grid_pos);
 
-    for (auto& segment : path) {
-        detail::smart_bezier(
-            draw_list,
-            segment,
-            pin.getStyle().color,
-            pin.getStyle().extra.link_dragged_thickness);
-    }
+    draw_path(
+        ctx,
+        draw_list,
+        0,
+        path,
+        pin.getStyle().color,
+        pin.getStyle().color,
+        pin.getStyle().extra.link_dragged_thickness);
 }
 
 } // namespace ImFlow::detail

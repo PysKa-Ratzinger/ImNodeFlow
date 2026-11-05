@@ -3,19 +3,19 @@
 #include "ImNodeFlow/PinConnStrat.h"
 #include "ImNodeFlow/PinRef.h"
 #include "ImNodeFlow/PinType.h"
+#include "ImNodeFlow/fwd.h"
 
-#include "./imgui_bezier_items.h"
-#include "./imgui_bezier_widgets.h"
+#include "./link_base.h"
 #include "./link_pin.h"
 #include "./pin_base.h"
 
 #include "imgui.h"
-#include "imgui_internal.h"
 
 #include <algorithm>
 #include <cassert>
 #include <iterator>
 #include <utility>
+#include <vector>
 
 namespace ImFlow::detail {
 
@@ -110,6 +110,7 @@ template <bool TIsConst>
 void PinLinkRef<TIsConst>::update()
     requires(!TIsConst)
 {
+    auto& ctx = m_ctx.get();
     detail::link_pin_t& link = m_link.get();
 
     if (link.base.marked_for_deletion) {
@@ -127,32 +128,25 @@ void PinLinkRef<TIsConst>::update()
     auto start_color = outPin().getStyle().color;
     auto end_color = inPin().getStyle().color;
 
-    ImVec2 start = outPin().pinPoint();
-    ImVec2 end = inPin().pinPoint();
+    ImVec2 p1 = ctx.screen2grid(outPin().pinPoint());
+    ImVec2 p4 = ctx.screen2grid(inPin().pinPoint());
+    auto p2 = p1 + ImVec2(20.F, 0.F);
+    auto p3 = p4 - ImVec2(20.F, 0.F);
 
-    auto path = detail::smart_bezier_path_between_two_pins(start, end);
-    bool pressed = false;
-    bool new_hovered = false;
+    auto path = detail::generate_path(ctx, p1, p2, p3, p4, link.base.waypoints);
 
-    ImGui::PushID(&link);
-    for (int i = 0; i < path.size(); i++) {
-        auto& segment = path[i];
-        bool segment_hovered = false;
-        pressed |= detail::smart_bezier_widget(
-            ImGui::GetID(i),
-            segment,
-            start_color,
-            end_color,
-            link.base.selected,
-            link.base.hovered,
-            &segment_hovered,
-            thickness,
-            m_ctx.get().getStyle().link_gradient_blend);
-        new_hovered |= segment_hovered;
-    }
-    ImGui::PopID();
+    bool pressed = draw_path(
+        m_ctx,
+        ImGui::GetWindowDrawList(),
+        ImGui::GetID(&link),
+        path,
+        start_color,
+        end_color,
+        thickness,
+        link.base.selected,
+        link.base.hovered,
+        &link.base.hovered);
 
-    link.base.hovered = new_hovered;
     link.base.selected = link.base.selected || pressed;
 
     if (link.base.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {

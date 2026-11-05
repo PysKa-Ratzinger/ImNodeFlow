@@ -25,6 +25,7 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "link_base.h"
 
 #include <algorithm>
 #include <cassert>
@@ -989,14 +990,18 @@ void NodeRefImpl<TIsConst>::update()
         ImGui::SetDragDropPayload("NODE_REF_LOCAL_DTO", &dto, sizeof(dto));
         ImGui::EndDragDropSource();
 
-        auto path = detail::NodeLinkRef<true>::getPathToMouse(m_ctx, *this);
-        for (auto& segment : path) {
-            detail::smart_bezier(
-                ImGui::GetForegroundDrawList(),
-                segment,
-                node.style.header_bg,
-                node.style.link_thickness);
-        }
+        auto path = detail::generate_path_from_node_to_pos(
+            m_ctx,
+            *this,
+            ctx.screen2grid(ImGui::GetMousePos()));
+        detail::draw_path(
+            m_ctx,
+            ImGui::GetWindowDrawList(),
+            ImGui::GetID("path_to_mouse"),
+            path,
+            node.style.header_bg,
+            node.style.header_bg,
+            node.style.link_thickness);
     }
 
     if (node.allowInboundLinksToOtherNodes

@@ -8,6 +8,7 @@
 
 #include "./PinLinkRef.h"
 #include "./imgui_compat.h"
+#include "./link_base.h"
 #include "./pin_base.h"
 #include "./pin_drawing_utils.h"
 
@@ -194,6 +195,7 @@ template <bool TIsConst>
 void PinRefImpl<TIsConst>::update()
     requires(!TIsConst)
 {
+    ImNodeFlow& ctx = m_ctx.get();
     detail::pin_base_t& pin = m_pin.get();
 
     ImGui::PushID(&pin);
@@ -243,10 +245,17 @@ void PinRefImpl<TIsConst>::update()
     drawDragDropPinSourceAndTarget(*this, &drag_drop_source_active, &drag_drop_target_active);
 
     if (drag_drop_source_active) {
-        detail::draw_bezier_from_pin_to_pos(
-            ImGui::GetForegroundDrawList(),
+        auto path = detail::generate_path_from_pin_to_pos(
+            ctx,
             *this,
-            ImGui::GetMousePos());
+            ctx.screen2grid(ImGui::GetMousePos()));
+        detail::draw_path(
+            ctx,
+            ImGui::GetForegroundDrawList(),
+            ImGui::GetID("drag_drop_pin_link"),
+            path,
+            this->getStyle().color,
+            this->getStyle().color);
     }
 
     bool is_hovering = decoration_hovered

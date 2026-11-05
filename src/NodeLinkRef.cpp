@@ -7,6 +7,7 @@
 
 #include "./imgui_bezier_items.h"
 #include "./imgui_bezier_widgets.h"
+#include "./link_base.h"
 #include "./link_node.h"
 #include "./node.h"
 
@@ -14,6 +15,7 @@
 #include "imgui_internal.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <iterator>
 #include <vector>
@@ -25,40 +27,6 @@ NodeLinkRef<TIsConst>::NodeLinkRef(context_type& ctx, link_type& link)
     : m_ctx(ctx)
     , m_link(link)
 {
-}
-
-template <bool TIsConst>
-std::vector<cubic_bezier_controls_t>
-NodeLinkRef<TIsConst>::getPathBetween(
-    ImNodeFlow& ctx,
-    ConstNodeRef sourceNode,
-    ConstNodeRef targetNode)
-{
-    ImVec2 start = sourceNode.getTLPos() + sourceNode.getFullSize() * ImVec2(1.F, 0.F);
-    ImVec2 end = targetNode.getTLPos();
-
-    start.y += ImGui::GetTextLineHeight();
-    end.y += ImGui::GetTextLineHeight();
-
-    return detail::smart_bezier_path_between_two_pins(
-        ctx.grid2screen(start),
-        ctx.grid2screen(end));
-}
-
-template <bool TIsConst>
-std::vector<cubic_bezier_controls_t>
-NodeLinkRef<TIsConst>::getPathToMouse(
-    ImNodeFlow& ctx,
-    ConstNodeRef sourceNode)
-{
-    ImVec2 start = sourceNode.getTLPos() + sourceNode.getFullSize() * ImVec2(1.F, 0.F);
-    ImVec2 end = ctx.screen2grid(ImGui::GetMousePos());
-
-    start.y += ImGui::GetTextLineHeight();
-
-    return detail::smart_bezier_path_between_two_pins(
-        ctx.grid2screen(start),
-        ctx.grid2screen(end));
 }
 
 template <bool TIsConst>
@@ -152,25 +120,23 @@ void NodeLinkRef<TIsConst>::update()
     auto start_color = sourceNode().getStyle().header_bg;
     auto end_color = targetNode().getStyle().header_bg;
 
-    auto path = getPathBetween(ctx, sourceNode(), targetNode());
-    bool pressed = false;
-    bool new_hovered = false;
-    for (auto& segment : path) {
-        bool segment_hovered = false;
-        pressed |= detail::smart_bezier_widget(
-            ImGui::GetID(&link),
-            segment,
-            start_color,
-            end_color,
-            link.base.selected,
-            link.base.hovered,
-            &segment_hovered,
-            thickness,
-            m_ctx.get().getStyle().link_gradient_blend);
-        new_hovered |= segment_hovered;
-    }
+    auto path = detail::generate_path_from_node_to_node(
+        ctx,
+        sourceNode(),
+        targetNode(),
+        link.base.waypoints);
+    bool pressed = draw_path(
+        m_ctx,
+        ImGui::GetWindowDrawList(),
+        ImGui::GetID(&link),
+        path,
+        start_color,
+        end_color,
+        thickness,
+        link.base.selected,
+        link.base.hovered,
+        &link.base.hovered);
 
-    link.base.hovered = new_hovered;
     link.base.selected = link.base.selected || pressed;
 
     if (link.base.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
