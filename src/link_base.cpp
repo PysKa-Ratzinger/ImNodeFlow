@@ -58,6 +58,60 @@ namespace {
 
 } // anonymous namespace
 
+void link_base_update(
+    ImNodeFlow& ctx,
+    link_base_t& link,
+    link_base_update_args args)
+{
+    auto path = detail::generate_path(
+        ctx,
+        args.start_anchor,
+        args.start,
+        args.end,
+        args.end_anchor,
+        link.waypoints);
+
+    int double_clicked = -1;
+    bool clicked = draw_path(
+        ctx,
+        ImGui::GetWindowDrawList(),
+        ImGui::GetID(&link),
+        path,
+        args.start_color,
+        args.end_color,
+        args.thickness,
+        link.selected,
+        link.hovered,
+        &link.hovered,
+        &double_clicked);
+
+    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        link.selected = false;
+    }
+
+    link.selected = link.selected || clicked;
+
+    if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
+        ImVec2 uv_axis = args.end - args.start;
+        ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
+        waypoint_pos.x = uv_axis.x == 0.F
+            ? 0.5F
+            : (waypoint_pos.x - args.start.x) / uv_axis.x;
+        waypoint_pos.y = uv_axis.y == 0.F
+            ? 0.5F
+            : (waypoint_pos.y - args.start.y) / uv_axis.y;
+        link.waypoints.emplace(
+            link.waypoints.begin() + double_clicked,
+            link_waypoint_t {
+                .uv_pos = waypoint_pos,
+            });
+    }
+
+    if (link.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+        link.marked_for_deletion = true;
+    }
+}
+
 link_grid_path_t generate_path_from_node_to_pos(
     ImNodeFlow& ctx,
     ConstNodeRef node,

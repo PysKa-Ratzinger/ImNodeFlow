@@ -129,51 +129,20 @@ void PinLinkRef<TIsConst>::update()
     auto p2 = p1 + ImVec2(20.F, 0.F);
     auto p3 = p4 - ImVec2(20.F, 0.F);
 
-    link.base.startpoint = p2;
-    link.base.endpoint = p3;
-
-    auto path = detail::generate_path(
+    link_base_update(
         ctx,
-        p1, p2, p3, p4,
-        link.base.waypoints);
+        link.base,
+        link_base_update_args {
+            .start_color = start_color,
+            .end_color = end_color,
+            .start_anchor = p1,
+            .start = p2,
+            .end = p3,
+            .end_anchor = p4,
+            .thickness = thickness,
+        });
 
-    int double_clicked = -1;
-    bool clicked = draw_path(
-        m_ctx,
-        ImGui::GetWindowDrawList(),
-        ImGui::GetID(&link),
-        path,
-        start_color,
-        end_color,
-        thickness,
-        link.base.selected,
-        link.base.hovered,
-        &link.base.hovered,
-        &double_clicked);
-
-    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.base.selected = false;
-    }
-
-    link.base.selected = link.base.selected || clicked;
-
-    if (double_clicked >= 0 && double_clicked <= link.base.waypoints.size()) {
-        ImVec2 uv_axis = link.base.endpoint - link.base.startpoint;
-        ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
-        waypoint_pos.x = uv_axis.x == 0.F
-            ? 0.5F
-            : (waypoint_pos.x - link.base.startpoint.x) / uv_axis.x;
-        waypoint_pos.y = uv_axis.y == 0.F
-            ? 0.5F
-            : (waypoint_pos.y - link.base.startpoint.y) / uv_axis.y;
-        link.base.waypoints.emplace(
-            link.base.waypoints.begin() + double_clicked,
-            link_waypoint_t {
-                .uv_pos = waypoint_pos,
-            });
-    }
-
-    if (link.base.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+    if (link.base.marked_for_deletion) {
         this->destroy();
     }
 }

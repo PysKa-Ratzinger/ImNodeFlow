@@ -246,6 +246,16 @@ void PinRefImpl<TIsConst>::update()
 
     drawDragDropPinSourceAndTarget(*this, &drag_drop_source_active, &drag_drop_target_active);
 
+    bool is_hovering = decoration_hovered
+        || socket_hovered
+        || drag_drop_target_active;
+    bool is_pressed = decoration_pressed
+        || socket_pressed;
+
+    pin.isHovered = is_hovering;
+
+    ImGui::PopID();
+
     if (drag_drop_source_active) {
         auto path = detail::generate_path_from_pin_to_pos(
             ctx,
@@ -259,16 +269,6 @@ void PinRefImpl<TIsConst>::update()
             this->getStyle().color,
             this->getStyle().color);
     }
-
-    bool is_hovering = decoration_hovered
-        || socket_hovered
-        || drag_drop_target_active;
-    bool is_pressed = decoration_pressed
-        || socket_pressed;
-
-    pin.isHovered = is_hovering;
-
-    ImGui::PopID();
 }
 
 template <bool TIsConst>

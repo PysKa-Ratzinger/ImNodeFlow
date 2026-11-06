@@ -113,10 +113,6 @@ void NodeLinkRef<TIsConst>::update()
         ? sourceNode().getStyle().link_hovered_thickness
         : sourceNode().getStyle().link_thickness;
 
-    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.base.selected = false;
-    }
-
     auto start_color = sourceNode().getStyle().header_bg;
     auto end_color = targetNode().getStyle().header_bg;
 
@@ -131,28 +127,20 @@ void NodeLinkRef<TIsConst>::update()
     auto p3 = end - ImVec2(20.F, 0.F);
     auto p4 = end;
 
-    link.base.startpoint = p2;
-    link.base.endpoint = p3;
-
-    auto path = detail::generate_path(
+    link_base_update(
         ctx,
-        p1, p2, p3, p4,
-        link.base.waypoints);
-    bool pressed = draw_path(
-        m_ctx,
-        ImGui::GetWindowDrawList(),
-        ImGui::GetID(&link),
-        path,
-        start_color,
-        end_color,
-        thickness,
-        link.base.selected,
-        link.base.hovered,
-        &link.base.hovered);
+        link.base,
+        link_base_update_args {
+            .start_color = start_color,
+            .end_color = end_color,
+            .start_anchor = p1,
+            .start = p2,
+            .end = p3,
+            .end_anchor = p4,
+            .thickness = thickness,
+        });
 
-    link.base.selected = link.base.selected || pressed;
-
-    if (link.base.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+    if (link.base.marked_for_deletion) {
         this->destroy();
     }
 }

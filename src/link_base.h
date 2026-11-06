@@ -10,13 +10,13 @@ namespace ImFlow::detail {
 
 struct link_waypoint_t {
     /// Position in a uv projection, where uv are the x and y components
-    /// of the vector (endpoint - startpoint).
+    /// of the vector (end - start).
+    /// The end and start vectors are only known when the link_base_update()
+    /// function is called.
     ImVec2 uv_pos;
 };
 
 struct link_base_t {
-    ImVec2 startpoint;
-    ImVec2 endpoint;
     std::vector<link_waypoint_t> waypoints;
     bool marked_for_deletion = false;
     bool hovered = false;
@@ -32,6 +32,21 @@ struct link_grid_path_t {
     /// All points are in grid coordinates, not screen coordinates
     std::vector<coord_t> points;
 };
+
+struct link_base_update_args {
+    ImU32 start_color;
+    ImU32 end_color;
+    ImVec2 start_anchor;
+    ImVec2 start;
+    ImVec2 end;
+    ImVec2 end_anchor;
+    float thickness;
+};
+
+void link_base_update(
+    ImNodeFlow& ctx,
+    link_base_t& link,
+    link_base_update_args args);
 
 link_grid_path_t generate_path_from_node_to_pos(
     ImNodeFlow& ctx,
