@@ -172,7 +172,7 @@ template <bool TIsConst>
 bool NodeRefImpl<TIsConst>::isActivated() const
 {
     auto& node = m_node.get();
-    return !node.wasSelected && node.selected;
+    return node.isActivated;
 }
 
 template <bool TIsConst>
@@ -492,7 +492,7 @@ void NodeRefImpl<TIsConst>::prepareNextFrame()
     requires(!TIsConst)
 {
     detail::node_t& node = m_node.get();
-    node.wasSelected = node.selected;
+    node.isActivated = !node.selected && node.selectedNext;
     node.selected = node.selectedNext;
     node.provisionallySelected = node.provisionallySelectedNext;
     node.provisionallySelectedNext = false;

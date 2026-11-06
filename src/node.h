@@ -29,7 +29,7 @@ struct node_t {
     ImVec2 size;
     ImVec2 fullSize;
     NodeStyle style;
-    bool wasSelected = false;
+    bool isActivated = false;
     bool selected = false;
     bool selectedNext = false;
     bool provisionallySelected = false;
