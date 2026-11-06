@@ -1,11 +1,12 @@
 #include "link_base.h"
 
 #include "ImNodeFlow/Context.h"
+#include "ImNodeFlow/fwd.h"
 
 #include "./imgui_bezier_items.h"
 #include "./imgui_bezier_widgets.h"
+#include "./imgui_custom_widgets.h"
 
-#include "ImNodeFlow/fwd.h"
 #include "imgui.h"
 
 #include <vector>
@@ -56,6 +57,18 @@ namespace {
         result.points.emplace_back(next_pt);
     }
 
+    ImVec2 transform_pos_to_uv_coord(ImVec2 start, ImVec2 end, ImVec2 grid_pos)
+    {
+        ImVec2 uv_axis = end - start;
+        grid_pos.x = uv_axis.x == 0.F
+            ? 0.5F
+            : (grid_pos.x - start.x) / uv_axis.x;
+        grid_pos.y = uv_axis.y == 0.F
+            ? 0.5F
+            : (grid_pos.y - start.y) / uv_axis.y;
+        return grid_pos;
+    }
+
 } // anonymous namespace
 
 void link_base_update(
@@ -63,6 +76,47 @@ void link_base_update(
     link_base_t& link,
     link_base_update_args args)
 {
+    ImVec2 uv_axis = args.end - args.start;
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    ImDrawListSplitter splitter;
+    if (!link.waypoints.empty()) {
+        splitter.Split(draw_list, 2);
+        splitter.SetCurrentChannel(draw_list, 1);
+    }
+
+    ImGui::PushID("##waypoints");
+    for (size_t i = 0; i < link.waypoints.size(); i++) {
+        auto& waypoint = link.waypoints[i];
+        ImVec2 waypoint_pos = args.start + waypoint.uv_pos * uv_axis;
+
+        bool is_hovered = false;
+        bool is_clicked = drag_pin_widget(
+            ImGui::GetID(i),
+            draw_list,
+            ctx.grid2screen(waypoint_pos),
+            6.F,
+            waypoint.held,
+            waypoint.selected,
+            &is_hovered,
+            &waypoint.held);
+
+        if (is_clicked) {
+            waypoint.selected = true;
+        } else if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            waypoint.selected = false;
+        }
+
+        if (waypoint.held) {
+            auto new_waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
+            new_waypoint_pos = ctx.slamPosition(new_waypoint_pos);
+            new_waypoint_pos = transform_pos_to_uv_coord(
+                args.start, args.end, new_waypoint_pos);
+            link.waypoints[i].uv_pos = new_waypoint_pos;
+        }
+    }
+    ImGui::PopID();
+
     auto path = detail::generate_path(
         ctx,
         args.start_anchor,
@@ -71,10 +125,14 @@ void link_base_update(
         args.end_anchor,
         link.waypoints);
 
+    if (!link.waypoints.empty()) {
+        splitter.SetCurrentChannel(draw_list, 0);
+    }
+
     int double_clicked = -1;
     bool clicked = draw_path(
         ctx,
-        ImGui::GetWindowDrawList(),
+        draw_list,
         ImGui::GetID(&link),
         path,
         args.start_color,
@@ -85,6 +143,8 @@ void link_base_update(
         &link.hovered,
         &double_clicked);
 
+    splitter.Merge(draw_list);
+
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         link.selected = false;
     }
@@ -92,14 +152,10 @@ void link_base_update(
     link.selected = link.selected || clicked;
 
     if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
-        ImVec2 uv_axis = args.end - args.start;
         ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
-        waypoint_pos.x = uv_axis.x == 0.F
-            ? 0.5F
-            : (waypoint_pos.x - args.start.x) / uv_axis.x;
-        waypoint_pos.y = uv_axis.y == 0.F
-            ? 0.5F
-            : (waypoint_pos.y - args.start.y) / uv_axis.y;
+        waypoint_pos = ctx.slamPosition(waypoint_pos);
+        waypoint_pos = transform_pos_to_uv_coord(
+            args.start, args.end, waypoint_pos);
         link.waypoints.emplace(
             link.waypoints.begin() + double_clicked,
             link_waypoint_t {
@@ -170,7 +226,6 @@ link_grid_path_t generate_path(
     for (int i = 0; i < waypoints.size(); i++) {
         const auto& waypoint = waypoints[i];
         ImVec2 waypoint_pos = start_point + waypoint.uv_pos * uv_axis;
-        waypoint_pos = ctx.slamPosition(waypoint_pos);
 
         process_next_point(
             result,

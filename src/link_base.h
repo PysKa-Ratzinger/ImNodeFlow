@@ -14,6 +14,8 @@ struct link_waypoint_t {
     /// The end and start vectors are only known when the link_base_update()
     /// function is called.
     ImVec2 uv_pos;
+    bool held = false;
+    bool selected = false;
 };
 
 struct link_base_t {
