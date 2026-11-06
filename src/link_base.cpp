@@ -8,57 +8,12 @@
 #include "./imgui_custom_widgets.h"
 
 #include "imgui.h"
+#include "imgui_extra_math.h"
 
 #include <algorithm>
 #include <vector>
 
 namespace ImFlow::detail {
-
-namespace {
-
-    void process_next_point(
-        link_grid_path_t& result,
-        link_grid_path_t::coord_t next_pt)
-    {
-        auto last_pt = result.points.back();
-
-        // If no straight line is possible
-        if (next_pt.grid_pos.x != last_pt.grid_pos.x && next_pt.grid_pos.y != last_pt.grid_pos.y) {
-            // let's do a Z-bend.
-            if (next_pt.grid_pos.x > last_pt.grid_pos.x) {
-                // In case this next point is to the right of the previous one,
-                // the Z-bend will first move through the X axis until midway,
-                // move Y axis all the way, then finish moving through the X
-                // axis.
-                float x_midpoint = (last_pt.grid_pos.x + next_pt.grid_pos.x) / 2.F;
-                result.points.emplace_back(link_grid_path_t::coord_t {
-                    .grid_pos = { x_midpoint, last_pt.grid_pos.y },
-                    .waypoint_index = next_pt.waypoint_index,
-                });
-                result.points.emplace_back(link_grid_path_t::coord_t {
-                    .grid_pos = { x_midpoint, next_pt.grid_pos.y },
-                    .waypoint_index = next_pt.waypoint_index,
-                });
-            } else {
-                // When going to the left side, let's do the opposite. Let's start
-                // by going through the Y axis halfway, the the whole X axis, then
-                // the rest of the Y axis.
-                float y_midpoint = (last_pt.grid_pos.y + next_pt.grid_pos.y) / 2.F;
-                result.points.emplace_back(link_grid_path_t::coord_t {
-                    .grid_pos = { last_pt.grid_pos.x, y_midpoint },
-                    .waypoint_index = next_pt.waypoint_index,
-                });
-                result.points.emplace_back(link_grid_path_t::coord_t {
-                    .grid_pos = { next_pt.grid_pos.x, y_midpoint },
-                    .waypoint_index = next_pt.waypoint_index,
-                });
-            }
-        }
-
-        result.points.emplace_back(next_pt);
-    }
-
-} // anonymous namespace
 
 void link_base_update(
     ImNodeFlow& ctx,
@@ -273,22 +228,19 @@ link_grid_path_t generate_path(
     for (int i = 0; i < waypoints.size(); i++) {
         const auto& waypoint = waypoints[i];
 
-        process_next_point(
-            result,
+        result.points.emplace_back(
             link_grid_path_t::coord_t {
                 .grid_pos = waypoint.grid_pos,
                 .waypoint_index = i,
             });
     }
 
-    process_next_point(
-        result,
+    result.points.emplace_back(
         link_grid_path_t::coord_t {
             .grid_pos = end_point,
             .waypoint_index = int(waypoints.size()),
         });
-    process_next_point(
-        result,
+    result.points.emplace_back(
         link_grid_path_t::coord_t {
             .grid_pos = end_point_anchor,
             .waypoint_index = int(waypoints.size()),
@@ -322,6 +274,37 @@ bool draw_path(
             .p3 = ctx.grid2screen(path.points[i + 1].grid_pos),
             .p4 = ctx.grid2screen(path.points[i + 1].grid_pos),
         };
+
+        ImVec2 v = segment.p4 - segment.p1;
+        if (v == ImVec2(0.F, 0.F)) {
+            continue;
+        }
+
+        double l = ImSqrt(v.x * v.x + v.y * v.y);
+
+        if (i != 0 && i != path.points.size() - 2) {
+            ImVec2 prev_pt = ctx.grid2screen(path.points[i - 1].grid_pos);
+            ImVec2 next_pt = ctx.grid2screen(path.points[i + 2].grid_pos);
+
+            // First control point excepting the first segment
+            if (i == 1) {
+                auto v_prev = segment.p1 - prev_pt;
+                if (v_prev != ImVec2(0.F, 0.F)) {
+                    segment.p2 = segment.p1 + ImNormalized(v_prev) * l * 0.25;
+                }
+            } else {
+                segment.p2 = segment.p1 + ImNormalized(segment.p4 - prev_pt) * l * 0.25;
+            }
+
+            if (i == path.points.size() - 3) {
+                auto v_next = next_pt - segment.p4;
+                if (v_next != ImVec2(0.F, 0.F)) {
+                    segment.p3 = segment.p4 - ImNormalized(v_next) * l * 0.25;
+                }
+            } else {
+                segment.p3 = segment.p4 - ImNormalized(next_pt - segment.p1) * l * 0.25;
+            }
+        }
 
         bool segment_hovered = false;
         bool segment_double_clicked = false;
