@@ -9,6 +9,7 @@
 
 #include "imgui.h"
 #include "imgui_extra_math.h"
+#include "imgui_internal.h"
 
 #include <algorithm>
 #include <vector>
@@ -278,6 +279,22 @@ bool draw_path(
     bool pressed = false;
     bool new_hovered = false;
     int new_double_clicked = int(-1);
+
+    float total_length = 0;
+    for (int i = 0; i < path.points.size() - 1; i++) {
+        auto p1 = ctx.grid2screen(path.points[i].grid_pos);
+        auto p4 = ctx.grid2screen(path.points[i + 1].grid_pos);
+        ImVec2 v = p4 - p1;
+        if (v == ImVec2(0.F, 0.F)) {
+            continue;
+        }
+        total_length += ImSqrt(v.x * v.x + v.y * v.y);
+    }
+
+    ImVec4 c1 = ImGui::ColorConvertU32ToFloat4(start_color);
+    ImVec4 c2 = ImGui::ColorConvertU32ToFloat4(end_color);
+
+    float cumm_l = 0.F;
     for (int i = 0; i < path.points.size() - 1; i++) {
         cubic_bezier_controls_t segment {
             .p1 = ctx.grid2screen(path.points[i].grid_pos),
@@ -291,7 +308,10 @@ bool draw_path(
             continue;
         }
 
-        double l = ImSqrt(v.x * v.x + v.y * v.y);
+        float l = ImSqrt(v.x * v.x + v.y * v.y);
+        ImU32 seg_start_color = ImGui::ColorConvertFloat4ToU32(ImLerp(c1, c2, cumm_l / total_length));
+        ImU32 seg_end_color = ImGui::ColorConvertFloat4ToU32(ImLerp(c1, c2, (cumm_l + l) / total_length));
+        cumm_l += l;
 
         if (i != 0 && i != path.points.size() - 2) {
             ImVec2 prev_pt = ctx.grid2screen(path.points[i - 1].grid_pos);
@@ -323,8 +343,8 @@ bool draw_path(
             ImGui::GetID(i),
             draw_list,
             segment,
-            start_color,
-            end_color,
+            seg_start_color,
+            seg_end_color,
             selected,
             hovered,
             &segment_hovered,
