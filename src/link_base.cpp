@@ -22,51 +22,39 @@ namespace {
         auto last_pt = result.points.back();
 
         // If no straight line is possible
-        if (next_pt.pos.x != last_pt.pos.x && next_pt.pos.y != last_pt.pos.y) {
+        if (next_pt.grid_pos.x != last_pt.grid_pos.x && next_pt.grid_pos.y != last_pt.grid_pos.y) {
             // let's do a Z-bend.
-            if (next_pt.pos.x > last_pt.pos.x) {
+            if (next_pt.grid_pos.x > last_pt.grid_pos.x) {
                 // In case this next point is to the right of the previous one,
                 // the Z-bend will first move through the X axis until midway,
                 // move Y axis all the way, then finish moving through the X
                 // axis.
-                float x_midpoint = (last_pt.pos.x + next_pt.pos.x) / 2.F;
+                float x_midpoint = (last_pt.grid_pos.x + next_pt.grid_pos.x) / 2.F;
                 result.points.emplace_back(link_grid_path_t::coord_t {
-                    .pos = { x_midpoint, last_pt.pos.y },
+                    .grid_pos = { x_midpoint, last_pt.grid_pos.y },
                     .waypoint_index = next_pt.waypoint_index,
                 });
                 result.points.emplace_back(link_grid_path_t::coord_t {
-                    .pos = { x_midpoint, next_pt.pos.y },
+                    .grid_pos = { x_midpoint, next_pt.grid_pos.y },
                     .waypoint_index = next_pt.waypoint_index,
                 });
             } else {
                 // When going to the left side, let's do the opposite. Let's start
                 // by going through the Y axis halfway, the the whole X axis, then
                 // the rest of the Y axis.
-                float y_midpoint = (last_pt.pos.y + next_pt.pos.y) / 2.F;
+                float y_midpoint = (last_pt.grid_pos.y + next_pt.grid_pos.y) / 2.F;
                 result.points.emplace_back(link_grid_path_t::coord_t {
-                    .pos = { last_pt.pos.x, y_midpoint },
+                    .grid_pos = { last_pt.grid_pos.x, y_midpoint },
                     .waypoint_index = next_pt.waypoint_index,
                 });
                 result.points.emplace_back(link_grid_path_t::coord_t {
-                    .pos = { next_pt.pos.x, y_midpoint },
+                    .grid_pos = { next_pt.grid_pos.x, y_midpoint },
                     .waypoint_index = next_pt.waypoint_index,
                 });
             }
         }
 
         result.points.emplace_back(next_pt);
-    }
-
-    ImVec2 transform_pos_to_uv_coord(ImVec2 start, ImVec2 end, ImVec2 grid_pos)
-    {
-        ImVec2 uv_axis = end - start;
-        grid_pos.x = uv_axis.x == 0.F
-            ? 0.5F
-            : (grid_pos.x - start.x) / uv_axis.x;
-        grid_pos.y = uv_axis.y == 0.F
-            ? 0.5F
-            : (grid_pos.y - start.y) / uv_axis.y;
-        return grid_pos;
     }
 
 } // anonymous namespace
@@ -88,13 +76,12 @@ void link_base_update(
     ImGui::PushID("##waypoints");
     for (size_t i = 0; i < link.waypoints.size(); i++) {
         auto& waypoint = link.waypoints[i];
-        ImVec2 waypoint_pos = args.start + waypoint.uv_pos * uv_axis;
 
         bool is_hovered = false;
         bool is_clicked = drag_pin_widget(
             ImGui::GetID(i),
             draw_list,
-            ctx.grid2screen(waypoint_pos),
+            ctx.grid2screen(waypoint.grid_pos),
             6.F,
             waypoint.held,
             waypoint.selected,
@@ -110,9 +97,7 @@ void link_base_update(
         if (waypoint.held) {
             auto new_waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
             new_waypoint_pos = ctx.slamPosition(new_waypoint_pos);
-            new_waypoint_pos = transform_pos_to_uv_coord(
-                args.start, args.end, new_waypoint_pos);
-            link.waypoints[i].uv_pos = new_waypoint_pos;
+            link.waypoints[i].grid_pos = new_waypoint_pos;
         }
     }
     ImGui::PopID();
@@ -154,12 +139,10 @@ void link_base_update(
     if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
         ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
         waypoint_pos = ctx.slamPosition(waypoint_pos);
-        waypoint_pos = transform_pos_to_uv_coord(
-            args.start, args.end, waypoint_pos);
         link.waypoints.emplace(
             link.waypoints.begin() + double_clicked,
             link_waypoint_t {
-                .uv_pos = waypoint_pos,
+                .grid_pos = waypoint_pos,
             });
     }
 
@@ -171,10 +154,10 @@ void link_base_update(
 link_grid_path_t generate_path_from_node_to_pos(
     ImNodeFlow& ctx,
     ConstNodeRef node,
-    ImVec2 pos)
+    ImVec2 grid_pos)
 {
     ImVec2 start = node.getTLPos() + node.getFullSize() * ImVec2(1.F, 0.F);
-    ImVec2 end = pos;
+    ImVec2 end = grid_pos;
 
     start.y += ImGui::GetTextLineHeight();
 
@@ -189,10 +172,10 @@ link_grid_path_t generate_path_from_node_to_pos(
 link_grid_path_t generate_path_from_pin_to_pos(
     ImNodeFlow& ctx,
     ConstPinRef pin,
-    ImVec2 pos)
+    ImVec2 grid_pos)
 {
     auto p1 = pin.pinPoint();
-    auto p4 = pos;
+    auto p4 = grid_pos;
 
     if (pin.getType() != PinType::Output) {
         std::swap(p1, p4);
@@ -214,23 +197,22 @@ link_grid_path_t generate_path(
 {
     link_grid_path_t result;
     result.points.emplace_back(link_grid_path_t::coord_t {
-        .pos = start_point_anchor,
+        .grid_pos = start_point_anchor,
         .waypoint_index = 0,
     });
     result.points.emplace_back(link_grid_path_t::coord_t {
-        .pos = start_point,
+        .grid_pos = start_point,
         .waypoint_index = 0,
     });
 
     ImVec2 uv_axis = end_point - start_point;
     for (int i = 0; i < waypoints.size(); i++) {
         const auto& waypoint = waypoints[i];
-        ImVec2 waypoint_pos = start_point + waypoint.uv_pos * uv_axis;
 
         process_next_point(
             result,
             link_grid_path_t::coord_t {
-                .pos = waypoint_pos,
+                .grid_pos = waypoint.grid_pos,
                 .waypoint_index = i,
             });
     }
@@ -238,13 +220,13 @@ link_grid_path_t generate_path(
     process_next_point(
         result,
         link_grid_path_t::coord_t {
-            .pos = end_point,
+            .grid_pos = end_point,
             .waypoint_index = int(waypoints.size()),
         });
     process_next_point(
         result,
         link_grid_path_t::coord_t {
-            .pos = end_point_anchor,
+            .grid_pos = end_point_anchor,
             .waypoint_index = int(waypoints.size()),
         });
 
@@ -271,10 +253,10 @@ bool draw_path(
     int new_double_clicked = int(-1);
     for (int i = 0; i < path.points.size() - 1; i++) {
         cubic_bezier_controls_t segment {
-            .p1 = ctx.grid2screen(path.points[i].pos),
-            .p2 = ctx.grid2screen(path.points[i].pos),
-            .p3 = ctx.grid2screen(path.points[i + 1].pos),
-            .p4 = ctx.grid2screen(path.points[i + 1].pos),
+            .p1 = ctx.grid2screen(path.points[i].grid_pos),
+            .p2 = ctx.grid2screen(path.points[i].grid_pos),
+            .p3 = ctx.grid2screen(path.points[i + 1].grid_pos),
+            .p4 = ctx.grid2screen(path.points[i + 1].grid_pos),
         };
 
         bool segment_hovered = false;

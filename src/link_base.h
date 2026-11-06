@@ -9,11 +9,7 @@
 namespace ImFlow::detail {
 
 struct link_waypoint_t {
-    /// Position in a uv projection, where uv are the x and y components
-    /// of the vector (end - start).
-    /// The end and start vectors are only known when the link_base_update()
-    /// function is called.
-    ImVec2 uv_pos;
+    ImVec2 grid_pos;
     bool held = false;
     bool selected = false;
 };
@@ -27,7 +23,7 @@ struct link_base_t {
 
 struct link_grid_path_t {
     struct coord_t {
-        ImVec2 pos;
+        ImVec2 grid_pos;
         int waypoint_index;
     };
 
@@ -53,12 +49,12 @@ void link_base_update(
 link_grid_path_t generate_path_from_node_to_pos(
     ImNodeFlow& ctx,
     ConstNodeRef node,
-    ImVec2 pos);
+    ImVec2 grid_pos);
 
 link_grid_path_t generate_path_from_pin_to_pos(
     ImNodeFlow& ctx,
     ConstPinRef pin,
-    ImVec2 pos);
+    ImVec2 grid_pos);
 
 link_grid_path_t generate_path(
     ImNodeFlow& ctx,
