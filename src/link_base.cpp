@@ -78,9 +78,15 @@ void link_base_update(
     for (size_t i = 0; i < link.waypoints.size(); i++) {
         auto& waypoint = link.waypoints[i];
 
-        if (waypoint.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+        if (waypoint.flags.value().selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
             waypoint.marked_for_deletion = true;
             continue;
+        }
+
+        if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
+            && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
+            && ctx.countSelectedItems() <= 1) {
+            waypoint.flags.next().selected = false;
         }
 
         bool is_held = false;
@@ -92,7 +98,7 @@ void link_base_update(
             ctx.grid2screen(waypoint.grid_pos),
             6.F,
             waypoint.held,
-            waypoint.selected || waypoint.provisionally_selected,
+            waypoint.flags.value().selected || waypoint.flags.value().provisionally_selected,
             &is_hovered,
             &is_held,
             &is_released);
@@ -101,19 +107,23 @@ void link_base_update(
         if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
             && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
             && ctx.countSelectedItems() == 0) {
-            waypoint.selected_next = false;
-            waypoint.provisionally_selected_next = false;
+            waypoint.flags.next().selected = false;
+            waypoint.flags.next().provisionally_selected = false;
         }
 
         if (is_clicked) {
-            waypoint.wants_deselect = waypoint.selected;
-            waypoint.selected_next = true;
-            waypoint.provisionally_selected_next = false;
+            waypoint.wants_deselect = waypoint.flags.value().selected;
+            waypoint.flags.next().selected = true;
+            waypoint.flags.next().provisionally_selected = false;
         }
+
         if (is_released && waypoint.wants_deselect) {
-            waypoint.selected_next = false;
             waypoint.wants_deselect = false;
-            waypoint.provisionally_selected_next = false;
+            waypoint.flags.next().selected = false;
+            waypoint.flags.next().provisionally_selected = false;
+            if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl)) {
+                ctx.deselectAllItems();
+            }
         }
 
         if (is_clicked) {
@@ -122,7 +132,7 @@ void link_base_update(
             ctx.stopNodeDrag();
         }
 
-        bool wants_drag = waypoint.selected;
+        bool wants_drag = waypoint.flags.value().selected;
         if (wants_drag) {
             ImVec2 drag_vec;
             bool should_apply_drag = ctx.getNodeDragAmmount(&drag_vec);
@@ -177,7 +187,7 @@ void link_base_update(
         args.start_color,
         args.end_color,
         args.thickness,
-        link.selected,
+        link.flags.value().selected,
         link.hovered,
         &link.hovered,
         &double_clicked);
@@ -185,10 +195,12 @@ void link_base_update(
     splitter.Merge(draw_list);
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.selected = false;
+        link.flags.next().selected = false;
     }
 
-    link.selected = link.selected || clicked;
+    if (clicked) {
+        link.flags.next().selected = true;
+    }
 
     if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
         ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
@@ -200,18 +212,17 @@ void link_base_update(
             });
     }
 
-    if (link.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+    if (link.flags.value().selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
         link.marked_for_deletion = true;
     }
 }
 
 void link_base_prepare_next_frame(link_base_t& link)
 {
-    link.selected = link.selected_next;
+    link.flags.swap();
     for (auto& waypoint : link.waypoints) {
-        waypoint.selected = waypoint.selected_next;
-        waypoint.provisionally_selected = waypoint.provisionally_selected_next;
-        waypoint.provisionally_selected_next = false;
+        waypoint.flags.swap();
+        waypoint.flags.next().provisionally_selected = false;
     }
 }
 

@@ -265,7 +265,7 @@ template <bool TIsConst>
 bool NodeRefImpl<TIsConst>::isSelected() const
 {
     auto& node = m_node.get();
-    return node.selected || node.provisionallySelected;
+    return node.flags.value().selected || node.flags.value().provisionallySelected;
 }
 
 template <bool TIsConst>
@@ -338,8 +338,7 @@ template <bool TIsConst>
 NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setSelected(bool state)
     requires(!TIsConst)
 {
-    auto& node = m_node.get();
-    node.selectedNext = state;
+    m_node.get().flags.next().selected = state;
     return *this;
 }
 
@@ -347,7 +346,7 @@ template <bool TIsConst>
 NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setProvisionallySelected(bool state)
     requires(!TIsConst)
 {
-    m_node.get().provisionallySelectedNext = state;
+    m_node.get().flags.next().provisionallySelected = state;
     return *this;
 }
 
@@ -492,10 +491,9 @@ void NodeRefImpl<TIsConst>::prepareNextFrame()
     requires(!TIsConst)
 {
     detail::node_t& node = m_node.get();
-    node.isActivated = !node.selected && node.selectedNext;
-    node.selected = node.selectedNext;
-    node.provisionallySelected = node.provisionallySelectedNext;
-    node.provisionallySelectedNext = false;
+    node.isActivated = !node.flags.value().selected && node.flags.next().selected;
+    node.flags.swap();
+    node.flags.next().provisionallySelected = false;
 
     if (node.behaviour) {
         node.behaviour->prepareNextFrame(*this);
@@ -821,7 +819,9 @@ void NodeRefImpl<TIsConst>::update()
         }
     }
 
-    if (ImGui::IsWindowFocused() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ctx.countSelectedItems() == 0) {
+    if (ImGui::IsWindowFocused() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
+        && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
+        && ctx.countSelectedItems() <= 1) {
         setSelected(false);
     }
 
@@ -1072,7 +1072,7 @@ void NodeRefImpl<TIsConst>::update()
 
     if (node_pressed || header_pressed) {
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            node.wantsDeselect = node.selected;
+            node.wantsDeselect = node.flags.value().selected;
             setSelected(true);
         } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
             ImGui::OpenPopup("RightClickPopUp");
@@ -1082,7 +1082,12 @@ void NodeRefImpl<TIsConst>::update()
     if ((node_released || header_released)
         && ImGui::IsMouseReleased(ImGuiMouseButton_Left)
         && node.wantsDeselect) {
-        setSelected(false);
+        node.wantsDeselect = false;
+        if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl)) {
+            setSelected(false);
+        } else {
+            ctx.deselectAllItems();
+        }
     }
     if (header_pressed
         && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
@@ -1096,7 +1101,7 @@ void NodeRefImpl<TIsConst>::update()
     bool wants_drag = false;
     detail::node_t* curr = &node;
     while (!wants_drag && curr != nullptr) {
-        wants_drag = curr->selected;
+        wants_drag = curr->flags.value().selected;
         curr = curr->parent_node;
     }
 

@@ -2,6 +2,8 @@
 
 #include "ImNodeFlow/fwd.h"
 
+#include "./DoubleBuffer.h"
+
 #include "imgui.h"
 
 #include <vector>
@@ -11,13 +13,17 @@ namespace ImFlow::detail {
 struct link_waypoint_t {
     ImVec2 grid_pos_backup;
     ImVec2 grid_pos;
+
+    struct flags_t {
+        bool selected : 1 = false;
+        bool provisionally_selected : 1 = false;
+    };
+
+    DoubleBuffer<flags_t> flags;
+
     bool dragging : 1 = false;
     bool held : 1 = false;
-    bool selected : 1 = false;
-    bool selected_next : 1 = false;
     bool wants_deselect : 1 = false;
-    bool provisionally_selected : 1 = false;
-    bool provisionally_selected_next : 1 = false;
     bool marked_for_deletion : 1 = false;
 };
 
@@ -25,8 +31,12 @@ struct link_base_t {
     std::vector<link_waypoint_t> waypoints;
     bool marked_for_deletion = false;
     bool hovered = false;
-    bool selected = false;
-    bool selected_next = false;
+
+    struct flags_t {
+        bool selected = false;
+    };
+
+    DoubleBuffer<flags_t> flags;
 };
 
 struct link_grid_path_t {

@@ -7,6 +7,7 @@
 #include "ImNodeFlow/detail/fwd.h"
 #include "ImNodeFlow/fwd.h"
 
+#include "./DoubleBuffer.h"
 #include "./dynamic_pin.h"
 
 #include "imgui.h"
@@ -29,11 +30,14 @@ struct node_t {
     ImVec2 size;
     ImVec2 fullSize;
     NodeStyle style;
+
+    struct flags_t {
+        bool selected = false;
+        bool provisionallySelected = false;
+    };
+    DoubleBuffer<flags_t> flags;
+
     bool isActivated = false;
-    bool selected = false;
-    bool selectedNext = false;
-    bool provisionallySelected = false;
-    bool provisionallySelectedNext = false;
     bool wantsDeselect = false;
     bool destroyed = false;
     bool dragging = false;

@@ -114,9 +114,9 @@ void ImNodeFlow::selectAllInRange(
         for (auto& waypoint : pin_link->base.waypoints) {
             if (box_clip.Contains(waypoint.grid_pos)) {
                 if (provisional) {
-                    waypoint.provisionally_selected_next = true;
+                    waypoint.flags.next().provisionally_selected = true;
                 } else {
-                    waypoint.selected_next = true;
+                    waypoint.flags.next().selected = true;
                 }
             }
         }
@@ -126,9 +126,9 @@ void ImNodeFlow::selectAllInRange(
         for (auto& waypoint : node_link->base.waypoints) {
             if (box_clip.Contains(waypoint.grid_pos)) {
                 if (provisional) {
-                    waypoint.provisionally_selected_next = true;
+                    waypoint.flags.next().provisionally_selected = true;
                 } else {
-                    waypoint.selected_next = true;
+                    waypoint.flags.next().selected = true;
                 }
             }
         }
@@ -141,15 +141,15 @@ void ImNodeFlow::deselectAllItems()
     root_arena.deselectAllNodes();
 
     for (auto& pin_link : m_impl->pin_links) {
-        pin_link->base.selected_next = false;
+        pin_link->base.flags.next().selected = false;
         for (auto& waypoint : pin_link->base.waypoints) {
-            waypoint.selected_next = false;
+            waypoint.flags.next().selected = false;
         }
     }
     for (auto& node_link : m_impl->node_links) {
-        node_link->base.selected_next = false;
+        node_link->base.flags.next().selected = false;
         for (auto& waypoint : node_link->base.waypoints) {
-            waypoint.selected_next = false;
+            waypoint.flags.next().selected = false;
         }
     }
 }
@@ -161,21 +161,21 @@ uint64_t ImNodeFlow::countSelectedItems() const
             = NodeGroupArenaRef<true> { *this, m_impl->root_arena }
                   .countSelectedItems();
         for (const auto& pin_link : m_impl->pin_links) {
-            if (pin_link->base.selected) {
+            if (pin_link->base.flags.value().selected) {
                 ++m_impl->totalSelectedItems;
             }
             for (const auto& waypoint : pin_link->base.waypoints) {
-                if (waypoint.selected) {
+                if (waypoint.flags.value().selected) {
                     ++m_impl->totalSelectedItems;
                 }
             }
         }
         for (const auto& node_link : m_impl->node_links) {
-            if (node_link->base.selected) {
+            if (node_link->base.flags.value().selected) {
                 ++m_impl->totalSelectedItems;
             }
             for (const auto& waypoint : node_link->base.waypoints) {
-                if (waypoint.selected) {
+                if (waypoint.flags.value().selected) {
                     ++m_impl->totalSelectedItems;
                 }
             }
