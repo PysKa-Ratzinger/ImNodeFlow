@@ -202,7 +202,6 @@ void PinRefImpl<TIsConst>::update()
 
     bool socket_hovered = false;
     bool socket_pressed = false;
-    bool drag_drop_source_active = false;
     bool drag_drop_target_active = false;
 
     if (this->getType() == PinType::Output) {
@@ -214,10 +213,10 @@ void PinRefImpl<TIsConst>::update()
         drawDecoration(pin);
         ImGui::SameLine(0.f, 0.f);
         socket_pressed = drawSocket(*this, &socket_hovered, &pin.pinPoint);
-        drawDragDropPinSourceAndTarget(*this, &drag_drop_source_active, &drag_drop_target_active);
+        drawDragDropPinSourceAndTarget(*this, nullptr, &drag_drop_target_active);
     } else if (this->getType() == PinType::Input) {
         socket_pressed = drawSocket(*this, &socket_hovered, &pin.pinPoint);
-        drawDragDropPinSourceAndTarget(*this, &drag_drop_source_active, &drag_drop_target_active);
+        drawDragDropPinSourceAndTarget(*this, nullptr, &drag_drop_target_active);
         ImGui::SameLine(0.f, 0.f);
         this->setPos(ImGui::GetCursorPos());
         ImGui::BeginGroup();
@@ -244,7 +243,7 @@ void PinRefImpl<TIsConst>::update()
             ImGuiButtonFlags_PressedOnClick);
     }
 
-    drawDragDropPinSourceAndTarget(*this, &drag_drop_source_active, &drag_drop_target_active);
+    drawDragDropPinSourceAndTarget(*this, nullptr, &drag_drop_target_active);
 
     bool is_hovering = decoration_hovered
         || socket_hovered
@@ -255,20 +254,6 @@ void PinRefImpl<TIsConst>::update()
     pin.isHovered = is_hovering;
 
     ImGui::PopID();
-
-    if (drag_drop_source_active) {
-        auto path = detail::generate_path_from_pin_to_pos(
-            ctx,
-            *this,
-            ctx.screen2grid(ImGui::GetMousePos()));
-        detail::draw_path(
-            ctx,
-            ImGui::GetForegroundDrawList(),
-            ImGui::GetID("drag_drop_pin_link"),
-            path,
-            this->getStyle().color,
-            this->getStyle().color);
-    }
 }
 
 template <bool TIsConst>

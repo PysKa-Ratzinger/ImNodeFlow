@@ -541,6 +541,30 @@ void ImNodeFlow::update()
         ImGui::EndDragDropTarget();
     }
 
+    {
+        const ImGuiPayload* payload = ImGui::GetDragDropPayload();
+        if (payload != nullptr && !ImGui::IsDragDropPayloadBeingAccepted()) {
+            if (payload->IsDataType("PIN_REF_LOCAL_DTO")) {
+                PinRefLocalDTO<> dto { };
+                IM_ASSERT(payload->DataSize == sizeof(dto));
+                std::memcpy(&dto, payload->Data, sizeof(dto));
+                PinRef incoming { dto };
+
+                auto path = detail::generate_path_from_pin_to_pos(
+                    *this,
+                    incoming,
+                    this->screen2grid(ImGui::GetMousePos()));
+                detail::draw_path(
+                    *this,
+                    ImGui::GetForegroundDrawList(),
+                    ImGui::GetID("drag_drop_pin_link"),
+                    path,
+                    incoming.getStyle().color,
+                    incoming.getStyle().color);
+            }
+        }
+    }
+
     // Dropped Link PopUp
     if (ImGui::IsPopupOpen("DroppedLinkPopUp")) {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
