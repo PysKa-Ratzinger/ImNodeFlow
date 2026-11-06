@@ -12,6 +12,7 @@ struct link_waypoint_t {
     ImVec2 grid_pos;
     bool held = false;
     bool selected = false;
+    bool marked_for_deletion = false;
 };
 
 struct link_base_t {

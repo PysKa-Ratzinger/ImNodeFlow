@@ -9,6 +9,7 @@
 
 #include "imgui.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace ImFlow::detail {
@@ -77,6 +78,11 @@ void link_base_update(
     for (size_t i = 0; i < link.waypoints.size(); i++) {
         auto& waypoint = link.waypoints[i];
 
+        if (waypoint.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+            waypoint.marked_for_deletion = true;
+            continue;
+        }
+
         bool is_hovered = false;
         bool is_clicked = drag_pin_widget(
             ImGui::GetID(i),
@@ -101,6 +107,16 @@ void link_base_update(
         }
     }
     ImGui::PopID();
+
+    auto iter = std::remove_if(
+        std::begin(link.waypoints),
+        std::end(link.waypoints),
+        [](link_waypoint_t const& waypoint) -> bool {
+            return waypoint.marked_for_deletion;
+        });
+    if (iter != link.waypoints.end()) {
+        link.waypoints.erase(iter, link.waypoints.end());
+    }
 
     auto path = detail::generate_path(
         ctx,
