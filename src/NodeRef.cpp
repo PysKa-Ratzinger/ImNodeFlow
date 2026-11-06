@@ -821,7 +821,7 @@ void NodeRefImpl<TIsConst>::update()
         }
     }
 
-    if (ImGui::IsWindowFocused() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ctx.mouse_on_selected_node()) {
+    if (ImGui::IsWindowFocused() && !ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ctx.countSelectedItems() == 0) {
         setSelected(false);
     }
 

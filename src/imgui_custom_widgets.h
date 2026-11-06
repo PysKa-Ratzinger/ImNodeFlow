@@ -10,6 +10,7 @@ bool drag_pin_widget(
     bool held,
     bool selected,
     bool* out_hovered,
-    bool* out_held);
+    bool* out_held,
+    bool* out_released);
 
 } // namespace ImFlow::detail

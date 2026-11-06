@@ -41,9 +41,15 @@ public:
     void update()
         requires(!TIsConst);
 
+    void prepareNextFrame()
+        requires(!TIsConst);
+
 private:
     std::reference_wrapper<context_type> m_ctx;
     std::reference_wrapper<link_type> m_link;
 };
+
+extern template class NodeLinkRef<false>;
+extern template class NodeLinkRef<true>;
 
 } // namespace ImFlow::detail

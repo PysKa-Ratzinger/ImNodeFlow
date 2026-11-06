@@ -147,6 +147,14 @@ void PinLinkRef<TIsConst>::update()
     }
 }
 
+template <bool TIsConst>
+void PinLinkRef<TIsConst>::prepareNextFrame()
+    requires(!TIsConst)
+{
+    auto& link = m_link.get();
+    link_base_prepare_next_frame(link.base);
+}
+
 template class PinLinkRef<false>;
 template class PinLinkRef<true>;
 

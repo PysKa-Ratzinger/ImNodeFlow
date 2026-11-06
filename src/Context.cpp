@@ -100,9 +100,91 @@ ImNodeFlow& ImNodeFlow::operator=(ImNodeFlow&&) = default;
 
 ImNodeFlow::~ImNodeFlow() = default;
 
-bool ImNodeFlow::mouse_on_selected_node() const
+void ImNodeFlow::selectAllInRange(
+    ImVec2 bottom_left,
+    ImVec2 top_right,
+    bool provisional)
 {
-    return m_impl->mouseOnSelectedNode;
+    NodeGroupArenaRef<> root_arena { *this, m_impl->root_arena };
+    ImRect box_clip(bottom_left, top_right);
+
+    root_arena.selectArea(box_clip, provisional);
+
+    for (auto& pin_link : m_impl->pin_links) {
+        for (auto& waypoint : pin_link->base.waypoints) {
+            if (box_clip.Contains(waypoint.grid_pos)) {
+                if (provisional) {
+                    waypoint.provisionally_selected_next = true;
+                } else {
+                    waypoint.selected_next = true;
+                }
+            }
+        }
+    }
+
+    for (auto& node_link : m_impl->node_links) {
+        for (auto& waypoint : node_link->base.waypoints) {
+            if (box_clip.Contains(waypoint.grid_pos)) {
+                if (provisional) {
+                    waypoint.provisionally_selected_next = true;
+                } else {
+                    waypoint.selected_next = true;
+                }
+            }
+        }
+    }
+}
+
+void ImNodeFlow::deselectAllItems()
+{
+    NodeGroupArenaRef<> root_arena { *this, m_impl->root_arena };
+    root_arena.deselectAllNodes();
+
+    for (auto& pin_link : m_impl->pin_links) {
+        pin_link->base.selected_next = false;
+        for (auto& waypoint : pin_link->base.waypoints) {
+            waypoint.selected_next = false;
+        }
+    }
+    for (auto& node_link : m_impl->node_links) {
+        node_link->base.selected_next = false;
+        for (auto& waypoint : node_link->base.waypoints) {
+            waypoint.selected_next = false;
+        }
+    }
+}
+
+uint64_t ImNodeFlow::countSelectedItems() const
+{
+    if (m_impl->totalSelectedItemsDirtyFlag) {
+        m_impl->totalSelectedItems
+            = NodeGroupArenaRef<true> { *this, m_impl->root_arena }
+                  .countSelectedItems();
+        for (const auto& pin_link : m_impl->pin_links) {
+            if (pin_link->base.selected) {
+                ++m_impl->totalSelectedItems;
+            }
+            for (const auto& waypoint : pin_link->base.waypoints) {
+                if (waypoint.selected) {
+                    ++m_impl->totalSelectedItems;
+                }
+            }
+        }
+        for (const auto& node_link : m_impl->node_links) {
+            if (node_link->base.selected) {
+                ++m_impl->totalSelectedItems;
+            }
+            for (const auto& waypoint : node_link->base.waypoints) {
+                if (waypoint.selected) {
+                    ++m_impl->totalSelectedItems;
+                }
+            }
+        }
+
+        m_impl->totalSelectedItemsDirtyFlag = false;
+    }
+
+    return m_impl->totalSelectedItems;
 }
 
 ImVec2 ImNodeFlow::slamPosition(ImVec2 grid_position) const
@@ -362,10 +444,6 @@ void ImNodeFlow::update()
 {
     m_impl->is_drawing = true;
 
-    m_impl->mouseOnSelectedNode
-        = NodeGroupArenaRef<true> { *this, m_impl->root_arena }
-              .mouse_over_any_selected_node();
-
     // Updating looping stuff
     m_impl->hoveredNode = nullptr;
     m_impl->nodeDragActive = m_impl->nodeDragActiveNext;
@@ -423,7 +501,28 @@ void ImNodeFlow::update()
 
     // Update and draw nodes
     root_arena.update();
-    root_arena.prepareNextFrame();
+
+    // Update and draw pin links
+    if (!m_impl->pin_links.empty()) {
+        ImDrawListSplitter splitter;
+        splitter.Split(draw_list, m_impl->pin_links.size());
+        for (size_t pin_i = 0; pin_i < m_impl->pin_links.size(); ++pin_i) {
+            splitter.SetCurrentChannel(draw_list, m_impl->pin_links.size() - 1 - pin_i);
+            detail::PinLinkRef<> { *this, *m_impl->pin_links[pin_i] }.update();
+        }
+        splitter.Merge(draw_list);
+    }
+
+    // Update and draw node links
+    if (!m_impl->node_links.empty()) {
+        ImDrawListSplitter splitter;
+        splitter.Split(draw_list, m_impl->node_links.size());
+        for (size_t node_i = 0; node_i < m_impl->node_links.size(); ++node_i) {
+            splitter.SetCurrentChannel(draw_list, m_impl->node_links.size() - 1 - node_i);
+            detail::NodeLinkRef<> { *this, *m_impl->node_links[node_i] }.update();
+        }
+        splitter.Merge(draw_list);
+    }
 
     {
         // Remove pin links that are not alive
@@ -461,26 +560,13 @@ void ImNodeFlow::update()
         }
     }
 
-    // Update and draw pin links
-    if (!m_impl->pin_links.empty()) {
-        ImDrawListSplitter splitter;
-        splitter.Split(draw_list, m_impl->pin_links.size());
-        for (size_t pin_i = 0; pin_i < m_impl->pin_links.size(); ++pin_i) {
-            splitter.SetCurrentChannel(draw_list, m_impl->pin_links.size() - 1 - pin_i);
-            detail::PinLinkRef<> { *this, *m_impl->pin_links[pin_i] }.update();
-        }
-        splitter.Merge(draw_list);
+    // Prepare nodes and links for next frame
+    root_arena.prepareNextFrame();
+    for (auto& pin_link : m_impl->pin_links) {
+        detail::PinLinkRef<> { *this, *pin_link }.prepareNextFrame();
     }
-
-    // Update and draw node links
-    if (!m_impl->node_links.empty()) {
-        ImDrawListSplitter splitter;
-        splitter.Split(draw_list, m_impl->node_links.size());
-        for (size_t node_i = 0; node_i < m_impl->node_links.size(); ++node_i) {
-            splitter.SetCurrentChannel(draw_list, m_impl->node_links.size() - 1 - node_i);
-            detail::NodeLinkRef<> { *this, *m_impl->node_links[node_i] }.update();
-        }
-        splitter.Merge(draw_list);
+    for (auto& node_link : m_impl->node_links) {
+        detail::NodeLinkRef<> { *this, *node_link }.prepareNextFrame();
     }
 
     ImRect always_valid_bb {
@@ -518,7 +604,7 @@ void ImNodeFlow::update()
 
             // Deselect all nodes if not holding down CTRL
             if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
-                root_arena.deselectAllNodes();
+                this->deselectAllItems();
             }
         }
     }
@@ -634,11 +720,7 @@ void ImNodeFlow::update()
             m_impl->box.active = false;
         }
 
-        if (shouldMarkSelected) {
-            root_arena.selectArea(boxClip);
-        } else {
-            root_arena.provisionallySelectArea(boxClip);
-        }
+        this->selectAllInRange(boxClip.GetTL(), boxClip.GetBR(), !shouldMarkSelected);
     }
 
     // Right-click PopUp
@@ -679,6 +761,8 @@ void ImNodeFlow::update()
             std::back_inserter(m_impl->root_arena.nodes));
         m_impl->newNodesQueue.clear();
     }
+
+    m_impl->totalSelectedItemsDirtyFlag = true;
 }
 
 } // namespace ImFlow

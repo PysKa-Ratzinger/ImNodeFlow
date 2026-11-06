@@ -48,21 +48,23 @@ void NodeGroupArenaRef<TIsConst>::destroy()
 }
 
 template <bool TIsConst>
-bool NodeGroupArenaRef<TIsConst>::mouse_over_any_selected_node() const
+uint64_t NodeGroupArenaRef<TIsConst>::countSelectedItems() const
 {
     detail::node_group_arena_t const& arena = m_arena.get();
-    return std::any_of(
-        arena.nodes.begin(),
-        arena.nodes.end(),
-        [this](const std::unique_ptr<detail::node_t>& n) -> bool {
-            ConstNodeRef node { m_ctx, *n };
-            bool node_is_selected = node.isSelected() && node.isHovered();
-            bool child_node_is_selected = false;
-            if (n->child_arena && NodeGroupArenaRef<true> { m_ctx, *n->child_arena }.mouse_over_any_selected_node()) {
-                child_node_is_selected = true;
-            }
-            return node_is_selected || child_node_is_selected;
-        });
+
+    uint64_t result = 0;
+
+    for (const auto& n : arena.nodes) {
+        ConstNodeRef node { m_ctx, *n };
+        if (node.isSelected() && node.isHovered()) {
+            ++result;
+        }
+        if (n->child_arena) {
+            result += NodeGroupArenaRef<true> { m_ctx, *n->child_arena }.countSelectedItems();
+        }
+    }
+
+    return result;
 }
 
 template <bool TIsConst>
@@ -127,30 +129,7 @@ void NodeGroupArenaRef<TIsConst>::deselectAllNodes()
 }
 
 template <bool TIsConst>
-void NodeGroupArenaRef<TIsConst>::provisionallySelectArea(ImRect clip_area)
-    requires(!TIsConst)
-{
-    auto& arena = m_arena.get();
-    for (auto& n : arena.nodes) {
-        NodeRef node { m_ctx, *n };
-
-        ImRect node_clip {
-            node.getTLPos(),
-            node.getTLPos() + node.getFullSize(),
-        };
-
-        if (clip_area.Overlaps(node_clip)) {
-            node.setProvisionallySelected(true);
-        }
-
-        if (n->child_arena) {
-            NodeGroupArenaRef<TIsConst> { m_ctx, *n->child_arena }.provisionallySelectArea(clip_area);
-        }
-    }
-}
-
-template <bool TIsConst>
-void NodeGroupArenaRef<TIsConst>::selectArea(ImRect clip_area)
+void NodeGroupArenaRef<TIsConst>::selectArea(ImRect clip_area, bool provisional)
     requires(!TIsConst)
 {
     auto& arena = m_arena.get();
@@ -163,11 +142,15 @@ void NodeGroupArenaRef<TIsConst>::selectArea(ImRect clip_area)
         };
 
         if (clip_area.Overlaps(node_clip)) {
-            node.setSelected(true);
+            if (provisional) {
+                node.setProvisionallySelected(true);
+            } else {
+                node.setSelected(true);
+            }
         }
 
         if (elem->child_arena) {
-            NodeGroupArenaRef<> { m_ctx, *elem->child_arena }.selectArea(clip_area);
+            NodeGroupArenaRef<> { m_ctx, *elem->child_arena }.selectArea(clip_area, provisional);
         }
     }
 }

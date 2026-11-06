@@ -25,7 +25,7 @@ public:
     void destroy()
         requires(!TIsConst);
 
-    [[nodiscard]] bool mouse_over_any_selected_node() const;
+    [[nodiscard]] uint64_t countSelectedItems() const;
 
     [[nodiscard]] uint64_t getNodesCount() const;
 
@@ -37,9 +37,7 @@ public:
 
     void deselectAllNodes()
         requires(!TIsConst);
-    void provisionallySelectArea(ImRect clip_area)
-        requires(!TIsConst);
-    void selectArea(ImRect clip_area)
+    void selectArea(ImRect clip_area, bool provisional = false)
         requires(!TIsConst);
 
     void calculate_inputs()

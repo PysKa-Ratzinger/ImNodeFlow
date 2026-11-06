@@ -13,7 +13,8 @@ bool drag_pin_widget(
     bool held,
     bool selected,
     bool* out_hovered,
-    bool* out_held)
+    bool* out_held,
+    bool* out_released)
 {
     ImVec2 mouse_pos = ImGui::GetMousePos();
     ImVec2 delta = mouse_pos - screen_pos;
@@ -23,6 +24,7 @@ bool drag_pin_widget(
     bool is_hovered = dist_squared <= radius_squared;
     bool is_held = false;
     bool is_clicked = false;
+    bool is_released = false;
 
     if (is_hovered || held) {
         ImRect always_valid_bb {
@@ -38,6 +40,7 @@ bool drag_pin_widget(
                 &is_hovered,
                 &is_held,
                 ImGuiButtonFlags_PressedOnClick);
+            is_released = ImGui::IsItemDeactivated();
         }
         ImGui::PopID();
     }
@@ -55,6 +58,9 @@ bool drag_pin_widget(
     }
     if (out_held != nullptr) {
         *out_held = is_held;
+    }
+    if (out_released != nullptr) {
+        *out_released = is_released;
     }
 
     return is_clicked;

@@ -145,4 +145,15 @@ void NodeLinkRef<TIsConst>::update()
     }
 }
 
+template <bool TIsConst>
+void NodeLinkRef<TIsConst>::prepareNextFrame()
+    requires(!TIsConst)
+{
+    auto& link = m_link.get();
+    link_base_prepare_next_frame(link.base);
+}
+
+template class NodeLinkRef<false>;
+template class NodeLinkRef<true>;
+
 } // namespace ImFlow::detail

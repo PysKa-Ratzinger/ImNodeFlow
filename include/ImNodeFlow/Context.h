@@ -285,11 +285,14 @@ public:
      */
     ImVec2 grid2screen(const ImVec2& p) const;
 
-    /**
-     * @brief Check if mouse is on selected node
-     * @return [TRUE] if the mouse is hovering a selected node
-     */
-    bool mouse_on_selected_node() const;
+    void selectAllInRange(
+        ImVec2 bottom_left,
+        ImVec2 top_right,
+        bool provisional = false);
+
+    void deselectAllItems();
+
+    uint64_t countSelectedItems() const;
 
     ImVec2 slamPosition(ImVec2 grid_position) const;
 

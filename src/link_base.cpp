@@ -83,27 +83,65 @@ void link_base_update(
             continue;
         }
 
+        bool is_held = false;
         bool is_hovered = false;
+        bool is_released = false;
         bool is_clicked = drag_pin_widget(
             ImGui::GetID(i),
             draw_list,
             ctx.grid2screen(waypoint.grid_pos),
             6.F,
             waypoint.held,
-            waypoint.selected,
+            waypoint.selected || waypoint.provisionally_selected,
             &is_hovered,
-            &waypoint.held);
+            &is_held,
+            &is_released);
+        waypoint.held = is_held;
 
-        if (is_clicked) {
-            waypoint.selected = true;
-        } else if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            waypoint.selected = false;
+        if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
+            && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
+            && ctx.countSelectedItems() == 0) {
+            waypoint.selected_next = false;
+            waypoint.provisionally_selected_next = false;
         }
 
-        if (waypoint.held) {
-            auto new_waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
-            new_waypoint_pos = ctx.slamPosition(new_waypoint_pos);
-            link.waypoints[i].grid_pos = new_waypoint_pos;
+        if (is_clicked) {
+            waypoint.wants_deselect = waypoint.selected;
+            waypoint.selected_next = true;
+            waypoint.provisionally_selected_next = false;
+        }
+        if (is_released && waypoint.wants_deselect) {
+            waypoint.selected_next = false;
+            waypoint.wants_deselect = false;
+            waypoint.provisionally_selected_next = false;
+        }
+
+        if (is_clicked) {
+            ctx.startNodeDrag();
+        } else if (is_released) {
+            ctx.stopNodeDrag();
+        }
+
+        bool wants_drag = waypoint.selected;
+        if (wants_drag) {
+            ImVec2 drag_vec;
+            bool should_apply_drag = ctx.getNodeDragAmmount(&drag_vec);
+
+            if (!waypoint.dragging) {
+                waypoint.grid_pos_backup = waypoint.grid_pos;
+                waypoint.dragging = true;
+            }
+
+            waypoint.grid_pos = waypoint.grid_pos_backup + drag_vec;
+            if (drag_vec != ImVec2(0.F, 0.F)) {
+                waypoint.wants_deselect = false;
+            }
+
+            waypoint.grid_pos = ctx.slamPosition(waypoint.grid_pos);
+
+            if (should_apply_drag) {
+                waypoint.dragging = false;
+            }
         }
     }
     ImGui::PopID();
@@ -164,6 +202,16 @@ void link_base_update(
 
     if (link.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
         link.marked_for_deletion = true;
+    }
+}
+
+void link_base_prepare_next_frame(link_base_t& link)
+{
+    link.selected = link.selected_next;
+    for (auto& waypoint : link.waypoints) {
+        waypoint.selected = waypoint.selected_next;
+        waypoint.provisionally_selected = waypoint.provisionally_selected_next;
+        waypoint.provisionally_selected_next = false;
     }
 }
 
