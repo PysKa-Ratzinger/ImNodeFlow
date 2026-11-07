@@ -35,11 +35,15 @@ void link_base_update(
     for (size_t i = 0; i < link.waypoints.size(); i++) {
         auto& waypoint = link.waypoints[i];
 
-        if (waypoint.selectable.isSelected() && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+        bool is_selected = waypoint.selectable.isSelected(ctx.getDetail().selectableCtx);
+
+        if (is_selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
             waypoint.marked_for_deletion = true;
             continue;
         }
 
+        bool is_ctrl_held_down = ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
+            || ImGui::IsKeyDown(ImGuiKey_RightCtrl);
         bool is_held = false;
         bool is_hovered = false;
         bool is_released = false;
@@ -49,25 +53,13 @@ void link_base_update(
             ctx.grid2screen(waypoint.grid_pos),
             6.F,
             waypoint.held,
-            waypoint.selectable.isSelected(),
+            is_selected,
             &is_hovered,
             &is_held,
             &is_released);
         waypoint.held = is_held;
 
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            if (is_clicked) {
-                waypoint.selectable.on_click();
-            } else {
-                waypoint.selectable.on_click_outside(
-                    ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
-                    || ImGui::IsKeyDown(ImGuiKey_RightCtrl));
-            }
-        }
-
-        if (is_released) {
-            waypoint.selectable.on_release();
-        }
+        is_clicked = is_clicked && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
 
         if (is_clicked) {
             ctx.startNodeDrag();
@@ -75,7 +67,8 @@ void link_base_update(
             ctx.stopNodeDrag();
         }
 
-        bool wants_drag = waypoint.selectable.isSelected();
+        bool wants_drag = is_selected;
+        bool was_dragged = false;
         if (wants_drag) {
             ImVec2 drag_vec;
             bool should_apply_drag = ctx.getNodeDragAmmount(&drag_vec);
@@ -87,7 +80,7 @@ void link_base_update(
 
             waypoint.grid_pos = waypoint.grid_pos_backup + drag_vec;
             if (drag_vec != ImVec2(0.F, 0.F)) {
-                waypoint.selectable.on_drag();
+                was_dragged = true;
             }
 
             waypoint.grid_pos = ctx.slamPosition(waypoint.grid_pos);
@@ -96,6 +89,13 @@ void link_base_update(
                 waypoint.dragging = false;
             }
         }
+
+        waypoint.selectable.update(
+            ctx.getDetail().selectableCtx,
+            is_ctrl_held_down,
+            is_clicked,
+            is_released,
+            was_dragged);
     }
     ImGui::PopID();
 
@@ -131,7 +131,7 @@ void link_base_update(
         args.start_color,
         args.end_color,
         args.thickness,
-        link.selectable.isSelected(),
+        link.selectable.isSelected(ctx.getDetail().selectableCtx),
         link.hovered,
         &link.hovered,
         &double_clicked,
@@ -140,14 +140,16 @@ void link_base_update(
     splitter.Merge(draw_list);
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.selectable.setSelected(false);
+        link.selectable.setSelected(ctx.getDetail().selectableCtx, false);
     }
 
     if (clicked) {
-        link.selectable.on_click();
+        link.selectable.on_click(ctx.getDetail().selectableCtx);
     }
     if (is_released) {
-        link.selectable.on_release();
+        link.selectable.on_release(ctx.getDetail().selectableCtx,
+            ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
+                || ImGui::IsKeyDown(ImGuiKey_RightCtrl));
     }
 
     if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
@@ -157,10 +159,12 @@ void link_base_update(
             link.waypoints.begin() + double_clicked,
             link_waypoint_t {
                 .grid_pos = waypoint_pos,
+                .selectable { ctx.getDetail().selectableCtx },
             });
     }
 
-    if (link.selectable.isSelected() && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+    if (link.selectable.isSelected(ctx.getDetail().selectableCtx)
+        && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
         link.marked_for_deletion = true;
     }
 }

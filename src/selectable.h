@@ -10,36 +10,42 @@ class Selectable;
 
 class SelectableContext {
 public:
-    void prepareNextFrame();
-    void count(Selectable const& selectable);
-
-    uint64_t getTotalActivatedItems() const;
-    uint64_t getTotalSelectedItems() const;
+    void deselectAll();
+    uint64_t serial() const;
 
 private:
-    uint64_t _totalSelectedItems = 0;
-    uint64_t _totalActivatedItems = 0;
+    uint64_t _serial = 0;
 };
 
 class Selectable {
 public:
-    bool isActivated() const;
-    bool isSelected() const;
+    explicit Selectable(SelectableContext& ctx);
 
-    void setSelected(bool state);
-    void setProvisionallySelected(bool state);
+    bool isActivated(SelectableContext const& ctx) const;
+    bool isSelected(SelectableContext const& ctx) const;
+
+    void setSelected(SelectableContext& ctx, bool state);
+    void setProvisionallySelected(SelectableContext& ctx, bool state);
 
     void prepareNextFrame(SelectableContext& ctx);
 
-    void on_click();
-    void on_click_outside(bool ctrl_key_held = false);
-    void on_release();
-    void on_drag();
+    void update(
+        SelectableContext& ctx,
+        bool is_ctrl_held_down,
+        bool is_clicked,
+        bool is_released,
+        bool is_dragged);
+
+    void on_click(SelectableContext& ctx);
+    void on_release(SelectableContext& ctx, bool is_ctrl_held_down);
+    void on_drag(SelectableContext& ctx);
 
 private:
+    void updateSerials(SelectableContext& ctx);
+
     struct vars_t {
-        bool selected;
-        bool provisionally_selected;
+        uint64_t selected;
+        uint64_t provisionally_selected;
     };
 
     bool _wants_deselect = false;

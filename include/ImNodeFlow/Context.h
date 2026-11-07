@@ -301,6 +301,7 @@ public:
      * @internal For internal use only
      */
     detail::editor_context_t& getDetail();
+    detail::editor_context_t const& getDetail() const;
 
 private:
     std::unique_ptr<detail::editor_context_t> m_impl;

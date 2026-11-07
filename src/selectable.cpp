@@ -2,80 +2,111 @@
 
 namespace ImFlow::detail {
 
-void SelectableContext::prepareNextFrame()
+void SelectableContext::deselectAll()
 {
-    _totalSelectedItems = 0;
-    _totalActivatedItems = 0;
+    ++_serial;
 }
 
-void SelectableContext::count(Selectable const& selectable)
+uint64_t SelectableContext::serial() const
 {
-    if (selectable.isSelected()) {
-        ++_totalSelectedItems;
-    }
-    if (selectable.isActivated()) {
-        ++_totalActivatedItems;
-    }
+    return _serial;
 }
 
-uint64_t SelectableContext::getTotalSelectedItems() const
+Selectable::Selectable(SelectableContext& ctx)
+    : _vars(vars_t {
+          .selected = ctx.serial() - 1,
+          .provisionally_selected = ctx.serial() - 1,
+      })
 {
-    return _totalSelectedItems;
 }
 
-bool Selectable::isActivated() const
+bool Selectable::isActivated(SelectableContext const& ctx) const
 {
     return _is_activated;
 }
 
-bool Selectable::isSelected() const
+bool Selectable::isSelected(SelectableContext const& ctx) const
 {
-    return _vars.value().selected || _vars.value().provisionally_selected;
+    return _vars.value().selected == ctx.serial()
+        || _vars.value().provisionally_selected == ctx.serial();
 }
 
-void Selectable::setSelected(bool state)
+void Selectable::setSelected(SelectableContext& ctx, bool state)
 {
-    _vars.next().selected = state;
+    _vars.next().selected = state
+        ? ctx.serial()
+        : ctx.serial() - 1;
 }
 
-void Selectable::setProvisionallySelected(bool state)
+void Selectable::setProvisionallySelected(SelectableContext& ctx, bool state)
 {
-    _vars.next().provisionally_selected = state;
+    _vars.next().provisionally_selected = state
+        ? ctx.serial()
+        : ctx.serial() - 1;
 }
 
 void Selectable::prepareNextFrame(SelectableContext& ctx)
 {
-    _is_activated = !_vars.value().selected && _vars.next().selected;
+    _is_activated = _vars.value().selected != ctx.serial()
+        && _vars.next().selected == ctx.serial();
     _vars.swap();
-    _vars.next().provisionally_selected = false;
-
-    ctx.count(*this);
+    this->setProvisionallySelected(ctx, false);
 }
 
-void Selectable::on_click()
+void Selectable::update(
+    SelectableContext& ctx,
+    bool is_ctrl_held_down,
+    bool is_clicked,
+    bool is_released,
+    bool is_dragged)
 {
-    _wants_deselect = _vars.value().selected;
-    setSelected(true);
-}
-
-void Selectable::on_click_outside(bool ctrl_key_held)
-{
-    if (!ctrl_key_held) {
-        _wants_deselect = false;
-        setSelected(false);
+    this->updateSerials(ctx);
+    if (is_clicked) {
+        this->on_click(ctx);
+    }
+    if (is_released) {
+        this->on_release(ctx, is_ctrl_held_down);
+    }
+    if (is_dragged) {
+        this->on_drag(ctx);
     }
 }
 
-void Selectable::on_release()
+void Selectable::on_click(SelectableContext& ctx)
+{
+    if (!this->isSelected(ctx)) {
+        ctx.deselectAll();
+    }
+
+    _wants_deselect = _vars.value().selected == ctx.serial();
+    setSelected(ctx, true);
+}
+
+void Selectable::on_release(SelectableContext& ctx, bool is_ctrl_held_down)
 {
     if (_wants_deselect) {
-        setSelected(false);
+        setSelected(ctx, false);
+        if (!is_ctrl_held_down) {
+            ctx.deselectAll();
+        }
     }
 }
 
-void Selectable::on_drag()
+void Selectable::on_drag(SelectableContext& ctx)
 {
     _wants_deselect = false;
+}
+
+void Selectable::updateSerials(SelectableContext& ctx)
+{
+    auto serial = ctx.serial();
+
+    _vars.next().selected = _vars.next().selected == serial
+        ? serial
+        : serial - 1;
+    _vars.next().provisionally_selected = _vars.next().provisionally_selected == serial
+        ? serial
+        : serial - 1;
 }
 
 } // namespace ImFlow::detail

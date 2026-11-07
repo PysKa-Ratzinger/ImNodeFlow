@@ -44,6 +44,7 @@ NodeRef ImNodeFlow::addNode(const ImVec2& grid_coords, NodeInfo node_info)
             .pos = node_pos,
             .posTarget = node_pos,
             .style = std::move(node_info.style),
+            .selectable { m_impl->selectableCtx },
             .allowInboundLinksToOtherNodes = node_info.allow_inbound_links_to_other_nodes,
             .allowOutboundLinksToOtherNodes = node_info.allow_outbound_links_to_other_nodes,
             .behaviour = std::move(node_info.behaviour),
@@ -114,9 +115,9 @@ void ImNodeFlow::selectAllInRange(
         for (auto& waypoint : pin_link->base.waypoints) {
             if (box_clip.Contains(waypoint.grid_pos)) {
                 if (provisional) {
-                    waypoint.selectable.setProvisionallySelected(true);
+                    waypoint.selectable.setProvisionallySelected(m_impl->selectableCtx, true);
                 } else {
-                    waypoint.selectable.setSelected(true);
+                    waypoint.selectable.setSelected(m_impl->selectableCtx, true);
                 }
             }
         }
@@ -126,9 +127,9 @@ void ImNodeFlow::selectAllInRange(
         for (auto& waypoint : node_link->base.waypoints) {
             if (box_clip.Contains(waypoint.grid_pos)) {
                 if (provisional) {
-                    waypoint.selectable.setProvisionallySelected(true);
+                    waypoint.selectable.setProvisionallySelected(m_impl->selectableCtx, true);
                 } else {
-                    waypoint.selectable.setSelected(true);
+                    waypoint.selectable.setSelected(m_impl->selectableCtx, true);
                 }
             }
         }
@@ -137,21 +138,7 @@ void ImNodeFlow::selectAllInRange(
 
 void ImNodeFlow::deselectAllItems()
 {
-    NodeGroupArenaRef<> root_arena { *this, m_impl->root_arena };
-    root_arena.deselectAllNodes();
-
-    for (auto& pin_link : m_impl->pin_links) {
-        pin_link->base.selectable.setSelected(false);
-        for (auto& waypoint : pin_link->base.waypoints) {
-            waypoint.selectable.setSelected(false);
-        }
-    }
-    for (auto& node_link : m_impl->node_links) {
-        node_link->base.selectable.setSelected(false);
-        for (auto& waypoint : node_link->base.waypoints) {
-            waypoint.selectable.setSelected(false);
-        }
-    }
+    m_impl->selectableCtx.deselectAll();
 }
 
 ImVec2 ImNodeFlow::slamPosition(ImVec2 grid_position) const
@@ -165,6 +152,11 @@ ImVec2 ImNodeFlow::slamPosition(ImVec2 grid_position) const
 }
 
 detail::editor_context_t& ImNodeFlow::getDetail()
+{
+    return *m_impl;
+}
+
+detail::editor_context_t const& ImNodeFlow::getDetail() const
 {
     return *m_impl;
 }
@@ -251,7 +243,11 @@ void ImNodeFlow::createLink(PinRef source_pin, PinRef target_pin)
         return;
     }
 
-    auto new_link = std::make_unique<detail::link_pin_t>();
+    auto new_link = std::unique_ptr<detail::link_pin_t>(new detail::link_pin_t {
+        .base {
+            .selectable { m_impl->selectableCtx },
+        },
+    });
     detail::PinLinkRef<> { *this, *new_link }.connect(source_pin, target_pin);
     m_impl->pin_links.emplace_back(std::move(new_link));
 }
@@ -262,7 +258,11 @@ void ImNodeFlow::createLink(NodeRef source_node, NodeRef target_node)
         return;
     }
 
-    auto new_link = std::make_unique<detail::link_node_t>();
+    auto new_link = std::unique_ptr<detail::link_node_t>(new detail::link_node_t {
+        .base {
+            .selectable { m_impl->selectableCtx },
+        },
+    });
     detail::NodeLinkRef<> { *this, *new_link }.connect(source_node, target_node);
     m_impl->node_links.emplace_back(std::move(new_link));
 }
@@ -528,7 +528,6 @@ void ImNodeFlow::update()
     }
 
     // Prepare nodes and links for next frame
-    m_impl->selectableCtx.prepareNextFrame();
     root_arena.prepareNextFrame();
     for (auto& pin_link : m_impl->pin_links) {
         detail::PinLinkRef<> { *this, *pin_link }.prepareNextFrame();
@@ -566,6 +565,8 @@ void ImNodeFlow::update()
 
     auto active_id_mouse_button = ImGui::GetCurrentContext()->ActiveIdMouseButton;
     if (mouse_context_pressed) {
+        this->deselectAllItems();
+
         if (active_id_mouse_button == grid_cfg.selection_box_button) {
             m_impl->box.active = true;
             m_impl->box.selectionStart = this->screen2grid(ImGui::GetMousePos());

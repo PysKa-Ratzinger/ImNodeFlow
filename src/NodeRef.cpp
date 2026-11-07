@@ -171,8 +171,9 @@ const NodeStyle& NodeRefImpl<TIsConst>::getStyle() const
 template <bool TIsConst>
 bool NodeRefImpl<TIsConst>::isActivated() const
 {
+    auto& ctx = m_ctx.get();
     auto& node = m_node.get();
-    return node.selectable.isActivated();
+    return node.selectable.isActivated(ctx.getDetail().selectableCtx);
 }
 
 template <bool TIsConst>
@@ -264,7 +265,9 @@ void NodeRefImpl<TIsConst>::linkTo(NodeRef other)
 template <bool TIsConst>
 bool NodeRefImpl<TIsConst>::isSelected() const
 {
-    return m_node.get().selectable.isSelected();
+    auto& ctx = m_ctx.get();
+    auto& node = m_node.get();
+    return node.selectable.isSelected(ctx.getDetail().selectableCtx);
 }
 
 template <bool TIsConst>
@@ -337,7 +340,9 @@ template <bool TIsConst>
 NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setSelected(bool state)
     requires(!TIsConst)
 {
-    m_node.get().selectable.setSelected(state);
+    auto& ctx = m_ctx.get();
+    auto& node = m_node.get();
+    node.selectable.setSelected(ctx.getDetail().selectableCtx, state);
     return *this;
 }
 
@@ -345,7 +350,9 @@ template <bool TIsConst>
 NodeRefImpl<TIsConst>& NodeRefImpl<TIsConst>::setProvisionallySelected(bool state)
     requires(!TIsConst)
 {
-    m_node.get().selectable.setProvisionallySelected(state);
+    auto& ctx = m_ctx.get();
+    auto& node = m_node.get();
+    node.selectable.setProvisionallySelected(ctx.getDetail().selectableCtx, state);
     return *this;
 }
 
@@ -804,7 +811,7 @@ void NodeRefImpl<TIsConst>::update()
     requires(!TIsConst)
 {
     detail::node_t& node = m_node.get();
-    auto& ctx = m_ctx.get();
+    ImNodeFlow& ctx = m_ctx.get();
 
     if (node.child_arena && node.child_arena->nodes.empty()) {
         node.child_arena.reset();
@@ -1062,15 +1069,12 @@ void NodeRefImpl<TIsConst>::update()
             ImDrawFlags_None);
     }
 
-    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        if (node_pressed || header_pressed) {
-            node.selectable.on_click();
-        } else {
-            node.selectable.on_click_outside(
-                ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
-                || ImGui::IsKeyDown(ImGuiKey_RightCtrl));
-        }
-    }
+    bool is_ctrl_held_down = ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
+        || ImGui::IsKeyDown(ImGuiKey_RightCtrl);
+    bool selectable_was_clicked = (node_pressed || header_pressed)
+        && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    bool selectable_was_released = (node_released || header_released)
+        && ImGui::IsMouseReleased(ImGuiMouseButton_Left);
 
     if (node_pressed || header_pressed) {
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
@@ -1079,26 +1083,21 @@ void NodeRefImpl<TIsConst>::update()
     }
 
     ctx.drawRightClickPopup(&node);
-    if ((node_released || header_released)
-        && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-        node.selectable.on_release();
-    }
-    if (header_pressed
-        && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+    if (header_pressed && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         ctx.startNodeDrag();
     }
-    if (header_released
-        && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    if (header_released && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
         ctx.stopNodeDrag();
     }
 
     bool wants_drag = false;
     detail::node_t* curr = &node;
     while (!wants_drag && curr != nullptr) {
-        wants_drag = curr->selectable.isSelected();
+        wants_drag = curr->selectable.isSelected(ctx.getDetail().selectableCtx);
         curr = curr->parent_node;
     }
 
+    bool was_dragged = false;
     if (wants_drag && ctx.wantsNodeDrag()) {
         ImVec2 drag_vec;
         bool should_apply_drag = ctx.getNodeDragAmmount(&drag_vec);
@@ -1109,10 +1108,7 @@ void NodeRefImpl<TIsConst>::update()
         }
 
         node.posTarget = node.posBackup + drag_vec;
-        if (drag_vec != ImVec2(0.F, 0.F)) {
-            node.selectable.on_drag();
-        }
-
+        was_dragged = drag_vec != ImVec2(0.F, 0.F);
         node.pos = ctx.slamPosition(node.posTarget);
 
         if (should_apply_drag) {
@@ -1120,6 +1116,13 @@ void NodeRefImpl<TIsConst>::update()
             node.posTarget = node.pos;
         }
     }
+
+    node.selectable.update(
+        ctx.getDetail().selectableCtx,
+        is_ctrl_held_down,
+        selectable_was_clicked,
+        selectable_was_released,
+        was_dragged);
 
     drawListSplitter.SetCurrentChannel(draw_list, 0);
     {
