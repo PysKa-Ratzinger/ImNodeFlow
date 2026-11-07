@@ -21,6 +21,7 @@ namespace ImFlow::detail {
  * hovering over the bezier curve or not.
  * @param out_double_clicked If not null, will receive whether or not the
  * bezier curve was double clicked
+ * @param out_released If not null, will receive whether the mouse was released
  * @param thickness Thickness of the curve
  * @param blend Tightness of the color transition. 1 = linear, >1 concentrates it toward the middle, <1 spreads it
  * @return [TRUE] if the bezier curve was pressed by the user
@@ -35,6 +36,7 @@ bool smart_bezier_widget(
     bool is_hovered,
     bool* out_hovered,
     bool* out_double_clicked = nullptr,
+    bool* out_released = nullptr,
     float thickness = 2.F,
     float blend = 1.f);
 

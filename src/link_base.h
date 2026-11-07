@@ -2,6 +2,8 @@
 
 #include "ImNodeFlow/fwd.h"
 
+#include "./selectable.h"
+
 #include "imgui.h"
 
 #include <vector>
@@ -11,13 +13,9 @@ namespace ImFlow::detail {
 struct link_waypoint_t {
     ImVec2 grid_pos_backup;
     ImVec2 grid_pos;
+    detail::Selectable selectable;
     bool dragging : 1 = false;
     bool held : 1 = false;
-    bool selected : 1 = false;
-    bool selected_next : 1 = false;
-    bool wants_deselect : 1 = false;
-    bool provisionally_selected : 1 = false;
-    bool provisionally_selected_next : 1 = false;
     bool marked_for_deletion : 1 = false;
 };
 
@@ -25,8 +23,7 @@ struct link_base_t {
     std::vector<link_waypoint_t> waypoints;
     bool marked_for_deletion = false;
     bool hovered = false;
-    bool selected = false;
-    bool selected_next = false;
+    detail::Selectable selectable;
 };
 
 struct link_grid_path_t {
@@ -54,7 +51,7 @@ void link_base_update(
     link_base_t& link,
     link_base_update_args args);
 
-void link_base_prepare_next_frame(link_base_t& link);
+void link_base_prepare_next_frame(ImNodeFlow& ctx, link_base_t& link);
 
 link_grid_path_t generate_path_from_node_to_pos(
     ImNodeFlow& ctx,
@@ -85,6 +82,7 @@ bool draw_path(
     bool selected = false,
     bool hovered = false,
     bool* out_hovered = nullptr,
-    int* out_double_clicked = nullptr);
+    int* out_double_clicked = nullptr,
+    bool* out_relesaed = nullptr);
 
 } // namespace ImFlow::detail

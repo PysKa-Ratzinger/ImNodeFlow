@@ -3,6 +3,7 @@
 #include "ImNodeFlow/Context.h"
 #include "ImNodeFlow/fwd.h"
 
+#include "./editor_context.h"
 #include "./imgui_bezier_items.h"
 #include "./imgui_bezier_widgets.h"
 #include "./imgui_custom_widgets.h"
@@ -34,7 +35,7 @@ void link_base_update(
     for (size_t i = 0; i < link.waypoints.size(); i++) {
         auto& waypoint = link.waypoints[i];
 
-        if (waypoint.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+        if (waypoint.selectable.isSelected() && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
             waypoint.marked_for_deletion = true;
             continue;
         }
@@ -48,28 +49,24 @@ void link_base_update(
             ctx.grid2screen(waypoint.grid_pos),
             6.F,
             waypoint.held,
-            waypoint.selected || waypoint.provisionally_selected,
+            waypoint.selectable.isSelected(),
             &is_hovered,
             &is_held,
             &is_released);
         waypoint.held = is_held;
 
-        if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
-            && ImGui::IsMouseClicked(ImGuiMouseButton_Left)
-            && ctx.countSelectedItems() == 0) {
-            waypoint.selected_next = false;
-            waypoint.provisionally_selected_next = false;
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            if (is_clicked) {
+                waypoint.selectable.on_click();
+            } else {
+                waypoint.selectable.on_click_outside(
+                    ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
+                    || ImGui::IsKeyDown(ImGuiKey_RightCtrl));
+            }
         }
 
-        if (is_clicked) {
-            waypoint.wants_deselect = waypoint.selected;
-            waypoint.selected_next = true;
-            waypoint.provisionally_selected_next = false;
-        }
-        if (is_released && waypoint.wants_deselect) {
-            waypoint.selected_next = false;
-            waypoint.wants_deselect = false;
-            waypoint.provisionally_selected_next = false;
+        if (is_released) {
+            waypoint.selectable.on_release();
         }
 
         if (is_clicked) {
@@ -78,7 +75,7 @@ void link_base_update(
             ctx.stopNodeDrag();
         }
 
-        bool wants_drag = waypoint.selected;
+        bool wants_drag = waypoint.selectable.isSelected();
         if (wants_drag) {
             ImVec2 drag_vec;
             bool should_apply_drag = ctx.getNodeDragAmmount(&drag_vec);
@@ -90,7 +87,7 @@ void link_base_update(
 
             waypoint.grid_pos = waypoint.grid_pos_backup + drag_vec;
             if (drag_vec != ImVec2(0.F, 0.F)) {
-                waypoint.wants_deselect = false;
+                waypoint.selectable.on_drag();
             }
 
             waypoint.grid_pos = ctx.slamPosition(waypoint.grid_pos);
@@ -125,6 +122,7 @@ void link_base_update(
     }
 
     int double_clicked = -1;
+    bool is_released = false;
     bool clicked = draw_path(
         ctx,
         draw_list,
@@ -133,18 +131,24 @@ void link_base_update(
         args.start_color,
         args.end_color,
         args.thickness,
-        link.selected,
+        link.selectable.isSelected(),
         link.hovered,
         &link.hovered,
-        &double_clicked);
+        &double_clicked,
+        &is_released);
 
     splitter.Merge(draw_list);
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.selected_next = false;
+        link.selectable.setSelected(false);
     }
 
-    link.selected_next |= clicked;
+    if (clicked) {
+        link.selectable.on_click();
+    }
+    if (is_released) {
+        link.selectable.on_release();
+    }
 
     if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
         ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
@@ -156,18 +160,16 @@ void link_base_update(
             });
     }
 
-    if (link.selected && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
+    if (link.selectable.isSelected() && ImGui::IsKeyPressed(ImGuiKey_Delete, false)) {
         link.marked_for_deletion = true;
     }
 }
 
-void link_base_prepare_next_frame(link_base_t& link)
+void link_base_prepare_next_frame(ImNodeFlow& ctx, link_base_t& link)
 {
-    link.selected = link.selected_next;
+    link.selectable.prepareNextFrame(ctx.getDetail().selectableCtx);
     for (auto& waypoint : link.waypoints) {
-        waypoint.selected = waypoint.selected_next;
-        waypoint.provisionally_selected = waypoint.provisionally_selected_next;
-        waypoint.provisionally_selected_next = false;
+        waypoint.selectable.prepareNextFrame(ctx.getDetail().selectableCtx);
     }
 }
 
@@ -261,12 +263,14 @@ bool draw_path(
     bool selected,
     bool hovered,
     bool* out_hovered,
-    int* out_double_clicked)
+    int* out_double_clicked,
+    bool* out_released)
 {
     ImGui::PushID(path_id);
 
     bool pressed = false;
     bool new_hovered = false;
+    bool is_released = false;
     int new_double_clicked = int(-1);
 
     float total_length = 0;
@@ -328,6 +332,7 @@ bool draw_path(
 
         bool segment_hovered = false;
         bool segment_double_clicked = false;
+        bool segment_released = false;
         pressed |= detail::smart_bezier_widget(
             ImGui::GetID(i),
             draw_list,
@@ -338,9 +343,11 @@ bool draw_path(
             hovered,
             &segment_hovered,
             &segment_double_clicked,
+            &segment_released,
             thickness,
             ctx.getStyle().link_gradient_blend);
         new_hovered |= segment_hovered;
+        is_released |= segment_released;
         if (segment_double_clicked) {
             new_double_clicked = path.points[i + 1].waypoint_index;
         }
@@ -353,6 +360,9 @@ bool draw_path(
     }
     if (out_double_clicked != nullptr) {
         *out_double_clicked = new_double_clicked;
+    }
+    if (out_released != nullptr) {
+        *out_released = is_released;
     }
 
     return pressed;

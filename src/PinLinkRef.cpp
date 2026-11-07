@@ -152,7 +152,7 @@ void PinLinkRef<TIsConst>::prepareNextFrame()
     requires(!TIsConst)
 {
     auto& link = m_link.get();
-    link_base_prepare_next_frame(link.base);
+    link_base_prepare_next_frame(m_ctx, link.base);
 }
 
 template class PinLinkRef<false>;

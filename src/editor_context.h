@@ -67,8 +67,7 @@ struct editor_context_t {
 
     bool draggingCanvas = false;
 
-    uint64_t totalSelectedItems = 0;
-    bool totalSelectedItemsDirtyFlag = false;
+    SelectableContext selectableCtx;
 };
 
 } // namespace ImFlow::detail

@@ -16,12 +16,14 @@ bool smart_bezier_widget(
     bool is_hovered,
     bool* out_hovered,
     bool* out_double_clicked,
+    bool* out_released,
     float thickness,
     float blend)
 {
     auto mouse_pos = ImGui::GetMousePos();
     bool is_segment_hovered = detail::smart_bezier_collider(mouse_pos, line, 2.5);
     bool is_clicked = false;
+    bool is_released = false;
     bool is_double_clicked = false;
 
     if (is_segment_hovered) {
@@ -38,6 +40,7 @@ bool smart_bezier_widget(
                 &is_hovered,
                 nullptr,
                 ImGuiButtonFlags_PressedOnDoubleClick);
+            is_released = ImGui::IsItemDeactivated();
             is_clicked = ImGui::IsItemClicked();
         }
         ImGui::PopID();
@@ -72,6 +75,9 @@ bool smart_bezier_widget(
     }
     if (out_double_clicked != nullptr) {
         *out_double_clicked = is_double_clicked;
+    }
+    if (out_released != nullptr) {
+        *out_released = is_released;
     }
 
     return is_clicked;

@@ -8,6 +8,7 @@
 #include "ImNodeFlow/fwd.h"
 
 #include "./dynamic_pin.h"
+#include "./selectable.h"
 
 #include "imgui.h"
 
@@ -29,12 +30,7 @@ struct node_t {
     ImVec2 size;
     ImVec2 fullSize;
     NodeStyle style;
-    bool isActivated = false;
-    bool selected = false;
-    bool selectedNext = false;
-    bool provisionallySelected = false;
-    bool provisionallySelectedNext = false;
-    bool wantsDeselect = false;
+    detail::Selectable selectable;
     bool destroyed = false;
     bool dragging = false;
     bool indestructable = false;

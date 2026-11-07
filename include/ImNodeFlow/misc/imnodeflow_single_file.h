@@ -25,6 +25,7 @@
 #include "./../../../src/link_base.cpp"
 #include "./../../../src/pin_base.cpp"
 #include "./../../../src/pin_drawing_utils.cpp"
+#include "./../../../src/selectable.cpp"
 #include "./../../../src/uid_helpers.cpp"
 #endif // IMNODEFLOW_IMPLEMENTATION
 // NOLINTEND
