@@ -141,10 +141,10 @@ void link_base_update(
     splitter.Merge(draw_list);
 
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.selected = false;
+        link.selected_next = false;
     }
 
-    link.selected = link.selected || clicked;
+    link.selected_next |= clicked;
 
     if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
         ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
