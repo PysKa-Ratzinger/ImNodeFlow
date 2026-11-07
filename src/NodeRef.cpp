@@ -984,26 +984,6 @@ void NodeRefImpl<TIsConst>::update()
         node_released = ImGui::IsItemDeactivated();
     }
 
-    if (node.allowOutboundLinksToOtherNodes
-        && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip)) {
-        auto dto = this->serialize();
-        ImGui::SetDragDropPayload("NODE_REF_LOCAL_DTO", &dto, sizeof(dto));
-        ImGui::EndDragDropSource();
-
-        auto path = detail::generate_path_from_node_to_pos(
-            m_ctx,
-            *this,
-            ctx.screen2grid(ImGui::GetMousePos()));
-        detail::draw_path(
-            m_ctx,
-            ImGui::GetWindowDrawList(),
-            ImGui::GetID("path_to_mouse"),
-            path,
-            node.style.header_bg,
-            node.style.header_bg,
-            node.style.link_thickness);
-    }
-
     if (node.allowInboundLinksToOtherNodes
         && ImGui::BeginDragDropTarget()) {
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("NODE_REF_LOCAL_DTO");
@@ -1022,6 +1002,26 @@ void NodeRefImpl<TIsConst>::update()
                 inbound->linkTo(*this);
             }
         }
+    }
+
+    if (node.allowOutboundLinksToOtherNodes
+        && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip)) {
+        auto dto = this->serialize();
+        ImGui::SetDragDropPayload("NODE_REF_LOCAL_DTO", &dto, sizeof(dto));
+        ImGui::EndDragDropSource();
+
+        auto path = detail::generate_path_from_node_to_pos(
+            m_ctx,
+            *this,
+            ctx.screen2grid(ImGui::GetMousePos()));
+        detail::draw_path(
+            m_ctx,
+            ImGui::GetWindowDrawList(),
+            ImGui::GetID("path_to_mouse"),
+            path,
+            node.style.header_bg,
+            node.style.header_bg,
+            node.style.link_thickness);
     }
 
     // Background
