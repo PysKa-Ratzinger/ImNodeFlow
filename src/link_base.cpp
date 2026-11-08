@@ -291,6 +291,8 @@ bool draw_path(
     ImVec4 c1 = ImGui::ColorConvertU32ToFloat4(start_color);
     ImVec4 c2 = ImGui::ColorConvertU32ToFloat4(end_color);
 
+    ImVec2 previous_ctrl_pt { 0.F, 0.F };
+
     float cumm_l = 0.F;
     for (int i = 0; i < path.points.size() - 1; i++) {
         cubic_bezier_controls_t segment {
@@ -300,8 +302,34 @@ bool draw_path(
             .p4 = ctx.grid2screen(path.points[i + 1].grid_pos),
         };
 
+        ImVec2 ctrl_pt { 0.F, 0.F };
+
+        if (i < path.points.size() - 2) {
+            auto prev = segment.p1;
+            auto curr = segment.p4;
+            auto next = ctx.grid2screen(path.points[i + 2].grid_pos);
+
+            auto to_next = ImNormalized(next - curr);
+            auto to_prev = ImNormalized(prev - curr);
+            if (to_next == ImVec2(0.F, 0.F) && to_prev == ImVec2(0.F, 0.F)) {
+                ctrl_pt = { 0.F, 0.F };
+            } else if (to_next == ImVec2(0.F, 0.F)) {
+                ctrl_pt = ImNormalized(to_prev);
+            } else if (to_prev == ImVec2(0.F, 0.F)) {
+                ctrl_pt = ImNormalized(to_next);
+            } else {
+                auto vec = to_next - to_prev;
+                if (ImAbs(vec.x) < 0.001F && ImAbs(vec.y) < 0.001F) {
+                    ctrl_pt = ImVec2 { to_next.y, -to_next.x };
+                } else {
+                    ctrl_pt = ImNormalized(to_next - to_prev);
+                }
+            }
+        }
+
         ImVec2 v = segment.p4 - segment.p1;
         if (v == ImVec2(0.F, 0.F)) {
+            previous_ctrl_pt = ctrl_pt;
             continue;
         }
 
@@ -321,7 +349,7 @@ bool draw_path(
                     segment.p2 = segment.p1 + ImNormalized(v_prev) * l * 0.25;
                 }
             } else {
-                segment.p2 = segment.p1 + ImNormalized(segment.p4 - prev_pt) * l * 0.25;
+                segment.p2 = segment.p1 + previous_ctrl_pt * l * 0.25;
             }
 
             if (i == path.points.size() - 3) {
@@ -330,9 +358,11 @@ bool draw_path(
                     segment.p3 = segment.p4 - ImNormalized(v_next) * l * 0.25;
                 }
             } else {
-                segment.p3 = segment.p4 - ImNormalized(next_pt - segment.p1) * l * 0.25;
+                segment.p3 = segment.p4 - ctrl_pt * l * 0.25;
             }
         }
+
+        previous_ctrl_pt = ctrl_pt;
 
         bool segment_hovered = false;
         bool segment_double_clicked = false;
