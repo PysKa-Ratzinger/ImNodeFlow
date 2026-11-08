@@ -78,7 +78,7 @@ bool draw_path(
     link_grid_path_t const& path,
     ImU32 start_color,
     ImU32 end_color,
-    float thickness = 1.F,
+    float thickness = 3.F,
     bool selected = false,
     bool hovered = false,
     bool* out_hovered = nullptr,
