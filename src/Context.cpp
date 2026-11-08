@@ -565,8 +565,6 @@ void ImNodeFlow::update()
 
     auto active_id_mouse_button = ImGui::GetCurrentContext()->ActiveIdMouseButton;
     if (mouse_context_pressed) {
-        this->deselectAllItems();
-
         if (active_id_mouse_button == grid_cfg.selection_box_button) {
             m_impl->box.active = true;
             m_impl->box.selectionStart = this->screen2grid(ImGui::GetMousePos());
@@ -575,6 +573,8 @@ void ImNodeFlow::update()
             if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
                 this->deselectAllItems();
             }
+        } else {
+            this->deselectAllItems();
         }
     }
 
