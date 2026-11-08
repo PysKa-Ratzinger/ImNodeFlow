@@ -325,6 +325,8 @@ public:
      */
     [[nodiscard]] bool isSelected() const;
 
+    [[nodiscard]] bool wantsDrag() const;
+
     /**
      * @brief Get Indestructable status
      * @return [TRUE] if the node is Indestructable

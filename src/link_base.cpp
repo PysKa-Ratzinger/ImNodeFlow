@@ -68,7 +68,7 @@ void link_base_update(
             ctx.stopNodeDrag();
         }
 
-        bool wants_drag = is_selected;
+        bool wants_drag = is_selected || args.drag_everything;
         bool was_dragged = false;
         if (wants_drag) {
             ImVec2 drag_vec;
@@ -80,9 +80,7 @@ void link_base_update(
             }
 
             waypoint.grid_pos = waypoint.grid_pos_backup + drag_vec;
-            if (drag_vec != ImVec2(0.F, 0.F)) {
-                was_dragged = true;
-            }
+            was_dragged = drag_vec != ImVec2(0.F, 0.F);
 
             waypoint.grid_pos = ctx.slamPosition(waypoint.grid_pos);
 

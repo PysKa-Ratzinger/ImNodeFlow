@@ -138,6 +138,8 @@ void NodeLinkRef<TIsConst>::update()
             .end = p3,
             .end_anchor = p4,
             .thickness = thickness,
+            .drag_everything = sourceNode().wantsDrag()
+                && targetNode().wantsDrag(),
         });
 
     if (link.base.marked_for_deletion) {

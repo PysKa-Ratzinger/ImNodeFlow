@@ -44,6 +44,7 @@ struct link_base_update_args {
     ImVec2 end;
     ImVec2 end_anchor;
     float thickness;
+    bool drag_everything = false;
 };
 
 void link_base_update(

@@ -140,6 +140,8 @@ void PinLinkRef<TIsConst>::update()
             .end = p3,
             .end_anchor = p4,
             .thickness = thickness,
+            .drag_everything = inPin().getParent().wantsDrag()
+                && outPin().getParent().wantsDrag(),
         });
 
     if (link.base.marked_for_deletion) {

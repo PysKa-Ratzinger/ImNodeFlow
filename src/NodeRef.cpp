@@ -271,6 +271,19 @@ bool NodeRefImpl<TIsConst>::isSelected() const
 }
 
 template <bool TIsConst>
+bool NodeRefImpl<TIsConst>::wantsDrag() const
+{
+    detail::node_t const* curr = &m_node.get();
+    while (curr != nullptr) {
+        if (curr->selectable.isSelected(m_ctx.get().getDetail().selectableCtx)) {
+            return true;
+        }
+        curr = curr->parent_node;
+    }
+    return false;
+}
+
+template <bool TIsConst>
 bool NodeRefImpl<TIsConst>::isIndestructable() const
 {
     return m_node.get().indestructable;
@@ -1090,13 +1103,7 @@ void NodeRefImpl<TIsConst>::update()
         ctx.stopNodeDrag();
     }
 
-    bool wants_drag = false;
-    detail::node_t* curr = &node;
-    while (!wants_drag && curr != nullptr) {
-        wants_drag = curr->selectable.isSelected(ctx.getDetail().selectableCtx);
-        curr = curr->parent_node;
-    }
-
+    bool wants_drag = this->wantsDrag();
     bool was_dragged = false;
     if (wants_drag && ctx.wantsNodeDrag()) {
         ImVec2 drag_vec;
