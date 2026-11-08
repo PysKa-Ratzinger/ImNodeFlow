@@ -573,6 +573,8 @@ void ImNodeFlow::update()
             if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && !ImGui::IsKeyDown(ImGuiKey_RightCtrl)) {
                 this->deselectAllItems();
             }
+        } else if (active_id_mouse_button == grid_cfg.scroll_button) {
+            // Do not deselect anything when scrolling
         } else {
             this->deselectAllItems();
         }
