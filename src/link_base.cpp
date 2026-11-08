@@ -25,6 +25,9 @@ void link_base_update(
     ImVec2 uv_axis = args.end - args.start;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+    bool is_ctrl_held_down = ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
+        || ImGui::IsKeyDown(ImGuiKey_RightCtrl);
+
     ImDrawListSplitter splitter;
     if (!link.waypoints.empty()) {
         splitter.Split(draw_list, 2);
@@ -42,8 +45,6 @@ void link_base_update(
             continue;
         }
 
-        bool is_ctrl_held_down = ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
-            || ImGui::IsKeyDown(ImGuiKey_RightCtrl);
         bool is_held = false;
         bool is_hovered = false;
         bool is_released = false;
@@ -139,18 +140,12 @@ void link_base_update(
 
     splitter.Merge(draw_list);
 
-    if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        link.selectable.setSelected(ctx.getDetail().selectableCtx, false);
-    }
-
-    if (clicked) {
-        link.selectable.on_click(ctx.getDetail().selectableCtx);
-    }
-    if (is_released) {
-        link.selectable.on_release(ctx.getDetail().selectableCtx,
-            ImGui::IsKeyDown(ImGuiKey_LeftCtrl)
-                || ImGui::IsKeyDown(ImGuiKey_RightCtrl));
-    }
+    link.selectable.update(
+        ctx.getDetail().selectableCtx,
+        is_ctrl_held_down,
+        clicked,
+        is_released,
+        false);
 
     if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
         ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());

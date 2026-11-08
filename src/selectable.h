@@ -36,7 +36,7 @@ public:
         bool is_released,
         bool is_dragged);
 
-    void on_click(SelectableContext& ctx);
+    void on_click(SelectableContext& ctx, bool is_ctrl_held_down);
     void on_release(SelectableContext& ctx, bool is_ctrl_held_down);
     void on_drag(SelectableContext& ctx);
 

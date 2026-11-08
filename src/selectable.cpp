@@ -62,7 +62,7 @@ void Selectable::update(
 {
     this->updateSerials(ctx);
     if (is_clicked) {
-        this->on_click(ctx);
+        this->on_click(ctx, is_ctrl_held_down);
     }
     if (is_released) {
         this->on_release(ctx, is_ctrl_held_down);
@@ -72,9 +72,9 @@ void Selectable::update(
     }
 }
 
-void Selectable::on_click(SelectableContext& ctx)
+void Selectable::on_click(SelectableContext& ctx, bool is_ctrl_held_down)
 {
-    if (!this->isSelected(ctx)) {
+    if (!this->isSelected(ctx) && !is_ctrl_held_down) {
         ctx.deselectAll();
     }
 
