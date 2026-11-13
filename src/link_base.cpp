@@ -13,6 +13,7 @@
 #include "imgui_internal.h"
 
 #include <algorithm>
+#include <array>
 #include <vector>
 
 namespace ImFlow::detail {
@@ -118,6 +119,24 @@ void link_base_update(
 
     if (!link.waypoints.empty()) {
         splitter.SetCurrentChannel(draw_list, 0);
+    }
+
+    if (args.draw_arrow != 0.0F && args.end != args.end_anchor) {
+        ImVec2 v = ctx.grid2screen(args.end_anchor) - ctx.grid2screen(args.end);
+        ImVec2 v_r90 { v.y, -v.x };
+        float a = args.draw_arrow;
+        auto arrow_b = ctx.grid2screen(args.end_anchor) - v * a;
+
+        std::array<ImVec2, 3> arrow_points;
+        arrow_points[0] = arrow_b - v_r90 * a;
+        arrow_points[1] = ctx.grid2screen(args.end_anchor);
+        arrow_points[2] = arrow_b + v_r90 * a;
+
+        draw_list->AddPolyline(
+            arrow_points.data(),
+            arrow_points.size(),
+            args.end_color,
+            args.thickness);
     }
 
     int double_clicked = -1;
