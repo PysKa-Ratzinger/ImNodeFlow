@@ -140,7 +140,7 @@ void NodeLinkRef<TIsConst>::update()
             .thickness = thickness,
             .drag_everything = sourceNode().wantsDrag()
                 && targetNode().wantsDrag(),
-            .draw_arrow = 0.3F,
+            .draw_arrow = 0.6F,
         });
 
     if (link.base.marked_for_deletion) {
