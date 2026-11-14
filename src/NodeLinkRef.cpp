@@ -173,6 +173,8 @@ void NodeLinkRef<TIsConst>::update()
         ? sourceNode().getStyle().link_hovered_thickness
         : sourceNode().getStyle().link_thickness;
 
+    auto arrow_size = sourceNode().getStyle().arrow_size;
+
     auto start_color = sourceNode().getStyle().header_bg;
     auto end_color = targetNode().getStyle().header_bg;
 
@@ -220,7 +222,7 @@ void NodeLinkRef<TIsConst>::update()
             .thickness = thickness,
             .drag_everything = sourceNode().wantsDrag()
                 && targetNode().wantsDrag(),
-            .draw_arrow = 0.6F,
+            .arrow_size = arrow_size,
         });
 
     if (link.base.marked_for_deletion) {

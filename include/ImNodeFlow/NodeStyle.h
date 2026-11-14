@@ -35,6 +35,8 @@ public:
     /// @brief Border thickness when selected
     float border_selected_thickness = 2.f;
 
+    /// @brief Arrow size
+    float arrow_size = 0.6f;
     /// @brief Link thickness
     float link_thickness = 3.f;
     /// @brief Link thickness when dragged

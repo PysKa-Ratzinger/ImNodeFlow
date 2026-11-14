@@ -147,11 +147,11 @@ void link_base_update(
         is_released,
         false);
 
-    if (args.draw_arrow != 0.0F && args.end != args.end_anchor) {
+    if (args.arrow_size != 0.0F && args.end != args.end_anchor) {
         ImVec2 v = ctx.grid2screen(args.end_anchor) - ctx.grid2screen(args.end);
         v = ImNormalized(v) * 10.0F;
         ImVec2 v_r90 { v.y, -v.x };
-        float a = args.draw_arrow;
+        float a = args.arrow_size;
         auto arrow_b = ctx.grid2screen(args.end_anchor) - v * a;
 
         std::array<ImVec2, 3> arrow_points;
