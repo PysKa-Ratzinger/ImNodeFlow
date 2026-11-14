@@ -85,6 +85,6 @@ bool draw_path(
     bool hovered = false,
     bool* out_hovered = nullptr,
     int* out_double_clicked = nullptr,
-    bool* out_relesaed = nullptr);
+    bool* out_released = nullptr);
 
 } // namespace ImFlow::detail

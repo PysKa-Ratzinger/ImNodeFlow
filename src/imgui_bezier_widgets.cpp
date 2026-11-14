@@ -1,7 +1,9 @@
 #include "imgui_bezier_widgets.h"
 
+#include "./imgui_bezier_items.h"
+#include "./imgui_colors.h"
+
 #include "imgui.h"
-#include "imgui_bezier_items.h"
 #include "imgui_internal.h"
 
 namespace ImFlow::detail {
@@ -52,14 +54,8 @@ bool smart_bezier_widget(
     if (selected) {
         double t = ImGui::GetTime();
 
-        float v0 = std::sin(t * 2.F) * 0.1F + 0.85F;
-        float v1 = std::sin(t * 2.F + 2.F) * 0.1F + 0.85F;
-
-        ImVec4 start_rgb { v0, v0, v0, 1.F };
-        ImVec4 end_rgb { v1, v1, v1, 1.F };
-
-        start_color = ImGui::ColorConvertFloat4ToU32(start_rgb);
-        end_color = ImGui::ColorConvertFloat4ToU32(end_rgb);
+        start_color = detail::get_selected_color(t * 2.F);
+        end_color = detail::get_selected_color((t * 2.F) + 2.F);
     }
 
     smart_bezier_gradient(

@@ -22,6 +22,66 @@
 
 namespace ImFlow::detail {
 
+namespace {
+
+    struct node_link_socket_t {
+        ImVec2 point;
+        ImVec2 pivot;
+    };
+
+    node_link_socket_t get_socket(ImRect source_bb, ImRect target_bb, bool inverted)
+    {
+        auto t_bl = target_bb.GetBL();
+        auto t_tr = target_bb.GetTR();
+        auto s_bl = source_bb.GetBL();
+        auto s_tr = source_bb.GetTR();
+
+        ImVec2 res { s_bl };
+        ImVec2 pivot { 0.F, 0.F };
+
+        bool t_r_s = t_bl.x > s_tr.x; // target right of source
+        bool t_l_s = t_tr.x < s_bl.x; // target left of source
+        bool t_a_s = t_bl.y > s_tr.y; // target above source
+        bool t_b_s = t_tr.y < s_bl.y; // target below source
+
+        if (t_r_s) {
+            res.x = s_tr.x;
+            pivot.x = 20.F;
+        } else if (t_l_s) {
+            res.x = s_bl.x;
+            pivot.x = -20.F;
+        } else {
+            pivot.x = 0.F;
+            if (t_a_s ^ inverted) {
+                res.x = std::max(s_bl.x, t_bl.x);
+            } else {
+                res.x = std::min(s_tr.x, t_tr.x);
+            }
+        }
+
+        if (t_bl.y > s_tr.y) {
+            res.y = s_tr.y;
+            pivot.y = 20.F;
+        } else if (t_tr.y < s_bl.y) {
+            res.y = s_bl.y;
+            pivot.y = -20.F;
+        } else {
+            pivot.y = 0.F;
+            if (t_l_s ^ inverted) {
+                res.y = std::max(s_bl.y, t_bl.y);
+            } else {
+                res.y = std::min(s_tr.y, t_tr.y);
+            }
+        }
+
+        return {
+            .point = res,
+            .pivot = res + pivot,
+        };
+    }
+
+} // anonymous namespace
+
 template <bool TIsConst>
 NodeLinkRef<TIsConst>::NodeLinkRef(context_type& ctx, link_type& link)
     : m_ctx(ctx)
@@ -122,10 +182,30 @@ void NodeLinkRef<TIsConst>::update()
     start.y += ImGui::GetTextLineHeight();
     end.y += ImGui::GetTextLineHeight();
 
-    auto p1 = start;
-    auto p2 = start + ImVec2(20.F, 0.F);
-    auto p3 = end - ImVec2(20.F, 0.F);
-    auto p4 = end;
+    auto source_bb_p = sourceNode().getBB();
+    auto target_bb_p = targetNode().getBB();
+
+    ImRect source_bb { source_bb_p.first, source_bb_p.second };
+    ImRect target_bb { target_bb_p.first, target_bb_p.second };
+
+    ImRect source_t_bb = target_bb;
+    ImRect target_t_bb = source_bb;
+
+    if (!link.base.waypoints.empty()) {
+        auto p0 = link.base.waypoints[0].grid_pos;
+        auto p1 = link.base.waypoints[link.base.waypoints.size() - 1].grid_pos;
+
+        source_t_bb = ImRect { p0, p0 };
+        target_t_bb = ImRect { p1, p1 };
+    }
+
+    auto socket_start = get_socket(source_bb, source_t_bb, false);
+    auto socket_end = get_socket(target_bb, target_t_bb, true);
+
+    auto p1 = socket_start.point;
+    auto p2 = socket_start.pivot;
+    auto p3 = socket_end.pivot;
+    auto p4 = socket_end.point;
 
     link_base_update(
         ctx,

@@ -1,5 +1,6 @@
 #ifndef IMNODEFLOW_NODEREF_H
 #define IMNODEFLOW_NODEREF_H
+#include <utility>
 #pragma once
 
 #include "ImNodeFlow/NodeStyle.h"
@@ -290,6 +291,8 @@ public:
      * @return Const reference to the node's position
      */
     ImVec2 getTLPos() const;
+
+    [[nodiscard]] std::pair<ImVec2, ImVec2> getBB() const;
 
     ImVec2 getCenterGridPos() const;
 

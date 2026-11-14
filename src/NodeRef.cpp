@@ -148,6 +148,17 @@ ImVec2 NodeRefImpl<TIsConst>::getTLPos() const
 }
 
 template <bool TIsConst>
+std::pair<ImVec2, ImVec2> NodeRefImpl<TIsConst>::getBB() const
+{
+    auto tl = this->getTLPos();
+    auto sz = this->getFullSize();
+    return {
+        tl + ImVec2(0.F, sz.y),
+        tl + ImVec2(sz.x, 0.F),
+    };
+}
+
+template <bool TIsConst>
 ImVec2 NodeRefImpl<TIsConst>::getCenterGridPos() const
 {
     auto tl_pos = this->getTLPos();

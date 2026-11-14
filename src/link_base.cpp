@@ -6,6 +6,7 @@
 #include "./editor_context.h"
 #include "./imgui_bezier_items.h"
 #include "./imgui_bezier_widgets.h"
+#include "./imgui_colors.h"
 #include "./imgui_custom_widgets.h"
 
 #include "imgui.h"
@@ -121,25 +122,6 @@ void link_base_update(
         splitter.SetCurrentChannel(draw_list, 0);
     }
 
-    if (args.draw_arrow != 0.0F && args.end != args.end_anchor) {
-        ImVec2 v = ctx.grid2screen(args.end_anchor) - ctx.grid2screen(args.end);
-        v = ImNormalized(v) * 10.0F;
-        ImVec2 v_r90 { v.y, -v.x };
-        float a = args.draw_arrow;
-        auto arrow_b = ctx.grid2screen(args.end_anchor) - v * a;
-
-        std::array<ImVec2, 3> arrow_points;
-        arrow_points[0] = arrow_b - v_r90 * a;
-        arrow_points[1] = ctx.grid2screen(args.end_anchor);
-        arrow_points[2] = arrow_b + v_r90 * a;
-
-        draw_list->AddPolyline(
-            arrow_points.data(),
-            arrow_points.size(),
-            args.end_color,
-            args.thickness);
-    }
-
     int double_clicked = -1;
     bool is_released = false;
     bool clicked = draw_path(
@@ -164,6 +146,30 @@ void link_base_update(
         clicked,
         is_released,
         false);
+
+    if (args.draw_arrow != 0.0F && args.end != args.end_anchor) {
+        ImVec2 v = ctx.grid2screen(args.end_anchor) - ctx.grid2screen(args.end);
+        v = ImNormalized(v) * 10.0F;
+        ImVec2 v_r90 { v.y, -v.x };
+        float a = args.draw_arrow;
+        auto arrow_b = ctx.grid2screen(args.end_anchor) - v * a;
+
+        std::array<ImVec2, 3> arrow_points;
+        arrow_points[0] = arrow_b - v_r90 * a;
+        arrow_points[1] = ctx.grid2screen(args.end_anchor);
+        arrow_points[2] = arrow_b + v_r90 * a;
+
+        auto arrow_color = args.end_color;
+        if (link.selectable.isSelected(ctx.getDetail().selectableCtx)) {
+            arrow_color = detail::get_selected_color((ImGui::GetTime() * 2.0F) + 2.0F);
+        }
+
+        draw_list->AddPolyline(
+            arrow_points.data(),
+            arrow_points.size(),
+            arrow_color,
+            args.thickness);
+    }
 
     if (double_clicked >= 0 && double_clicked <= link.waypoints.size()) {
         ImVec2 waypoint_pos = ctx.screen2grid(ImGui::GetMousePos());
