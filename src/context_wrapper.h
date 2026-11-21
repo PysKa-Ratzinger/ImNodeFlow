@@ -6,6 +6,7 @@
 #include <imgui_internal.h>
 
 #include <limits>
+#include <optional>
 
 inline static void
 CopyIOEvents(ImGuiContext* src, ImGuiContext* dst, ImVec2 origin, float scale)
@@ -203,6 +204,7 @@ private:
 
     ImVec2 m_origin;
     ImVec2 m_size;
+    std::optional<ImRect> m_clipRect = std::nullopt;
     ImGuiContext* m_ctx = nullptr;
     ImGuiContext* m_original_ctx = nullptr;
 
@@ -340,7 +342,7 @@ ContainedContext::begin()
         ImGui::PopStyleVar();
     }
 
-    auto clip_rect = window->ClipRect;
+    auto clip_rect = m_clipRect.value_or(window->ClipRect);
     ImVec2 canvas_p0 = clip_rect.Min;
     ImVec2 canvas_p1 = clip_rect.Max;
     canvas_p0 = (canvas_p0 - m_origin) / m_scale;
@@ -459,5 +461,8 @@ ContainedContext::end()
     // MousePos at NewFrame(), so writing it here (end of this frame) is correct.
     this->m_ctx->IO.MousePos = (ImGui::GetMousePos() - m_origin) / m_scale;
     ImGui::EndChild();
+    this->m_clipRect.emplace(
+        ImGui::GetItemRectMin(),
+        ImGui::GetItemRectMax());
     ImGui::PopID();
 }
