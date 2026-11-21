@@ -518,7 +518,6 @@ public:
 NodeEditor::NodeEditor(float width, float height)
 {
     mINF.setSize({ width, height });
-    mINF.setSize({ width, height });
     mINF.rightClickPopUpContent([this](std::optional<ImFlow::NodeRef> node) -> void {
         if (node.has_value()) {
             auto selected_nodes = mINF.getSelectedNodes();
